@@ -860,9 +860,7 @@ header, .main-app-header {
   }
   .package-columns-container > div:last-child {
     border-left: none !important;
-    border-top: 1px solid var(--rule) !important;
     padding-left: 0 !important;
-    padding-top: 8px !important;
   }
 }
 
