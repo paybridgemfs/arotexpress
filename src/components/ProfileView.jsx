@@ -662,7 +662,7 @@ export default function ProfileView({ onBackToHome }) {
                                     title="এই অর্ডারের পণ্য তালিকা দেখুন"
                                   >
                                     <Package size={14} color="var(--primary)" />
-                                    <span>মোট {toBengaliNumber(parsedItems.length)} টি পণ্য (তালিকা দেখুন)</span>
+                                    <span>মোট {toBengaliNumber(parsedItems.length)} টি পণ্য</span>
                                   </motion.button>
                                 </td>
 
