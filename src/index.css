@@ -695,8 +695,8 @@ header, .main-app-header {
 /* Fixed Floating Social Links */
 .social-buttons-fixed {
   position: fixed;
-  right: 16px;
-  top: 50%;
+  right: 10px;
+  bottom: 0%;
   transform: translateY(-50%);
   z-index: 85;
   display: flex;
@@ -799,7 +799,7 @@ header, .main-app-header {
 @media (max-width: 680px) {
   /* Mobile auto-floating override rules */
   .social-buttons-fixed {
-    right: 12px;
+    right: 10px;
     gap: 8px;
   }
 
