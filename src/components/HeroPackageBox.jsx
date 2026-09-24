@@ -217,8 +217,6 @@ export default function HeroPackageBox() {
             flexDirection: 'column',
             gap: '4px',
             minWidth: 0,
-            borderLeft: '1px solid var(--rule)',
-            paddingLeft: '8px'
           }}
         >
           {sideBProducts.map((prod) => (
