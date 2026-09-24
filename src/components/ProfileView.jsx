@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
   Package,
@@ -23,14 +23,15 @@ import {
   User as UserIcon,
   ChevronRight,
   ExternalLink,
-} from "lucide-react";
-import { useAuth } from "../context/AuthContext.jsx";
-import { useCart } from "../context/CartContext.jsx";
-import { usePackageBox } from "../context/PackageBoxContext.jsx";
-import { useStoreData } from "../context/StoreDataContext";
-import { toBengaliNumber } from "../utils/bengali.js";
-import CustomerInvoiceModal from "./CustomerInvoiceModal.jsx";
-import OrderTrackingModal from "./OrderTrackingModal.jsx";
+  X
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
+import { useCart } from '../context/CartContext.jsx';
+import { usePackageBox } from '../context/PackageBoxContext.jsx';
+import { useStoreData } from '../context/StoreDataContext';
+import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
+import CustomerInvoiceModal from './CustomerInvoiceModal.jsx';
+import OrderTrackingModal from './OrderTrackingModal.jsx';
 
 export default function ProfileView({ onBackToHome }) {
   const { user, token, logout, updateProfile } = useAuth();
@@ -38,27 +39,71 @@ export default function ProfileView({ onBackToHome }) {
   const { loadPackageOrderItems } = usePackageBox();
   const { packageProducts = [] } = useStoreData();
 
-  const [activeTab, setActiveTab] = useState("orders"); // 'orders' | 'settings'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'settings'
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all"); // 'all' | 'active' | 'delivered' | 'cancelled'
-  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'delivered' | 'cancelled'
+  const [searchQuery, setSearchQuery] = useState('');
   const [reorderingCode, setReorderingCode] = useState(null);
 
-  // Modals for Customer invoice and live tracking
+  // Modals for Customer invoice, live tracking, and Product items modal
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
   const [trackingOrderCode, setTrackingOrderCode] = useState(null);
+  const [viewItemsModal, setViewItemsModal] = useState(null);
 
-  const [name, setName] = useState(user ? user.name : "");
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [name, setName] = useState(user ? user.name : '');
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [updating, setUpdating] = useState(false);
-  const [updateMsg, setUpdateMsg] = useState({ text: "", type: "" });
+  const [updateMsg, setUpdateMsg] = useState({ text: '', type: '' });
+
+  // Calculate order financial breakdown safely
+  const getOrderFinancials = (order) => {
+    if (!order) return { items: [], subtotal: 0, deliveryFee: 0, total: 0 };
+    let parsedItems = order.items_json;
+    if (typeof parsedItems === 'string') {
+      try {
+        parsedItems = JSON.parse(parsedItems);
+      } catch (e) {
+        parsedItems = [];
+      }
+    }
+    if (!Array.isArray(parsedItems)) parsedItems = [];
+
+    const calculatedItemsSubtotal = parsedItems.reduce(
+      (sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1),
+      0
+    );
+
+    const total = Number(order.total_amount) || calculatedItemsSubtotal;
+    let deliveryFee = Number(order.delivery_fee);
+
+    if (isNaN(deliveryFee) || deliveryFee === null) {
+      if (order.subtotal !== undefined && Number(order.subtotal) > 0) {
+        deliveryFee = Math.max(0, total - Number(order.subtotal));
+      } else if (total > calculatedItemsSubtotal && calculatedItemsSubtotal > 0) {
+        deliveryFee = total - calculatedItemsSubtotal;
+      } else {
+        deliveryFee = 0;
+      }
+    }
+
+    const subtotal = (order.subtotal !== undefined && Number(order.subtotal) > 0)
+      ? Number(order.subtotal)
+      : (calculatedItemsSubtotal > 0 ? calculatedItemsSubtotal : Math.max(0, total - deliveryFee));
+
+    return {
+      items: parsedItems,
+      subtotal,
+      deliveryFee,
+      total
+    };
+  };
 
   // 1-Click Re-order Handler
   const handleReorder = async (order) => {
     let items = order.items_json;
-    if (typeof items === "string") {
+    if (typeof items === 'string') {
       try {
         items = JSON.parse(items);
       } catch (e) {
@@ -66,7 +111,7 @@ export default function ProfileView({ onBackToHome }) {
       }
     }
     if (!items || !Array.isArray(items) || items.length === 0) {
-      showToast("অর্ডারে কোনো পণ্য পাওয়া যায়নি");
+      showToast('অর্ডারে কোনো পণ্য পাওয়া যায়নি');
       return;
     }
 
@@ -77,29 +122,32 @@ export default function ProfileView({ onBackToHome }) {
       order.is_package_order ||
       order.is_package ||
       order.isPackage ||
-      (order.order_code && order.order_code.startsWith("PK-")),
+      (order.order_code && order.order_code.startsWith('PK-'))
     );
 
     try {
       if (isPackageOrder) {
         await loadPackageOrderItems(items, packageProducts);
-        showToast("প্যাকেজ পণ্যগুলো সফলভাবে প্যাকেজ বক্সে যোগ করা হয়েছে!");
+        showToast('প্যাকেজ পণ্যগুলো সফলভাবে প্যাকেজ বক্সে যোগ করা হয়েছে!');
 
-        if (typeof onBackToHome === "function") {
+        if (viewItemsModal) setViewItemsModal(null);
+
+        if (typeof onBackToHome === 'function') {
           onBackToHome();
         }
         setTimeout(() => {
-          const el = document.getElementById("hero-package-box");
+          const el = document.getElementById('hero-package-box');
           if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 200);
       } else {
         replaceCartWithOrder(items);
+        if (viewItemsModal) setViewItemsModal(null);
       }
     } catch (err) {
-      console.error("Reorder error:", err);
-      showToast("পুনরায় অর্ডারে সমস্যা হয়েছে");
+      console.error('Reorder error:', err);
+      showToast('পুনরায় অর্ডারে সমস্যা হয়েছে');
     } finally {
       setReorderingCode(null);
     }
@@ -107,8 +155,8 @@ export default function ProfileView({ onBackToHome }) {
 
   useEffect(() => {
     if (token) {
-      fetch("/api/orders", {
-        headers: { Authorization: `Bearer ${token}` },
+      fetch('/api/orders', {
+        headers: { Authorization: `Bearer ${token}` }
       })
         .then((res) => res.json())
         .then((data) => {
@@ -116,24 +164,24 @@ export default function ProfileView({ onBackToHome }) {
             setOrders(data);
           }
         })
-        .catch((err) => console.error("Fetch orders error:", err))
+        .catch((err) => console.error('Fetch orders error:', err))
         .finally(() => setLoadingOrders(false));
     }
   }, [token]);
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
-    setUpdateMsg({ text: "", type: "" });
+    setUpdateMsg({ text: '', type: '' });
 
     if (!name.trim()) {
-      setUpdateMsg({ text: "নাম খালি রাখা যাবে না", type: "error" });
+      setUpdateMsg({ text: 'নাম খালি রাখা যাবে না', type: 'error' });
       return;
     }
 
     if (newPassword && !oldPassword) {
       setUpdateMsg({
-        text: "নতুন পাসওয়ার্ড সেট করতে বর্তমান পাসওয়ার্ড দিন",
-        type: "error",
+        text: 'নতুন পাসওয়ার্ড সেট করতে বর্তমান পাসওয়ার্ড দিন',
+        type: 'error'
       });
       return;
     }
@@ -143,93 +191,49 @@ export default function ProfileView({ onBackToHome }) {
       await updateProfile({
         name: name.trim(),
         password: oldPassword || undefined,
-        new_password: newPassword || undefined,
+        new_password: newPassword || undefined
       });
-      setUpdateMsg({
-        text: "প্রোফাইল সফলভাবে আপডেট করা হয়েছে",
-        type: "success",
-      });
-      setOldPassword("");
-      setNewPassword("");
-      showToast("প্রোফাইল তথ্য আপডেট হয়েছে");
+      setUpdateMsg({ text: 'প্রোফাইল সফলভাবে আপডেট করা হয়েছে', type: 'success' });
+      setOldPassword('');
+      setNewPassword('');
+      showToast('প্রোফাইল তথ্য আপডেট হয়েছে');
     } catch (err) {
-      setUpdateMsg({
-        text: err.message || "আপডেট করতে ত্রুটি হয়েছে",
-        type: "error",
-      });
+      setUpdateMsg({ text: err.message || 'আপডেট করতে ত্রুটি হয়েছে', type: 'error' });
     } finally {
       setUpdating(false);
     }
   };
 
   const getStatusBn = (status) => {
-    const s = String(status || "")
-      .toLowerCase()
-      .trim();
-    if (s === "pending" || s === "পেন্ডিং") return "পেন্ডিং";
-    if (s === "processing" || s === "প্রসেসিং") return "প্রসেসিং";
-    if (
-      s === "shipped" ||
-      s === "পাঠানো হয়েছে" ||
-      s === "ডেলিভারিতে আছে" ||
-      s === "ডেলিভারিতে পাঠানো হয়েছে" ||
-      s === "অন-ওয়ে" ||
-      s === "অন-ডেলিভারি"
-    )
-      return "ডেলিভারিতে আছে";
-    if (
-      s === "delivered" ||
-      s === "ডেলিভার্ড" ||
-      s === "সম্পন্ন" ||
-      s === "ডেলিভারি সম্পন্ন"
-    )
-      return "ডেলিভার্ড";
-    if (s === "cancelled" || s === "বাতিল") return "বাতিল";
-    return status || "পেন্ডিং";
+    const s = String(status || '').toLowerCase().trim();
+    if (s === 'pending' || s === 'পেন্ডিং') return 'পেন্ডিং';
+    if (s === 'processing' || s === 'প্রসেসিং') return 'প্রসেসিং';
+    if (s === 'shipped' || s === 'পাঠানো হয়েছে' || s === 'ডেলিভারিতে আছে' || s === 'ডেলিভারিতে পাঠানো হয়েছে' || s === 'অন-ওয়ে' || s === 'অন-ডেলিভারি') return 'ডেলিভারিতে আছে';
+    if (s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন' || s === 'ডেলিভারি সম্পন্ন') return 'ডেলিভার্ড';
+    if (s === 'cancelled' || s === 'বাতিল') return 'বাতিল';
+    return status || 'পেন্ডিং';
   };
 
   const getStatusClass = (status) => {
-    const s = String(status || "")
-      .toLowerCase()
-      .trim();
-    if (s === "pending" || s === "পেন্ডিং") return "status-pending";
-    if (s === "processing" || s === "প্রসেসিং") return "status-processing";
-    if (
-      s === "shipped" ||
-      s === "পাঠানো হয়েছে" ||
-      s === "ডেলিভারিতে আছে" ||
-      s === "অন-ওয়ে" ||
-      s === "অন-ডেলিভারি"
-    )
-      return "status-shipped";
-    if (
-      s === "delivered" ||
-      s === "ডেলিভার্ড" ||
-      s === "সম্পন্ন" ||
-      s === "ডেলিভারি সম্পন্ন"
-    )
-      return "status-delivered";
-    if (s === "cancelled" || s === "বাতিল") return "status-cancelled";
-    return "status-pending";
+    const s = String(status || '').toLowerCase().trim();
+    if (s === 'pending' || s === 'পেন্ডিং') return 'status-pending';
+    if (s === 'processing' || s === 'প্রসেসিং') return 'status-processing';
+    if (s === 'shipped' || s === 'পাঠানো হয়েছে' || s === 'ডেলিভারিতে আছে' || s === 'অন-ওয়ে' || s === 'অন-ডেলিভারি') return 'status-shipped';
+    if (s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন' || s === 'ডেলিভারি সম্পন্ন') return 'status-delivered';
+    if (s === 'cancelled' || s === 'বাতিল') return 'status-cancelled';
+    return 'status-pending';
   };
 
   // Stats calculation
   const stats = useMemo(() => {
     const total = orders.length;
     const delivered = orders.filter((o) => {
-      const s = String(o.status || "").toLowerCase();
-      return s === "delivered" || s === "ডেলিভার্ড" || s === "সম্পন্ন";
+      const s = String(o.status || '').toLowerCase();
+      return s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন';
     }).length;
     const active = orders.filter((o) => {
-      const s = String(o.status || "").toLowerCase();
-      return (
-        s === "pending" ||
-        s === "পেন্ডিং" ||
-        s === "processing" ||
-        s === "প্রসেসিং" ||
-        s === "shipped" ||
-        s === "ডেলিভারিতে আছে"
-      );
+      const s = String(o.status || '').toLowerCase();
+      return s === 'pending' || s === 'পেন্ডিং' || s === 'processing' || s === 'প্রসেসিং' || s === 'shipped' || s === 'ডেলিভারিতে আছে';
     }).length;
     return { total, delivered, active };
   }, [orders]);
@@ -237,38 +241,27 @@ export default function ProfileView({ onBackToHome }) {
   // Filtered Orders
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      const s = String(order.status || "").toLowerCase();
-      const code = String(order.order_code || "").toLowerCase();
+      const s = String(order.status || '').toLowerCase();
+      const code = String(order.order_code || '').toLowerCase();
 
       // Search matching
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();
         const matchCode = code.includes(query);
-        const matchAddress = String(order.delivery_address || "")
-          .toLowerCase()
-          .includes(query);
-        const matchArea = String(order.delivery_area || "")
-          .toLowerCase()
-          .includes(query);
+        const matchAddress = String(order.delivery_address || '').toLowerCase().includes(query);
+        const matchArea = String(order.delivery_area || '').toLowerCase().includes(query);
         if (!matchCode && !matchAddress && !matchArea) return false;
       }
 
       // Status matching
-      if (statusFilter === "active") {
-        return (
-          s === "pending" ||
-          s === "পেন্ডিং" ||
-          s === "processing" ||
-          s === "প্রসেসিং" ||
-          s === "shipped" ||
-          s === "ডেলিভারিতে আছে"
-        );
+      if (statusFilter === 'active') {
+        return s === 'pending' || s === 'পেন্ডিং' || s === 'processing' || s === 'প্রসেসিং' || s === 'shipped' || s === 'ডেলিভারিতে আছে';
       }
-      if (statusFilter === "delivered") {
-        return s === "delivered" || s === "ডেলিভার্ড" || s === "সম্পন্ন";
+      if (statusFilter === 'delivered') {
+        return s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন';
       }
-      if (statusFilter === "cancelled") {
-        return s === "cancelled" || s === "বাতিল";
+      if (statusFilter === 'cancelled') {
+        return s === 'cancelled' || s === 'বাতিল';
       }
       return true;
     });
@@ -278,7 +271,7 @@ export default function ProfileView({ onBackToHome }) {
     return (
       <motion.div
         className="section-wrap"
-        style={{ paddingTop: "40px", textAlign: "center" }}
+        style={{ paddingTop: '40px', textAlign: 'center' }}
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -286,7 +279,7 @@ export default function ProfileView({ onBackToHome }) {
         <motion.button
           className="cta"
           onClick={onBackToHome}
-          style={{ marginTop: "16px" }}
+          style={{ marginTop: '16px' }}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
@@ -299,7 +292,7 @@ export default function ProfileView({ onBackToHome }) {
   return (
     <motion.div
       className="section-wrap"
-      style={{ paddingTop: "24px", paddingBottom: "50px" }}
+      style={{ paddingTop: '24px', paddingBottom: '50px' }}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
@@ -311,12 +304,7 @@ export default function ProfileView({ onBackToHome }) {
         onClick={onBackToHome}
         whileHover={{ x: -4 }}
         whileTap={{ scale: 0.96 }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          marginBottom: "16px",
-        }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}
       >
         <ArrowLeft size={16} /> <span>হোম পেজে ফিরে যান</span>
       </motion.button>
@@ -324,63 +312,31 @@ export default function ProfileView({ onBackToHome }) {
       {/* Main Profile Card Container */}
       <div className="profile-card">
         {/* Header with User Info & Logout */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "14px",
-            marginBottom: "22px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div
               style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "50%",
-                background: "var(--md-primary-container)",
-                border: "2px solid #A7F3D0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--primary)",
+                width: '52px',
+                height: '52px',
+                borderRadius: '50%',
+                background: 'var(--md-primary-container)',
+                border: '2px solid #A7F3D0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)',
                 fontWeight: 800,
-                fontSize: "20px",
+                fontSize: '20px'
               }}
             >
-              {user.name ? (
-                user.name.charAt(0).toUpperCase()
-              ) : (
-                <UserIcon size={24} />
-              )}
+              {user.name ? user.name.charAt(0).toUpperCase() : <UserIcon size={24} />}
             </div>
             <div>
-              <h2 style={{ fontSize: "21px", margin: 0, fontWeight: 800 }}>
-                স্বাগতম, {user.name}!
-              </h2>
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "var(--muted)",
-                  marginTop: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <span>
-                  মোবাইল:{" "}
-                  <strong className="mono" style={{ color: "var(--ink)" }}>
-                    {user.phone}
-                  </strong>
-                </span>
+              <h2 style={{ fontSize: '21px', margin: 0, fontWeight: 800 }}>স্বাগতম, {user.name}!</h2>
+              <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span>মোবাইল: <strong className="mono" style={{ color: 'var(--ink)' }}>{user.phone}</strong></span>
                 <span>•</span>
-                <span style={{ color: "var(--primary)", fontWeight: 600 }}>
-                  সক্রিয় গ্রাহক
-                </span>
+                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>সক্রিয় গ্রাহক</span>
               </div>
             </div>
           </div>
@@ -392,16 +348,9 @@ export default function ProfileView({ onBackToHome }) {
             onClick={() => {
               logout();
               onBackToHome();
-              showToast("লগআউট করা হয়েছে");
+              showToast('লগআউট করা হয়েছে');
             }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 16px",
-              fontSize: "13px",
-              borderRadius: "var(--radius-pill)",
-            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', borderRadius: 'var(--radius-pill)' }}
           >
             <LogOut size={15} /> <span>লগআউট</span>
           </motion.button>
@@ -410,17 +359,17 @@ export default function ProfileView({ onBackToHome }) {
         {/* Navigation Tabs (Orders vs Settings) */}
         <div className="profile-nav-tabs">
           <button
-            className={`profile-nav-tab ${activeTab === "orders" ? "active" : ""}`}
-            onClick={() => setActiveTab("orders")}
-            style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}
+            className={`profile-nav-tab ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
           >
             <Package size={16} />
             <span>আমার অর্ডারসমূহ ({toBengaliNumber(orders.length)})</span>
           </button>
           <button
-            className={`profile-nav-tab ${activeTab === "settings" ? "active" : ""}`}
-            onClick={() => setActiveTab("settings")}
-            style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}
+            className={`profile-nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
           >
             <Settings size={16} />
             <span>প্রোফাইল সেটিংস</span>
@@ -428,7 +377,7 @@ export default function ProfileView({ onBackToHome }) {
         </div>
 
         <AnimatePresence mode="wait">
-          {activeTab === "orders" && (
+          {activeTab === 'orders' && (
             <motion.div
               key="orders-tab"
               initial={{ opacity: 0, y: 10 }}
@@ -439,116 +388,32 @@ export default function ProfileView({ onBackToHome }) {
               {/* Order Stats Overview Cards */}
               <div className="profile-stats-grid">
                 <div className="profile-stat-box">
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      background: "#EFF6FF",
-                      color: "#1D4ED8",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ShoppingBag size={20} />
                   </div>
                   <div>
-                    <div
-                      style={{
-                        fontSize: "11.5px",
-                        color: "var(--muted)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      মোট অর্ডার
-                    </div>
-                    <div
-                      className="mono"
-                      style={{
-                        fontSize: "20px",
-                        fontWeight: 800,
-                        color: "var(--ink)",
-                      }}
-                    >
-                      {toBengaliNumber(stats.total)}
-                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 600 }}>মোট অর্ডার</div>
+                    <div className="mono" style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink)' }}>{toBengaliNumber(stats.total)}</div>
                   </div>
                 </div>
 
                 <div className="profile-stat-box">
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      background: "#FEF3C7",
-                      color: "#D97706",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Clock size={20} />
                   </div>
                   <div>
-                    <div
-                      style={{
-                        fontSize: "11.5px",
-                        color: "var(--muted)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      প্রক্রিয়াধীন / চলমান
-                    </div>
-                    <div
-                      className="mono"
-                      style={{
-                        fontSize: "20px",
-                        fontWeight: 800,
-                        color: "#D97706",
-                      }}
-                    >
-                      {toBengaliNumber(stats.active)}
-                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 600 }}>প্রক্রিয়াধীন / চলমান</div>
+                    <div className="mono" style={{ fontSize: '20px', fontWeight: 800, color: '#D97706' }}>{toBengaliNumber(stats.active)}</div>
                   </div>
                 </div>
 
                 <div className="profile-stat-box">
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      background: "#ECFDF5",
-                      color: "#059669",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <CheckCircle2 size={20} />
                   </div>
                   <div>
-                    <div
-                      style={{
-                        fontSize: "11.5px",
-                        color: "var(--muted)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      ডেলিভার্ড সম্পন্ন
-                    </div>
-                    <div
-                      className="mono"
-                      style={{
-                        fontSize: "20px",
-                        fontWeight: 800,
-                        color: "#059669",
-                      }}
-                    >
-                      {toBengaliNumber(stats.delivered)}
-                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 600 }}>ডেলিভার্ড সম্পন্ন</div>
+                    <div className="mono" style={{ fontSize: '20px', fontWeight: 800, color: '#059669' }}>{toBengaliNumber(stats.delivered)}</div>
                   </div>
                 </div>
               </div>
@@ -556,79 +421,67 @@ export default function ProfileView({ onBackToHome }) {
               {/* Order Filter & Search Toolbar */}
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "12px",
-                  marginBottom: "18px",
-                  background: "#F8FAF9",
-                  padding: "12px 16px",
-                  borderRadius: "var(--radius-lg)",
-                  border: "1px solid var(--rule)",
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  marginBottom: '18px',
+                  background: '#F8FAF9',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--rule)'
                 }}
               >
                 {/* Status Filter Buttons */}
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    onClick={() => setStatusFilter("all")}
+                    onClick={() => setStatusFilter('all')}
                     style={{
-                      padding: "5px 12px",
-                      borderRadius: "var(--radius-pill)",
-                      fontSize: "12.5px",
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      fontSize: '12.5px',
                       fontWeight: 700,
-                      border: "1px solid",
-                      cursor: "pointer",
-                      background:
-                        statusFilter === "all" ? "var(--primary)" : "#FFFFFF",
-                      color: statusFilter === "all" ? "#FFFFFF" : "var(--ink)",
-                      borderColor:
-                        statusFilter === "all"
-                          ? "var(--primary)"
-                          : "var(--rule)",
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      background: statusFilter === 'all' ? 'var(--primary)' : '#FFFFFF',
+                      color: statusFilter === 'all' ? '#FFFFFF' : 'var(--ink)',
+                      borderColor: statusFilter === 'all' ? 'var(--primary)' : 'var(--rule)'
                     }}
                   >
                     সব ({toBengaliNumber(orders.length)})
                   </button>
                   <button
                     type="button"
-                    onClick={() => setStatusFilter("active")}
+                    onClick={() => setStatusFilter('active')}
                     style={{
-                      padding: "5px 12px",
-                      borderRadius: "var(--radius-pill)",
-                      fontSize: "12.5px",
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      fontSize: '12.5px',
                       fontWeight: 700,
-                      border: "1px solid",
-                      cursor: "pointer",
-                      background:
-                        statusFilter === "active" ? "#D97706" : "#FFFFFF",
-                      color:
-                        statusFilter === "active" ? "#FFFFFF" : "var(--ink)",
-                      borderColor:
-                        statusFilter === "active" ? "#D97706" : "var(--rule)",
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      background: statusFilter === 'active' ? '#D97706' : '#FFFFFF',
+                      color: statusFilter === 'active' ? '#FFFFFF' : 'var(--ink)',
+                      borderColor: statusFilter === 'active' ? '#D97706' : 'var(--rule)'
                     }}
                   >
                     চলমান ({toBengaliNumber(stats.active)})
                   </button>
                   <button
                     type="button"
-                    onClick={() => setStatusFilter("delivered")}
+                    onClick={() => setStatusFilter('delivered')}
                     style={{
-                      padding: "5px 12px",
-                      borderRadius: "var(--radius-pill)",
-                      fontSize: "12.5px",
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      fontSize: '12.5px',
                       fontWeight: 700,
-                      border: "1px solid",
-                      cursor: "pointer",
-                      background:
-                        statusFilter === "delivered" ? "#059669" : "#FFFFFF",
-                      color:
-                        statusFilter === "delivered" ? "#FFFFFF" : "var(--ink)",
-                      borderColor:
-                        statusFilter === "delivered"
-                          ? "#059669"
-                          : "var(--rule)",
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      background: statusFilter === 'delivered' ? '#059669' : '#FFFFFF',
+                      color: statusFilter === 'delivered' ? '#FFFFFF' : 'var(--ink)',
+                      borderColor: statusFilter === 'delivered' ? '#059669' : 'var(--rule)'
                     }}
                   >
                     ডেলিভার্ড ({toBengaliNumber(stats.delivered)})
@@ -636,52 +489,36 @@ export default function ProfileView({ onBackToHome }) {
                 </div>
 
                 {/* Search Bar */}
-                <div
-                  style={{
-                    position: "relative",
-                    minWidth: "220px",
-                    flex: "1 1 220px",
-                    maxWidth: "320px",
-                  }}
-                >
-                  <Search
-                    size={15}
-                    style={{
-                      position: "absolute",
-                      left: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "var(--muted)",
-                    }}
-                  />
+                <div style={{ position: 'relative', minWidth: '220px', flex: '1 1 220px', maxWidth: '320px' }}>
+                  <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
                   <input
                     type="text"
                     placeholder="অর্ডার কোড বা ঠিকানা দিয়ে খুঁজুন..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
-                      width: "100%",
-                      padding: "6px 10px 6px 32px",
-                      fontSize: "12.5px",
-                      borderRadius: "var(--radius-pill)",
-                      border: "1px solid var(--rule)",
-                      background: "#FFFFFF",
-                      outline: "none",
+                      width: '100%',
+                      padding: '6px 10px 6px 32px',
+                      fontSize: '12.5px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: '1px solid var(--rule)',
+                      background: '#FFFFFF',
+                      outline: 'none'
                     }}
                   />
                   {searchQuery && (
                     <button
-                      onClick={() => setSearchQuery("")}
+                      onClick={() => setSearchQuery('')}
                       style={{
-                        position: "absolute",
-                        right: "10px",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        background: "none",
-                        border: "none",
-                        color: "var(--muted)",
-                        fontSize: "12px",
-                        cursor: "pointer",
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--muted)',
+                        fontSize: '12px',
+                        cursor: 'pointer'
                       }}
                     >
                       ✕
@@ -691,59 +528,22 @@ export default function ProfileView({ onBackToHome }) {
               </div>
 
               {loadingOrders ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "40px",
-                    color: "var(--muted)",
-                  }}
-                >
-                  <div className="spinner" style={{ margin: "0 auto 12px" }} />
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+                  <div className="spinner" style={{ margin: '0 auto 12px' }} />
                   <p>অর্ডার হিস্টোরি লোড হচ্ছে...</p>
                 </div>
               ) : filteredOrders.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "40px 20px",
-                    background: "#F8FAF9",
-                    borderRadius: "var(--radius-lg)",
-                    border: "1px solid var(--rule)",
-                    color: "var(--muted)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "var(--muted)",
-                      marginBottom: "10px",
-                    }}
-                  >
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#F8FAF9', borderRadius: 'var(--radius-lg)', border: '1px solid var(--rule)', color: 'var(--muted)' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', marginBottom: '10px' }}>
                     <ShoppingBag size={44} />
                   </div>
-                  <h3
-                    style={{
-                      fontSize: "16px",
-                      color: "var(--ink)",
-                      margin: "0 0 6px",
-                    }}
-                  >
-                    কোনো অর্ডার পাওয়া যায়নি
-                  </h3>
-                  <p style={{ fontSize: "13.5px", margin: 0 }}>
-                    {searchQuery
-                      ? "আপনার সার্চকৃত তথ্যের সাথে কোনো অর্ডার মেলেনি।"
-                      : "আপনি এখনও কোনো অর্ডার করেননি।"}
+                  <h3 style={{ fontSize: '16px', color: 'var(--ink)', margin: '0 0 6px' }}>কোনো অর্ডার পাওয়া যায়নি</h3>
+                  <p style={{ fontSize: '13.5px', margin: 0 }}>
+                    {searchQuery ? 'আপনার সার্চকৃত তথ্যের সাথে কোনো অর্ডার মেলেনি।' : 'আপনি এখনও কোনো অর্ডার করেননি।'}
                   </p>
                   <motion.button
                     className="cta"
-                    style={{
-                      marginTop: "16px",
-                      padding: "8px 20px",
-                      fontSize: "13.5px",
-                    }}
+                    style={{ marginTop: '16px', padding: '8px 20px', fontSize: '13.5px' }}
                     onClick={onBackToHome}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
@@ -766,7 +566,7 @@ export default function ProfileView({ onBackToHome }) {
                             <th>ডেলিভারি ঠিকানা ও রাইডার</th>
                             <th>মোট টাকা ও পেমেন্ট</th>
                             <th>স্ট্যাটাস</th>
-                            <th style={{ textAlign: "right" }}>অ্যাকশন</th>
+                            <th style={{ textAlign: 'right' }}>অ্যাকশন</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -775,55 +575,20 @@ export default function ProfileView({ onBackToHome }) {
                               order.is_package_order ||
                               order.is_package ||
                               order.isPackage ||
-                              (order.order_code &&
-                                order.order_code.startsWith("PK-")),
+                              (order.order_code && order.order_code.startsWith('PK-'))
                             );
 
-                            let parsedItems = order.items_json;
-                            if (typeof parsedItems === "string") {
-                              try {
-                                parsedItems = JSON.parse(parsedItems);
-                              } catch (e) {
-                                parsedItems = [];
-                              }
-                            }
-                            if (!Array.isArray(parsedItems)) parsedItems = [];
-
-                            const isReorderingThis =
-                              reorderingCode === (order.order_code || order.id);
+                            const financials = getOrderFinancials(order);
+                            const parsedItems = financials.items;
+                            const isReorderingThis = reorderingCode === (order.order_code || order.id);
 
                             return (
-                              <tr
-                                key={
-                                  order.order_code
-                                    ? `profile-tbl-ord-${order.order_code}`
-                                    : `profile-tbl-ord-${order.id || idx}`
-                                }
-                              >
+                              <tr key={order.order_code ? `profile-tbl-ord-${order.order_code}` : `profile-tbl-ord-${order.id || idx}`}>
                                 {/* Column 1: Order Code & Date */}
                                 <td>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "4px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "6px",
-                                      }}
-                                    >
-                                      <span
-                                        className="mono"
-                                        style={{
-                                          fontWeight: 800,
-                                          fontSize: "14px",
-                                          color: "var(--ink)",
-                                        }}
-                                      >
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span className="mono" style={{ fontWeight: 800, fontSize: '14px', color: 'var(--ink)' }}>
                                         {order.order_code}
                                       </span>
                                     </div>
@@ -831,16 +596,16 @@ export default function ProfileView({ onBackToHome }) {
                                       {isPackageOrder ? (
                                         <span
                                           style={{
-                                            fontSize: "11px",
+                                            fontSize: '11px',
                                             fontWeight: 700,
-                                            padding: "2px 8px",
-                                            borderRadius: "4px",
-                                            background: "#EFF6FF",
-                                            color: "#1D4ED8",
-                                            border: "1px solid #BFDBFE",
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            gap: "3px",
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            background: '#EFF6FF',
+                                            color: '#1D4ED8',
+                                            border: '1px solid #BFDBFE',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px'
                                           }}
                                         >
                                           <Package size={11} /> প্যাকেজ বক্স
@@ -848,288 +613,150 @@ export default function ProfileView({ onBackToHome }) {
                                       ) : (
                                         <span
                                           style={{
-                                            fontSize: "11px",
+                                            fontSize: '11px',
                                             fontWeight: 600,
-                                            padding: "2px 7px",
-                                            borderRadius: "4px",
-                                            background: "#F1F5F3",
-                                            color: "var(--muted)",
-                                            border: "1px solid var(--rule)",
+                                            padding: '2px 7px',
+                                            borderRadius: '4px',
+                                            background: '#F1F5F3',
+                                            color: 'var(--muted)',
+                                            border: '1px solid var(--rule)'
                                           }}
                                         >
                                           সাধারণ বাজার
                                         </span>
                                       )}
                                     </div>
-                                    <span
-                                      style={{
-                                        fontSize: "11.5px",
-                                        color: "var(--muted)",
-                                      }}
-                                    >
-                                      {new Date(
-                                        order.created_at,
-                                      ).toLocaleDateString("bn-BD", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
+                                    <span style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
+                                      {new Date(order.created_at).toLocaleDateString('bn-BD', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
                                       })}
                                     </span>
                                   </div>
                                 </td>
 
-                                {/* Column 2: Items Summary */}
+                                {/* Column 2: Items Details Button */}
                                 <td>
-                                  <div style={{ maxWidth: "240px" }}>
-                                    <div
-                                      style={{
-                                        fontWeight: 700,
-                                        fontSize: "12.5px",
-                                        color: "var(--ink)",
-                                        marginBottom: "4px",
-                                      }}
-                                    >
-                                      মোট {toBengaliNumber(parsedItems.length)}{" "}
-                                      টি পণ্য
-                                    </div>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "3px",
-                                        maxHeight: "70px",
-                                        overflowY: "auto",
-                                      }}
-                                    >
-                                      {parsedItems
-                                        .slice(0, 3)
-                                        .map((it, iIdx) => (
-                                          <div
-                                            key={iIdx}
-                                            style={{
-                                              fontSize: "11.5px",
-                                              color: "var(--muted)",
-                                              display: "flex",
-                                              justifyContent: "space-between",
-                                            }}
-                                          >
-                                            <span
-                                              style={{
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                                whiteSpace: "nowrap",
-                                                maxWidth: "160px",
-                                              }}
-                                            >
-                                              •{" "}
-                                              {it.brand ||
-                                                it.product_name ||
-                                                it.name}
-                                            </span>
-                                            <span
-                                              className="mono"
-                                              style={{ fontWeight: 600 }}
-                                            >
-                                              ×{toBengaliNumber(it.qty || 1)}
-                                            </span>
-                                          </div>
-                                        ))}
-                                      {parsedItems.length > 3 && (
-                                        <span
-                                          style={{
-                                            fontSize: "11px",
-                                            color: "var(--primary)",
-                                            fontWeight: 600,
-                                          }}
-                                        >
-                                          + আরও{" "}
-                                          {toBengaliNumber(
-                                            parsedItems.length - 3,
-                                          )}{" "}
-                                          টি পণ্য
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
+                                  <motion.button
+                                    type="button"
+                                    className="admin-btn secondary"
+                                    style={{
+                                      padding: '7px 12px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      fontSize: '12.5px',
+                                      fontWeight: 700,
+                                      borderRadius: 'var(--radius-pill)',
+                                      background: '#F8FAF9',
+                                      border: '1px solid var(--rule)',
+                                      color: 'var(--ink)',
+                                      cursor: 'pointer'
+                                    }}
+                                    whileHover={{ scale: 1.03, background: '#FFFFFF', borderColor: 'var(--primary)' }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => setViewItemsModal(order)}
+                                    title="এই অর্ডারের পণ্য তালিকা দেখুন"
+                                  >
+                                    <Package size={14} color="var(--primary)" />
+                                    <span>মোট {toBengaliNumber(parsedItems.length)} টি পণ্য (তালিকা দেখুন)</span>
+                                  </motion.button>
                                 </td>
 
                                 {/* Column 3: Delivery Address & Rider */}
                                 <td>
-                                  <div
-                                    style={{
-                                      fontSize: "12.5px",
-                                      maxWidth: "200px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        color: "var(--ink)",
-                                        fontWeight: 600,
-                                        lineHeight: 1.35,
-                                        marginBottom: "4px",
-                                      }}
-                                    >
+                                  <div style={{ fontSize: '12.5px', maxWidth: '200px' }}>
+                                    <div style={{ color: 'var(--ink)', fontWeight: 600, lineHeight: 1.35, marginBottom: '4px' }}>
                                       {order.delivery_address}
                                     </div>
                                     {order.delivery_area && (
-                                      <div
-                                        style={{
-                                          fontSize: "11.5px",
-                                          color: "var(--muted)",
-                                        }}
-                                      >
+                                      <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
                                         এলাকা: {order.delivery_area}
                                       </div>
                                     )}
 
                                     {order.delivery_rider_name && (
-                                      <div
-                                        style={{
-                                          marginTop: "6px",
-                                          padding: "3px 8px",
-                                          background:
-                                            "var(--md-primary-container)",
-                                          borderRadius: "4px",
-                                          border: "1px solid #BBF7D0",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                          gap: "5px",
-                                          fontSize: "11px",
-                                          color: "#166534",
-                                        }}
-                                      >
+                                      <div style={{ marginTop: '6px', padding: '3px 8px', background: 'var(--md-primary-container)', borderRadius: '4px', border: '1px solid #BBF7D0', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#166534' }}>
                                         <Bike size={12} color="#15803d" />
-                                        <span>
-                                          রাইডার:{" "}
-                                          <strong>
-                                            {order.delivery_rider_name}
-                                          </strong>
-                                        </span>
+                                        <span>রাইডার: <strong>{order.delivery_rider_name}</strong></span>
                                       </div>
                                     )}
                                   </div>
                                 </td>
 
-                                {/* Column 4: Total & Payment */}
+                                {/* Column 4: Total, Subtotal & Delivery Fee Breakdown */}
                                 <td>
-                                  <div>
-                                    <div
-                                      className="mono"
-                                      style={{
-                                        fontSize: "16px",
-                                        fontWeight: 800,
-                                        color: "var(--green)",
-                                      }}
-                                    >
-                                      ৳{toBengaliNumber(order.total_amount)}
+                                  <div style={{ minWidth: '160px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--muted)', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                                      <span>পণ্যের মূল্য:</span>
+                                      <span className="mono">৳{toBengaliNumber(financials.subtotal)}</span>
                                     </div>
-                                    <div
-                                      style={{
-                                        fontSize: "11.5px",
-                                        color: "var(--muted)",
-                                        marginTop: "2px",
-                                      }}
-                                    >
-                                      {order.payment_method}
+                                    <div style={{ fontSize: '12px', color: 'var(--muted)', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                                      <span>ডেলিভারি ফি:</span>
+                                      <span className="mono" style={{ color: financials.deliveryFee > 0 ? 'var(--ink)' : 'var(--success)' }}>
+                                        {financials.deliveryFee > 0 ? `৳${toBengaliNumber(financials.deliveryFee)}` : 'ফ্রি (৳০)'}
+                                      </span>
                                     </div>
-                                    {order.trx_id && (
-                                      <div
-                                        className="mono"
-                                        style={{
-                                          fontSize: "10.5px",
-                                          color: "var(--primary)",
-                                        }}
-                                      >
-                                        TrxID: {order.trx_id}
-                                      </div>
-                                    )}
+                                    <div style={{ borderTop: '1px dashed var(--rule)', paddingTop: '4px', marginTop: '2px', display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
+                                      <strong style={{ fontSize: '12.5px', color: 'var(--ink)' }}>সর্বমোট বিল:</strong>
+                                      <span className="mono" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--green-dim)' }}>
+                                        ৳{toBengaliNumber(financials.total)}
+                                      </span>
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px', background: '#F8FAF9', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', width: 'fit-content' }}>
+                                      পেমেন্ট: <strong style={{ color: 'var(--ink)' }}>{order.payment_method}</strong>
+                                      {order.trx_id && <span className="mono" style={{ display: 'block', color: 'var(--primary)', fontSize: '10.5px' }}>TrxID: {order.trx_id}</span>}
+                                    </div>
                                   </div>
                                 </td>
 
                                 {/* Column 5: Status */}
                                 <td>
-                                  <span
-                                    className={`status-badge ${getStatusClass(order.status)}`}
-                                  >
+                                  <span className={`status-badge ${getStatusClass(order.status)}`}>
                                     {getStatusBn(order.status)}
                                   </span>
                                 </td>
 
                                 {/* Column 6: Action Buttons */}
-                                <td style={{ textAlign: "right" }}>
-                                  <div
-                                    style={{
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: "6px",
-                                      justifyContent: "flex-end",
-                                      flexWrap: "wrap",
-                                    }}
-                                  >
+                                <td style={{ textAlign: 'right' }}>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                                     {/* 1-Click Reorder Button */}
                                     <motion.button
                                       type="button"
                                       className="admin-btn"
                                       disabled={isReorderingThis}
                                       style={{
-                                        padding: "6px 12px",
-                                        fontSize: "12px",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "5px",
-                                        background: isPackageOrder
-                                          ? "#EFF6FF"
-                                          : "#ECFDF5",
-                                        color: isPackageOrder
-                                          ? "#1D4ED8"
-                                          : "#065F46",
-                                        borderColor: isPackageOrder
-                                          ? "#BFDBFE"
-                                          : "#A7F3D0",
+                                        padding: '6px 12px',
+                                        fontSize: '12px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        background: isPackageOrder ? '#EFF6FF' : '#ECFDF5',
+                                        color: isPackageOrder ? '#1D4ED8' : '#065F46',
+                                        borderColor: isPackageOrder ? '#BFDBFE' : '#A7F3D0',
                                         fontWeight: 700,
-                                        borderRadius: "var(--radius-pill)",
+                                        borderRadius: 'var(--radius-pill)'
                                       }}
                                       whileHover={{ scale: 1.04 }}
                                       whileTap={{ scale: 0.96 }}
                                       onClick={() => handleReorder(order)}
-                                      title={
-                                        isPackageOrder
-                                          ? "এক ক্লিকে পুনরায় এই পণ্যগুলো প্যাকেজ বক্সে যোগ করুন"
-                                          : "এক ক্লিকে কার্ট খালি করে এই অর্ডারটি যুক্ত করুন"
-                                      }
+                                      title={isPackageOrder ? "এক ক্লিকে পুনরায় এই পণ্যগুলো প্যাকেজ বক্সে যোগ করুন" : "এক ক্লিকে কার্ট খালি করে এই অর্ডারটি যুক্ত করুন"}
                                     >
-                                      <RotateCcw
-                                        size={12}
-                                        className={
-                                          isReorderingThis ? "spin" : ""
-                                        }
-                                      />
-                                      <span>
-                                        {isPackageOrder
-                                          ? "প্যাকেজ রি-অর্ডার"
-                                          : "১-ক্লিকে রি-অর্ডার"}
-                                      </span>
+                                      <RotateCcw size={12} className={isReorderingThis ? 'spin' : ''} />
+                                      <span>{isPackageOrder ? 'প্যাকেজ রি-অর্ডার' : '১-ক্লিকে রি-অর্ডার'}</span>
                                     </motion.button>
 
                                     {/* Live Tracking Button */}
                                     <motion.button
                                       type="button"
                                       className="admin-btn secondary"
-                                      style={{
-                                        padding: "6px 10px",
-                                        fontSize: "12px",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        borderRadius: "var(--radius-pill)",
-                                      }}
+                                      style={{ padding: '6px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px', borderRadius: 'var(--radius-pill)' }}
                                       whileHover={{ scale: 1.04 }}
                                       whileTap={{ scale: 0.96 }}
-                                      onClick={() =>
-                                        setTrackingOrderCode(order.order_code)
-                                      }
+                                      onClick={() => setTrackingOrderCode(order.order_code)}
                                       title="অর্ডারের বর্তমান লাইভ অবস্থা ট্র্যাক করুন"
                                     >
                                       <Navigation size={12} />
@@ -1140,19 +767,10 @@ export default function ProfileView({ onBackToHome }) {
                                     <motion.button
                                       type="button"
                                       className="admin-btn secondary"
-                                      style={{
-                                        padding: "6px 10px",
-                                        fontSize: "12px",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        borderRadius: "var(--radius-pill)",
-                                      }}
+                                      style={{ padding: '6px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px', borderRadius: 'var(--radius-pill)' }}
                                       whileHover={{ scale: 1.04 }}
                                       whileTap={{ scale: 0.96 }}
-                                      onClick={() =>
-                                        setSelectedOrderForInvoice(order)
-                                      }
+                                      onClick={() => setSelectedOrderForInvoice(order)}
                                       title="ক্যাশ মেমো / ইনভয়েস ভিউ ও প্রিন্ট করুন"
                                     >
                                       <Printer size={12} />
@@ -1177,31 +795,17 @@ export default function ProfileView({ onBackToHome }) {
                         order.is_package_order ||
                         order.is_package ||
                         order.isPackage ||
-                        (order.order_code &&
-                          order.order_code.startsWith("PK-")),
+                        (order.order_code && order.order_code.startsWith('PK-'))
                       );
 
-                      let parsedItems = order.items_json;
-                      if (typeof parsedItems === "string") {
-                        try {
-                          parsedItems = JSON.parse(parsedItems);
-                        } catch (e) {
-                          parsedItems = [];
-                        }
-                      }
-                      if (!Array.isArray(parsedItems)) parsedItems = [];
-
-                      const isReorderingThis =
-                        reorderingCode === (order.order_code || order.id);
+                      const financials = getOrderFinancials(order);
+                      const parsedItems = financials.items;
+                      const isReorderingThis = reorderingCode === (order.order_code || order.id);
 
                       return (
                         <motion.div
                           className="order-card"
-                          key={
-                            order.order_code
-                              ? `profile-card-ord-${order.order_code}`
-                              : `profile-card-ord-${order.id || idx}`
-                          }
+                          key={order.order_code ? `profile-card-ord-${order.order_code}` : `profile-card-ord-${order.id || idx}`}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.2, delay: idx * 0.03 }}
@@ -1209,264 +813,149 @@ export default function ProfileView({ onBackToHome }) {
                           <div className="order-header">
                             <div>
                               <strong>অর্ডার কোড: </strong>
-                              <span
-                                className="mono"
-                                style={{ fontWeight: 700, fontSize: "14px" }}
-                              >
+                              <span className="mono" style={{ fontWeight: 700, fontSize: '14px' }}>
                                 {order.order_code}
                               </span>
                               {isPackageOrder && (
                                 <span
                                   style={{
-                                    fontSize: "11px",
+                                    fontSize: '11px',
                                     fontWeight: 700,
-                                    padding: "2px 8px",
-                                    borderRadius: "4px",
-                                    background: "#EFF6FF",
-                                    color: "#1D4ED8",
-                                    border: "1px solid #BFDBFE",
-                                    marginLeft: "8px",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "4px",
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    background: '#EFF6FF',
+                                    color: '#1D4ED8',
+                                    border: '1px solid #BFDBFE',
+                                    marginLeft: '8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
                                   }}
                                 >
                                   <Package size={12} /> প্যাকেজ
                                 </span>
                               )}
-                              <div
-                                style={{
-                                  fontSize: "11.5px",
-                                  color: "var(--muted)",
-                                  marginTop: "2px",
-                                }}
-                              >
-                                {new Date(order.created_at).toLocaleDateString(
-                                  "bn-BD",
-                                  {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  },
-                                )}
+                              <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '2px' }}>
+                                {new Date(order.created_at).toLocaleDateString('bn-BD', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
                               </div>
                             </div>
                             <div>
-                              <span
-                                className={`status-badge ${getStatusClass(order.status)}`}
-                              >
+                              <span className={`status-badge ${getStatusClass(order.status)}`}>
                                 {getStatusBn(order.status)}
                               </span>
                             </div>
                           </div>
 
-                          <div
-                            style={{
-                              fontSize: "13px",
-                              marginBottom: "8px",
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            <strong>ঠিকানা:</strong> {order.delivery_address}{" "}
-                            {order.delivery_area
-                              ? `(${order.delivery_area})`
-                              : ""}{" "}
-                            | <strong>পেমেন্ট:</strong> {order.payment_method}
+                          <div style={{ fontSize: '13px', marginBottom: '8px', lineHeight: 1.4 }}>
+                            <strong>ঠিকানা:</strong> {order.delivery_address} {order.delivery_area ? `(${order.delivery_area})` : ''} | <strong>পেমেন্ট:</strong> {order.payment_method}
                             {order.trx_id && (
-                              <span>
-                                {" "}
-                                (TrxID:{" "}
-                                <span className="mono">{order.trx_id}</span>)
-                              </span>
+                              <span> (TrxID: <span className="mono">{order.trx_id}</span>)</span>
                             )}
                           </div>
 
-                          <div
-                            style={{
-                              background: "#F8FAF9",
-                              border: "1px solid var(--rule)",
-                              padding: "10px 12px",
-                              borderRadius: "var(--radius-md)",
-                              fontSize: "12.5px",
-                            }}
-                          >
-                            <strong style={{ color: "var(--ink)" }}>
-                              পণ্যসমূহ ({toBengaliNumber(parsedItems.length)}{" "}
-                              টি):
-                            </strong>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "4px",
-                                marginTop: "6px",
-                              }}
-                            >
-                              {parsedItems.map((it, iIdx) => (
-                                <div
-                                  key={iIdx}
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                  }}
-                                >
-                                  <span>
-                                    • {it.brand || it.product_name || it.name} ×
-                                    {toBengaliNumber(it.qty || 1)}
-                                  </span>
-                                  <span className="mono">
-                                    ৳
-                                    {toBengaliNumber(
-                                      (Number(it.price) || 0) *
-                                        (Number(it.qty) || 1),
-                                    )}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                            <div
-                              style={{
-                                borderTop: "1px dashed var(--rule)",
-                                marginTop: "8px",
-                                paddingTop: "6px",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontWeight: 700,
-                              }}
-                            >
-                              <span>মোট পরিশোধযোগ্য:</span>
-                              <span
-                                className="mono"
+                          {/* Items button & Financial details */}
+                          <div style={{ background: '#F8FAF9', border: '1px solid var(--rule)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                              <strong style={{ color: 'var(--ink)' }}>অর্ডারকৃত পণ্য:</strong>
+                              <motion.button
+                                type="button"
+                                className="admin-btn secondary"
                                 style={{
-                                  color: "var(--green-dim)",
-                                  fontSize: "14.5px",
+                                  padding: '5px 12px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  borderRadius: 'var(--radius-pill)',
+                                  background: '#FFFFFF',
+                                  border: '1px solid var(--primary)',
+                                  color: 'var(--primary)'
                                 }}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setViewItemsModal(order)}
                               >
-                                ৳{toBengaliNumber(order.total_amount)}
-                              </span>
+                                <Package size={13} color="var(--primary)" />
+                                <span>মোট {toBengaliNumber(parsedItems.length)} টি পণ্য (তালিকা দেখুন)</span>
+                              </motion.button>
+                            </div>
+
+                            <div style={{ borderTop: '1px dashed var(--rule)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)', fontSize: '12px' }}>
+                                <span>পণ্যের মূল্য (সাবটোটাল):</span>
+                                <span className="mono">৳{toBengaliNumber(financials.subtotal)}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)', fontSize: '12px' }}>
+                                <span>ডেলিভারি ফি:</span>
+                                <span className="mono">
+                                  {financials.deliveryFee > 0 ? `৳${toBengaliNumber(financials.deliveryFee)}` : 'ফ্রি (৳০)'}
+                                </span>
+                              </div>
+                              <div style={{ borderTop: '1px solid var(--rule)', paddingTop: '6px', marginTop: '2px', display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                                <span style={{ color: 'var(--ink)' }}>ডেলিভারি ফি সহ সর্বমোট:</span>
+                                <span className="mono" style={{ color: 'var(--green-dim)', fontSize: '15px' }}>৳{toBengaliNumber(financials.total)}</span>
+                              </div>
                             </div>
                           </div>
 
                           {/* Assigned Rider Info (if present) */}
                           {order.delivery_rider_name && (
-                            <div
-                              style={{
-                                marginTop: "10px",
-                                padding: "8px 12px",
-                                background: "var(--md-primary-container)",
-                                border: "1px solid #BBF7D0",
-                                borderRadius: "var(--radius-md)",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                fontSize: "12px",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                  color: "#166534",
-                                }}
-                              >
+                            <div style={{ marginTop: '10px', padding: '8px 12px', background: 'var(--md-primary-container)', border: '1px solid #BBF7D0', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#166534' }}>
                                 <Bike size={14} color="#15803d" />
-                                <span>
-                                  রাইডার:{" "}
-                                  <strong>{order.delivery_rider_name}</strong>
-                                </span>
+                                <span>রাইডার: <strong>{order.delivery_rider_name}</strong></span>
                               </div>
                               {order.delivery_rider_phone && (
-                                <a
-                                  href={`tel:${order.delivery_rider_phone}`}
-                                  style={{
-                                    color: "#15803d",
-                                    fontWeight: 600,
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    textDecoration: "none",
-                                  }}
-                                >
-                                  <Phone size={11} />{" "}
-                                  {order.delivery_rider_phone}
+                                <a href={`tel:${order.delivery_rider_phone}`} style={{ color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                                  <Phone size={11} /> {order.delivery_rider_phone}
                                 </a>
                               )}
                             </div>
                           )}
 
                           {/* Order Action Buttons: Re-order, Cash Memo Invoice, Live Tracking */}
-                          <div
-                            style={{
-                              marginTop: "12px",
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "8px",
-                              justifyContent: "flex-end",
-                              borderTop: "1px solid var(--rule)",
-                              paddingTop: "10px",
-                            }}
-                          >
+                          <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end', borderTop: '1px solid var(--rule)', paddingTop: '10px' }}>
                             {/* 1-Click Re-order Button */}
                             <motion.button
                               type="button"
                               className="admin-btn"
                               disabled={isReorderingThis}
                               style={{
-                                padding: "6px 12px",
-                                fontSize: "12px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                background: isPackageOrder
-                                  ? "#EFF6FF"
-                                  : "#ECFDF5",
-                                color: isPackageOrder ? "#1D4ED8" : "#065F46",
-                                borderColor: isPackageOrder
-                                  ? "#BFDBFE"
-                                  : "#A7F3D0",
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: isPackageOrder ? '#EFF6FF' : '#ECFDF5',
+                                color: isPackageOrder ? '#1D4ED8' : '#065F46',
+                                borderColor: isPackageOrder ? '#BFDBFE' : '#A7F3D0',
                                 fontWeight: 700,
-                                borderRadius: "var(--radius-pill)",
+                                borderRadius: 'var(--radius-pill)'
                               }}
                               whileHover={{ scale: 1.03 }}
                               whileTap={{ scale: 0.97 }}
                               onClick={() => handleReorder(order)}
-                              title={
-                                isPackageOrder
-                                  ? "এক ক্লিকে পুনরায় এই পণ্যগুলো প্যাকেজ বক্সে যোগ করুন"
-                                  : "এক ক্লিকে কার্ট খালি করে এই অর্ডারটি যুক্ত করুন"
-                              }
+                              title={isPackageOrder ? "এক ক্লিকে পুনরায় এই পণ্যগুলো প্যাকেজ বক্সে যোগ করুন" : "এক ক্লিকে কার্ট খালি করে এই অর্ডারটি যুক্ত করুন"}
                             >
-                              <RotateCcw
-                                size={13}
-                                className={isReorderingThis ? "spin" : ""}
-                              />
-                              <span>
-                                {isPackageOrder
-                                  ? "প্যাকেজ রি-অর্ডার"
-                                  : "১-ক্লিকে পুনরায় অর্ডার"}
-                              </span>
+                              <RotateCcw size={13} className={isReorderingThis ? 'spin' : ''} />
+                              <span>{isPackageOrder ? 'প্যাকেজ রি-অর্ডার' : '১-ক্লিকে পুনরায় অর্ডার'}</span>
                             </motion.button>
 
                             {/* Live Tracking Button */}
                             <motion.button
                               type="button"
                               className="admin-btn secondary"
-                              style={{
-                                padding: "6px 12px",
-                                fontSize: "12px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                borderRadius: "var(--radius-pill)",
-                              }}
+                              style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius: 'var(--radius-pill)' }}
                               whileHover={{ scale: 1.03 }}
                               whileTap={{ scale: 0.97 }}
-                              onClick={() =>
-                                setTrackingOrderCode(order.order_code)
-                              }
+                              onClick={() => setTrackingOrderCode(order.order_code)}
                               title="অর্ডারের বর্তমান লাইভ অবস্থা ট্র্যাক করুন"
                             >
                               <Navigation size={13} />
@@ -1477,14 +966,7 @@ export default function ProfileView({ onBackToHome }) {
                             <motion.button
                               type="button"
                               className="admin-btn secondary"
-                              style={{
-                                padding: "6px 12px",
-                                fontSize: "12px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                borderRadius: "var(--radius-pill)",
-                              }}
+                              style={{ padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius: 'var(--radius-pill)' }}
                               whileHover={{ scale: 1.03 }}
                               whileTap={{ scale: 0.97 }}
                               onClick={() => setSelectedOrderForInvoice(order)}
@@ -1503,7 +985,7 @@ export default function ProfileView({ onBackToHome }) {
             </motion.div>
           )}
 
-          {activeTab === "settings" && (
+          {activeTab === 'settings' && (
             <motion.form
               key="settings-tab"
               initial={{ opacity: 0, y: 10 }}
@@ -1511,24 +993,18 @@ export default function ProfileView({ onBackToHome }) {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
               onSubmit={handleProfileUpdate}
-              style={{ maxWidth: "460px" }}
+              style={{ maxWidth: '460px' }}
             >
               {updateMsg.text && (
                 <div
                   style={{
-                    background:
-                      updateMsg.type === "success"
-                        ? "var(--md-primary-container)"
-                        : "#ffeded",
-                    color:
-                      updateMsg.type === "success"
-                        ? "var(--success)"
-                        : "var(--danger)",
-                    border: `1px solid ${updateMsg.type === "success" ? "#A7F3D0" : "#FECDD3"}`,
-                    padding: "10px 14px",
-                    borderRadius: "var(--radius-md)",
-                    fontSize: "13px",
-                    marginBottom: "14px",
+                    background: updateMsg.type === 'success' ? 'var(--md-primary-container)' : '#ffeded',
+                    color: updateMsg.type === 'success' ? 'var(--success)' : 'var(--danger)',
+                    border: `1px solid ${updateMsg.type === 'success' ? '#A7F3D0' : '#FECDD3'}`,
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '13px',
+                    marginBottom: '14px'
                   }}
                 >
                   {updateMsg.text}
@@ -1547,28 +1023,18 @@ export default function ProfileView({ onBackToHome }) {
               </div>
 
               <div className="field">
-                <label htmlFor="user-phone-locked">
-                  মোবাইল নম্বর (পরিবর্তনযোগ্য নয়)
-                </label>
+                <label htmlFor="user-phone-locked">মোবাইল নম্বর (পরিবর্তনযোগ্য নয়)</label>
                 <input
                   id="user-phone-locked"
                   type="text"
                   value={user.phone}
                   disabled
-                  style={{ background: "#f3f4f6", cursor: "not-allowed" }}
+                  style={{ background: '#f3f4f6', cursor: 'not-allowed' }}
                 />
               </div>
 
-              <div
-                style={{
-                  borderTop: "1px dashed var(--rule)",
-                  margin: "18px 0",
-                  paddingTop: "14px",
-                }}
-              >
-                <h4 style={{ fontSize: "15px", marginBottom: "10px" }}>
-                  পাসওয়ার্ড পরিবর্তন করতে চাইলে:
-                </h4>
+              <div style={{ borderTop: '1px dashed var(--rule)', margin: '18px 0', paddingTop: '14px' }}>
+                <h4 style={{ fontSize: '15px', marginBottom: '10px' }}>পাসওয়ার্ড পরিবর্তন করতে চাইলে:</h4>
 
                 <div className="field">
                   <label htmlFor="user-old-pass">বর্তমান পাসওয়ার্ড</label>
@@ -1600,12 +1066,224 @@ export default function ProfileView({ onBackToHome }) {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {updating ? "আপডেট হচ্ছে..." : "তথ্য সংরক্ষণ করুন"}
+                {updating ? 'আপডেট হচ্ছে...' : 'তথ্য সংরক্ষণ করুন'}
               </motion.button>
             </motion.form>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Product Items Details Modal */}
+      <AnimatePresence>
+        {viewItemsModal && (
+          <div
+            className="admin-modal-overlay"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.55)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              backdropFilter: 'blur(3px)'
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setViewItemsModal(null);
+            }}
+          >
+            <motion.div
+              className="admin-modal-card"
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                maxWidth: '520px',
+                width: '100%',
+                background: '#FFFFFF',
+                borderRadius: 'var(--radius-xl)',
+                border: '1px solid var(--rule)',
+                boxShadow: 'var(--shadow-xl)',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: '16px 20px',
+                  borderBottom: '1px solid var(--rule)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#F8FAF9'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--md-primary-container)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Package size={17} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15.5px', fontWeight: 800, color: 'var(--ink)' }}>
+                      অর্ডারকৃত পণ্যের তালিকা
+                    </h4>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+                      অর্ডার কোড: <strong className="mono" style={{ color: 'var(--ink)' }}>{viewItemsModal.order_code}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setViewItemsModal(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '6px',
+                    borderRadius: '50%',
+                    color: 'var(--muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  aria-label="বন্ধ করুন"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body: Products Table */}
+              <div style={{ padding: '16px 20px', maxHeight: '55vh', overflowY: 'auto' }}>
+                {(() => {
+                  const fin = getOrderFinancials(viewItemsModal);
+                  const isPkg = Boolean(
+                    viewItemsModal.is_package_order ||
+                    viewItemsModal.is_package ||
+                    viewItemsModal.isPackage ||
+                    (viewItemsModal.order_code && viewItemsModal.order_code.startsWith('PK-'))
+                  );
+
+                  return (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', fontSize: '12.5px' }}>
+                        <span style={{ color: 'var(--muted)' }}>
+                          মোট আইটেম: <strong style={{ color: 'var(--ink)' }}>{toBengaliNumber(fin.items.length)} টি</strong>
+                        </span>
+                        {isPkg && (
+                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+                            📦 প্যাকেজ বক্স
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ border: '1px solid var(--rule)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: '#FFFFFF' }}>
+                        <table style={{ width: '100%', fontSize: '12.5px', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ background: '#F8FAF9', borderBottom: '1px solid var(--rule)' }}>
+                              <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--muted)', fontSize: '11.5px', fontWeight: 700 }}>পণ্য</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)', fontSize: '11.5px', fontWeight: 700 }}>পরিমাণ × দর</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--muted)', fontSize: '11.5px', fontWeight: 700 }}>মোট</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {fin.items.map((it, iIdx) => {
+                              const itemTotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
+                              return (
+                                <tr key={iIdx} style={{ borderBottom: iIdx === fin.items.length - 1 ? 'none' : '1px solid #F1F5F3' }}>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <div style={{ fontWeight: 700, color: 'var(--ink)', fontSize: '13px' }}>
+                                      {it.brand || it.product_name || it.name}
+                                    </div>
+                                    <div style={{ color: 'var(--muted)', fontSize: '11px', marginTop: '1px' }}>
+                                      {it.catBn || it.unit || 'প্যাকেজ আইটেম'}
+                                    </div>
+                                  </td>
+                                  <td className="mono" style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--muted)', fontSize: '12px' }}>
+                                    {formatStockDisplay(it.qty, it.unit)} × ৳{toBengaliNumber(it.price)}
+                                  </td>
+                                  <td className="mono" style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--ink)', fontSize: '13px' }}>
+                                    ৳{toBengaliNumber(itemTotal)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Financial Recap Inside Modal */}
+                      <div style={{ marginTop: '14px', background: '#F8FAF9', padding: '12px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--rule)', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12.5px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
+                          <span>পণ্যের সাবটোটাল:</span>
+                          <span className="mono" style={{ fontWeight: 600 }}>৳{toBengaliNumber(fin.subtotal)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
+                          <span>ডেলিভারি চার্জ:</span>
+                          <span className="mono" style={{ fontWeight: 600 }}>
+                            {fin.deliveryFee > 0 ? `৳${toBengaliNumber(fin.deliveryFee)}` : 'ফ্রি (৳০)'}
+                          </span>
+                        </div>
+                        <div style={{ borderTop: '1px dashed var(--rule)', paddingTop: '6px', marginTop: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800 }}>
+                          <span style={{ color: 'var(--ink)', fontSize: '13px' }}>সর্বমোট পরিশোধযোগ্য বিল:</span>
+                          <span className="mono" style={{ color: 'var(--green)', fontSize: '16px' }}>৳{toBengaliNumber(fin.total)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Modal Footer: Action Buttons */}
+              <div
+                style={{
+                  padding: '14px 20px',
+                  borderTop: '1px solid var(--rule)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#F8FAF9',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}
+              >
+                <motion.button
+                  type="button"
+                  className="admin-btn"
+                  style={{
+                    padding: '7px 14px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius-pill)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#ECFDF5',
+                    color: '#065F46',
+                    borderColor: '#A7F3D0'
+                  }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => handleReorder(viewItemsModal)}
+                >
+                  <RotateCcw size={13} />
+                  <span>পুনরায় এই পণ্যগুলো অর্ডার করুন</span>
+                </motion.button>
+
+                <button
+                  type="button"
+                  className="admin-btn secondary"
+                  style={{ padding: '7px 16px', fontSize: '12.5px', borderRadius: 'var(--radius-pill)' }}
+                  onClick={() => setViewItemsModal(null)}
+                >
+                  বন্ধ করুন
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Customer Cash Memo Invoice Modal */}
       {selectedOrderForInvoice && (
