@@ -69,7 +69,7 @@ export function updateAppMeta(settings) {
   </defs>
   <rect width="64" height="64" rx="16" fill="url(#fav-grad)"/>
   <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
-  <text x="32" y="34" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Bengali', sans-serif" font-weight="900" font-size="${fontSize}">${cleanText}</text>
+  <text x="32" y="34" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-family="'Dosis', 'Noto Serif Bengali', serif" font-weight="900" font-size="${fontSize}">${cleanText}</text>
 </svg>`;
     faviconUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   }

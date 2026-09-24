@@ -63,7 +63,7 @@ export function printElement(elementOrId, options = {}) {
   const isLandscape = type === 'landscape';
 
   const baseCss = `
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Dosis:wght@400;500;600;700;800&family=Noto+Serif+Bengali:wght@400;500;600;700;800;900&display=swap');
 
     @page {
       size: ${isPos ? '78mm auto' : isLandscape ? 'A4 landscape' : 'A4 portrait'};
@@ -82,7 +82,7 @@ export function printElement(elementOrId, options = {}) {
       padding: 0 !important;
       background: #FFFFFF !important;
       color: #111827 !important;
-      font-family: 'Plus Jakarta Sans', 'Noto Sans Bengali', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      font-family: 'Dosis', 'Noto Serif Bengali', serif !important;
       font-size: ${isPos ? '9pt' : '10pt'};
       line-height: ${isPos ? '1.35' : '1.4'};
       width: 100% !important;
@@ -92,7 +92,7 @@ export function printElement(elementOrId, options = {}) {
     }
 
     .mono {
-      font-family: 'Space Grotesk', ui-monospace, monospace !important;
+      font-family: 'Dosis', 'Noto Serif Bengali', serif !important;
       font-variant-numeric: tabular-nums;
     }
 
