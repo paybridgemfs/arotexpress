@@ -2,14 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Receipt, Printer, X, FileText } from 'lucide-react';
+import { useStoreData } from '../context/StoreDataContext';
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
 import { printElement } from '../utils/printHelper.js';
 
 export default function PosReceiptModal({ order, settings: initialSettings, onClose, onOpenFullInvoice }) {
-  const [settings, setSettings] = useState(initialSettings || null);
+  const storeData = useStoreData();
+  const [settings, setSettings] = useState(initialSettings || storeData?.settings || null);
 
   useEffect(() => {
-    if (!settings) {
+    if (!settings && storeData?.settings) {
+      setSettings(storeData.settings);
+    } else if (!settings) {
       fetch('/api/settings')
         .then((res) => res.json())
         .then((data) => {
@@ -17,7 +21,7 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
         })
         .catch(() => {});
     }
-  }, [settings]);
+  }, [settings, storeData?.settings]);
 
   if (!order) return null;
 
@@ -78,7 +82,7 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
         <div className="pos-action-bar no-print">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Receipt size={18} />
-            <strong style={{ fontSize: '15px' }}>অর্ডার রসিদ</strong>
+            <strong style={{ fontSize: '15px' }}>POS থার্মাল রসিদ</strong>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {onOpenFullInvoice && (
@@ -119,11 +123,26 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
         <div className="pos-receipt-scroll-wrap">
           <div className="pos-receipt-paper" id="printable-pos-receipt">
             {/* Header - Dynamic from Database Settings */}
-            <div className="pos-header">
-              {logoType === 'image' && logoImageUrl ? (
-                <img src={logoImageUrl} alt={siteName} style={{ height: '45px', objectFit: 'contain', margin: '0 auto 8px' }} />
+            <div className="pos-header" style={{ textAlign: 'center', marginBottom: '8px' }}>
+              {logoImageUrl ? (
+                <img
+                  src={logoImageUrl}
+                  alt={siteName}
+                  style={{
+                    maxHeight: '48px',
+                    maxWidth: '180px',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    margin: '0 auto 6px',
+                    display: 'block'
+                  }}
+                />
               ) : (
-                <div className="pos-store-stamp">{logoTextBn}</div>
+                <>
+                  <div className="pos-store-stamp">{logoTextBn}</div>
+                  <h1 className="pos-store-name">{siteName}</h1>
+                </>
               )}
               <p className="pos-store-tagline">{siteTagline}</p>
               <p className="pos-store-contact">{siteAddress} | হটলাইন: {siteHelpline}</p>
@@ -195,10 +214,10 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
                       <div style={{ fontSize: '11px', color: '#555' }}>({it.catBn || it.category_name || it.unit})</div>
                     </td>
                     <td style={{ textAlign: 'center', fontSize: '11.5px' }}>{it.unit || '—'}</td>
-                    <td style={{ textAlign: 'center', fontSize: '11.5px' }}>
+                    <td style={{ textAlign: 'center', fontWeight: 600 }} className="mono">
                       {formatStockDisplay(it.qty, it.unit)}
                     </td>
-                    <td style={{ textAlign: 'right', fontSize: '12px' }}>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }} className="mono">
                       ৳{toBengaliNumber(it.price * it.qty)}
                     </td>
                   </tr>

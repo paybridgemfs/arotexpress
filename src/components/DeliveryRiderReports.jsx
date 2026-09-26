@@ -15,9 +15,15 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react';
+import { useStoreData } from '../context/StoreDataContext';
 import { toBengaliNumber } from '../utils/bengali.js';
 
 export default function DeliveryRiderReports({ rider, orders = [] }) {
+  const storeData = useStoreData() || {};
+  const settings = storeData.settings || {};
+  const logoImageUrl = settings.logo_image_url || '';
+  const siteName = settings.site_name || 'আড়ৎ এক্সপ্রেস';
+
   // Date filter mode: 'today' | 'yesterday' | 'this_week' | 'this_month' | 'single_date' | 'date_range' | 'all'
   const [filterMode, setFilterMode] = useState('today');
   
@@ -308,7 +314,26 @@ export default function DeliveryRiderReports({ rider, orders = [] }) {
         
         {/* Printable Header */}
         <div style={{ textAlign: 'center', borderBottom: '2px solid var(--ink)', paddingBottom: '14px', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 4px 0' }}>আড়ৎ এক্সপ্রেস — রাইডার ডেলিভারি ও কালেকশন রিপোর্ট</h2>
+          {logoImageUrl ? (
+            <img
+              src={logoImageUrl}
+              alt={siteName}
+              style={{
+                maxHeight: '44px',
+                maxWidth: '180px',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                margin: '0 auto 6px',
+                display: 'block'
+              }}
+            />
+          ) : (
+            <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 4px 0' }}>{siteName}</h2>
+          )}
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink)', marginBottom: '4px' }}>
+            রাইডার ডেলিভারি ও কালেকশন রিপোর্ট
+          </div>
           <div style={{ fontSize: '13px', color: 'var(--ink)' }}>
             <strong>রাইডার:</strong> {rider?.name} ({rider?.phone}) | <strong>বাহন:</strong> {rider?.vehicle} | <strong>এলাকা:</strong> {rider?.area}
           </div>

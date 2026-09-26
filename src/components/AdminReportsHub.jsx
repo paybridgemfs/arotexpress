@@ -603,6 +603,7 @@ export default function AdminReportsHub({
     'Arot Express — তাজা পাইকারি ও খুচরা মুদি বাজার';
   const siteAddress = settings?.site_address || settings?.footer_address || 'ঢাকা, বাংলাদেশ';
   const siteHelpline = settings?.site_helpline || '০১৭১২-৩৪৫৬৭৮';
+  const logoImageUrl = settings?.logo_image_url || '';
 
   const reportConfigs = [
     // 1. DELIVERY & DISPATCH
@@ -1401,10 +1402,31 @@ export default function AdminReportsHub({
                   <div style={{ borderBottom: '2px solid #000', paddingBottom: '14px', marginBottom: '18px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
                       <div>
-                        <h1 style={{ fontSize: '24px', fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.5px' }}>
-                          {siteName}
-                        </h1>
-                        <div style={{ fontSize: '12.5px', color: '#333', marginBottom: '3px' }}>{siteTagline}</div>
+                        {logoImageUrl ? (
+                          <div style={{ marginBottom: '6px' }}>
+                            <img
+                              src={logoImageUrl}
+                              alt={siteName}
+                              style={{
+                                maxHeight: '48px',
+                                maxWidth: '220px',
+                                width: 'auto',
+                                height: 'auto',
+                                objectFit: 'contain',
+                                display: 'block',
+                                marginBottom: '4px'
+                              }}
+                            />
+                            <div style={{ fontSize: '12px', color: '#333', marginBottom: '2px' }}>{siteTagline}</div>
+                          </div>
+                        ) : (
+                          <>
+                            <h1 style={{ fontSize: '24px', fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.5px' }}>
+                              {siteName}
+                            </h1>
+                            <div style={{ fontSize: '12.5px', color: '#333', marginBottom: '3px' }}>{siteTagline}</div>
+                          </>
+                        )}
                         <div style={{ fontSize: '12px', color: '#555' }}>
                           {siteAddress} | হটলাইন: <span className="mono">{siteHelpline}</span>
                         </div>

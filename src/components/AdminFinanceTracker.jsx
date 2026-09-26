@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { toBengaliNumber } from '../utils/bengali.js';
 import { printElement } from '../utils/printHelper.js';
+import { useStoreData } from '../context/StoreDataContext';
 
 export default function AdminFinanceTracker({
   adminToken,
@@ -389,6 +390,12 @@ export default function AdminFinanceTracker({
     return `৳ ${toBengaliNumber(num)}`;
   };
 
+  const storeData = useStoreData() || {};
+  const settings = storeData.settings || {};
+  const logoImageUrl = settings.logo_image_url || '';
+  const siteName = settings.site_name || 'আড়ৎ এক্সপ্রেস';
+  const siteTagline = settings.site_tagline || 'Arot Express — তাজা পাইকারি ও খুচরা মুদি বাজার';
+
   const handlePrint = () => {
     printElement('printable-finance-tracker', {
       type: 'a4',
@@ -457,6 +464,43 @@ export default function AdminFinanceTracker({
       </div>
 
       <div id="printable-finance-tracker">
+        {/* Printable Letterhead */}
+        <div style={{ borderBottom: '2px solid #000', paddingBottom: '12px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              {logoImageUrl ? (
+                <div style={{ marginBottom: '4px' }}>
+                  <img
+                    src={logoImageUrl}
+                    alt={siteName}
+                    style={{
+                      maxHeight: '44px',
+                      maxWidth: '200px',
+                      width: 'auto',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      display: 'block'
+                    }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{siteTagline}</div>
+                </div>
+              ) : (
+                <>
+                  <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 2px' }}>{siteName}</h2>
+                  <div style={{ fontSize: '12px', color: '#555', marginBottom: '2px' }}>{siteTagline}</div>
+                </>
+              )}
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#111', marginTop: '2px' }}>
+                আর্থিক লাভ-ক্ষতি ও ব্যয় বিবরণী রিপোর্ট
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', color: '#666' }}>
+                প্রিন্ট তারিখ: <span className="mono">{new Date().toLocaleString('bn-BD')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
       {/* Top 5 Financial Metric Cards */}
       <div className="admin-expense-metrics-grid" style={{ marginBottom: '22px' }}>

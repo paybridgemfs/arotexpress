@@ -1049,7 +1049,7 @@ export default function AdminPanel({ onNavigateHome }) {
         <div className="modal-header">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Lock size={18} />
-            <span>আড়ৎ এক্সপ্রেস — অ্যাডমিন লগইন</span>
+            <span>{(settings?.site_name || storeContext?.settings?.site_name || 'আড়ৎ এক্সপ্রেস')} — অ্যাডমিন লগইন</span>
           </h3>
           <button
             type="button"
@@ -1124,12 +1124,29 @@ export default function AdminPanel({ onNavigateHome }) {
 
       {/* Sidebar */}
       <aside className={`admin-sidebar ${sidebarOpen ? 'mobile-open' : ''}`}>
-        <div className="admin-brand">
-          <div className="stamp" style={{ width: '40px', height: '40px', fontSize: '14px' }}>AE</div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>আড়ৎ অ্যাডমিন</div>
-            <div style={{ fontSize: '11.5px', color: 'var(--green-dim)' }}>ম্যানেজমেন্ট কন্ট্রোল</div>
-          </div>
+        <div className="admin-brand" style={{ display: 'flex', alignItems: 'center', minHeight: '52px', padding: '12px 14px', width: '100%', boxSizing: 'border-box' }}>
+          {(settings?.logo_image_url || storeContext?.settings?.logo_image_url) ? (
+            <img
+              src={settings?.logo_image_url || storeContext?.settings?.logo_image_url}
+              alt={settings?.site_name || storeContext?.settings?.site_name || 'লোগো'}
+              style={{
+                maxHeight: '44px',
+                maxWidth: '180px',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                display: 'block'
+              }}
+            />
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="stamp" style={{ width: '40px', height: '40px', fontSize: '14px', flexShrink: 0 }}>AE</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '15px' }}>{settings?.site_name || storeContext?.settings?.site_name || 'আড়ৎ অ্যাডমিন'}</div>
+                <div style={{ fontSize: '11.5px', color: 'var(--green-dim)' }}>ম্যানেজমেন্ট কন্ট্রোল</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <nav className="admin-nav">
