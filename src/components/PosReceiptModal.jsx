@@ -78,7 +78,7 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
         <div className="pos-action-bar no-print">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Receipt size={18} />
-            <strong style={{ fontSize: '15px' }}>POS থার্মাল রসিদ</strong>
+            <strong style={{ fontSize: '15px' }}>অর্ডার রসিদ</strong>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {onOpenFullInvoice && (
@@ -121,11 +121,10 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
             {/* Header - Dynamic from Database Settings */}
             <div className="pos-header">
               {logoType === 'image' && logoImageUrl ? (
-                <img src={logoImageUrl} alt={siteName} style={{ height: '45px', objectFit: 'contain', margin: '0 auto 8px', filter: 'grayscale(100%) brightness(0)' }} />
+                <img src={logoImageUrl} alt={siteName} style={{ height: '45px', objectFit: 'contain', margin: '0 auto 8px' }} />
               ) : (
                 <div className="pos-store-stamp">{logoTextBn}</div>
               )}
-              <h1 className="pos-store-name">{siteName}</h1>
               <p className="pos-store-tagline">{siteTagline}</p>
               <p className="pos-store-contact">{siteAddress} | হটলাইন: {siteHelpline}</p>
               <div className="pos-dashed-line"></div>
@@ -196,10 +195,10 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
                       <div style={{ fontSize: '11px', color: '#555' }}>({it.catBn || it.category_name || it.unit})</div>
                     </td>
                     <td style={{ textAlign: 'center', fontSize: '11.5px' }}>{it.unit || '—'}</td>
-                    <td style={{ textAlign: 'center', fontWeight: 600 }} className="mono">
+                    <td style={{ textAlign: 'center', fontSize: '11.5px' }}>
                       {formatStockDisplay(it.qty, it.unit)}
                     </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }} className="mono">
+                    <td style={{ textAlign: 'right', fontSize: '12px' }}>
                       ৳{toBengaliNumber(it.price * it.qty)}
                     </td>
                   </tr>
