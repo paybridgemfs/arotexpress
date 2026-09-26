@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
+import { useStoreData } from '../context/StoreDataContext.tsx';
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
 import AdminDashboard from './AdminDashboard.jsx';
 import AdminOrders from './AdminOrders.jsx';
@@ -71,6 +72,8 @@ const LOW_STOCK_THRESHOLD = 5;
 export default function AdminPanel({ onNavigateHome }) {
   const { adminUser, adminToken, adminLogin, adminLogout, updateAdminProfile, loading: authLoading, isAuthHydrated } = useAuth();
   const { showToast } = useCart();
+  const storeContext = useStoreData();
+  const fetchData = storeContext?.fetchData;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -729,6 +732,9 @@ export default function AdminPanel({ onNavigateHome }) {
         setSettingsBannerFile(null);
         setSettingsBannerPreview(null);
         updateAppMeta(updatedSettings);
+        if (typeof fetchData === 'function') {
+          fetchData(true);
+        }
         showToast('হেডার লোগো, ফেভিকন ও সাইট সেটিংস সংরক্ষিত হয়েছে');
       } else {
         const errData = await res.json().catch(() => ({}));
