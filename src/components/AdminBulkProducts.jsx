@@ -230,7 +230,9 @@ export default function AdminBulkProducts({
       link.download = `Arot_Express_Product_List_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      if (link && link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
       URL.revokeObjectURL(url);
 
       if (showToast) showToast(`মোট ${toBengaliNumber(exportProducts.length)} টি পণ্যের সাজানো CSV ডাউনলোড হয়েছে`);
