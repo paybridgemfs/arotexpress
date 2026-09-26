@@ -100,7 +100,7 @@ export default function CustomerInvoiceModal({ isOpen = true, order, settings, o
         <div className="admin-modal-header no-print">
           <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
             <CheckCircle2 size={18} color="var(--green-dim)" />
-            <span>কাস্টমার ক্যাশ মেমো / ইনভয়েস</span>
+            <span>কাস্টমার ক্যাশ মেমো</span>
           </h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <motion.button
@@ -139,15 +139,12 @@ export default function CustomerInvoiceModal({ isOpen = true, order, settings, o
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {logoType === 'image' && logoImageUrl ? (
                   <img src={logoImageUrl} alt={siteName} style={{ height: '36px', objectFit: 'contain' }} />
+                  <div style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '1px' }}>{siteTagline}</div>
                 ) : (
                   <div style={{ width: '36px', height: '36px', background: '#111827', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, borderRadius: '4px', fontSize: '15px' }}>
                     {logoTextEn}
                   </div>
                 )}
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#111827' }}>{siteName}</h2>
-                  <div style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '1px' }}>{siteTagline}</div>
-                </div>
               </div>
               <div style={{ fontSize: '11.5px', color: '#4b5563', marginTop: '6px', lineHeight: 1.35 }}>
                 <div>ঠিকানা: {siteAddress}</div>
