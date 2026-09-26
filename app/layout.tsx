@@ -155,11 +155,13 @@ export default async function RootLayout({
     const rawPaymentMethods = DBManager.getPaymentMethods() || [];
     const rawDeliveryAreas = DBManager.getDeliveryAreas() || [];
     const rawPackageProducts = DBManager.getPackageProducts() || [];
+    const rawFooterSettings = DBManager.getFooterSettings() || {};
 
     initialData = {
       groups: JSON.parse(JSON.stringify(rawGroups)),
       categories: JSON.parse(JSON.stringify(rawCategories)),
       settings: JSON.parse(JSON.stringify(settings)),
+      footerSettings: JSON.parse(JSON.stringify(rawFooterSettings)),
       paymentMethods: JSON.parse(JSON.stringify(rawPaymentMethods)),
       deliveryAreas: JSON.parse(JSON.stringify(rawDeliveryAreas)),
       packageProducts: JSON.parse(JSON.stringify(rawPackageProducts)),

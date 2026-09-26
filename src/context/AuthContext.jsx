@@ -5,85 +5,52 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   // Customer Authentication state (stored in arot_customer_token)
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arot_customer_user');
-        return saved ? JSON.parse(saved) : null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-  const [token, setToken] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('arot_customer_token') || null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
 
   // Admin Authentication state (strictly separated in arot_admin_token)
-  const [adminUser, setAdminUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arot_admin_user');
-        return saved ? JSON.parse(saved) : null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-  const [adminToken, setAdminToken] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('arot_admin_token') || null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [adminUser, setAdminUser] = useState(null);
+  const [adminToken, setAdminToken] = useState(null);
+  const [isAuthHydrated, setIsAuthHydrated] = useState(false);
 
   const [customerLoading, setCustomerLoading] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const loading = customerLoading || adminLoading;
 
-  // On client mount, read tokens from localStorage without blocking initial SSR render
+  // On client mount, read tokens from localStorage safely without SSR mismatch
   useEffect(() => {
     try {
-      const savedCustToken = localStorage.getItem('arot_customer_token');
-      const savedCustUser = localStorage.getItem('arot_customer_user');
-      if (savedCustToken) {
-        setToken(savedCustToken);
-        if (savedCustUser) {
-          try {
-            setUser(JSON.parse(savedCustUser));
-          } catch {
-            setUser(null);
+      if (typeof window !== 'undefined') {
+        const savedCustToken = localStorage.getItem('arot_customer_token');
+        const savedCustUser = localStorage.getItem('arot_customer_user');
+        if (savedCustToken) {
+          setToken(savedCustToken);
+          if (savedCustUser) {
+            try {
+              setUser(JSON.parse(savedCustUser));
+            } catch {
+              setUser(null);
+            }
           }
         }
-      }
 
-      const savedAdminToken = localStorage.getItem('arot_admin_token');
-      const savedAdminUser = localStorage.getItem('arot_admin_user');
-      if (savedAdminToken) {
-        setAdminToken(savedAdminToken);
-        if (savedAdminUser) {
-          try {
-            setAdminUser(JSON.parse(savedAdminUser));
-          } catch {
-            setAdminUser(null);
+        const savedAdminToken = localStorage.getItem('arot_admin_token');
+        const savedAdminUser = localStorage.getItem('arot_admin_user');
+        if (savedAdminToken) {
+          setAdminToken(savedAdminToken);
+          if (savedAdminUser) {
+            try {
+              setAdminUser(JSON.parse(savedAdminUser));
+            } catch {
+              setAdminUser(null);
+            }
           }
         }
       }
     } catch (e) {
       console.error('Error hydrating auth tokens:', e);
+    } finally {
+      setIsAuthHydrated(true);
     }
   }, []);
 
@@ -317,6 +284,7 @@ export function AuthProvider({ children }) {
         adminLogin,
         adminLogout,
         updateAdminProfile,
+        isAuthHydrated,
         // Common
         loading,
         authModalOpen,

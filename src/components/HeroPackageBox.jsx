@@ -155,7 +155,7 @@ export default function HeroPackageBox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Package size={14} style={{ color: '#006C4C', flexShrink: 0 }} />
           <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)' }}>
-            আড়ৎ মুল্য পেতে প্রি-অর্ডার করুন
+            ডিসকাউন্ট নিতে আপনার প্যাকেজ বানান
           </span>
           <span
             style={{
@@ -217,6 +217,8 @@ export default function HeroPackageBox() {
             flexDirection: 'column',
             gap: '4px',
             minWidth: 0,
+            borderLeft: '1px solid var(--rule)',
+            paddingLeft: '8px'
           }}
         >
           {sideBProducts.map((prod) => (

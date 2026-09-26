@@ -39,7 +39,8 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   Loader2,
-  Share2
+  Share2,
+  PanelBottom
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
@@ -55,6 +56,7 @@ import AdminBulkProducts from './AdminBulkProducts.jsx';
 import AdminPackageOrders from './AdminPackageOrders.jsx';
 import AdminPackageManagement from './AdminPackageManagement.jsx';
 import AdminSocialLinks from './AdminSocialLinks.jsx';
+import AdminFooterSettings from './AdminFooterSettings.jsx';
 import LowStockBanner from './LowStockBanner.jsx';
 import CustomerInvoiceModal from './CustomerInvoiceModal.jsx';
 import PosReceiptModal from './PosReceiptModal.jsx';
@@ -67,8 +69,13 @@ import { updateAppMeta } from '../utils/meta.js';
 const LOW_STOCK_THRESHOLD = 5;
 
 export default function AdminPanel({ onNavigateHome }) {
-  const { adminUser, adminToken, adminLogin, adminLogout, updateAdminProfile, loading: authLoading } = useAuth();
+  const { adminUser, adminToken, adminLogin, adminLogout, updateAdminProfile, loading: authLoading, isAuthHydrated } = useAuth();
   const { showToast } = useCart();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Admin Tab Navigation (State-based to prevent page unmounts and re-fetching)
   const pathname = usePathname() || '/admin';
@@ -1002,17 +1009,13 @@ export default function AdminPanel({ onNavigateHome }) {
     }
   };
 
-  // If NOT Admin, render Admin Login Form
-  if (authLoading) {
+  // If NOT yet mounted or auth is hydrating, render neutral loading placeholder
+  if (!mounted || !isAuthHydrated || authLoading) {
     return (
       <div className="section-wrap" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'var(--muted)', fontSize: '14px', fontWeight: 600 }}>লোড হচ্ছে...</div>
       </div>
     );
-  }
-
-  if (authLoading) {
-    return <div className="section-wrap" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner"></div></div>;
   }
 
   if (!isAdmin) {
@@ -1227,6 +1230,15 @@ export default function AdminPanel({ onNavigateHome }) {
           >
             <Sliders size={16} />
             <span>সাইট সেটিংস</span>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            className={`admin-nav-item ${adminTab === 'footer_settings' || adminTab === 'footer' ? 'active' : ''}`}
+            onClick={() => { setAdminTab('footer_settings'); setSidebarOpen(false); window.scrollTo(0, 0); }}
+          >
+            <PanelBottom size={16} />
+            <span>ফুটার সেটিংস</span>
           </motion.button>
 
           <motion.button
@@ -3303,6 +3315,11 @@ export default function AdminPanel({ onNavigateHome }) {
               </button>
             </form>
           </div>
+        )}
+
+        {/* 5.4. FOOTER SETTINGS TAB */}
+        {(adminTab === 'footer_settings' || adminTab === 'footer') && (
+          <AdminFooterSettings />
         )}
 
         {/* 5.5. SOCIAL LINKS MANAGEMENT TAB */}

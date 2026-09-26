@@ -148,6 +148,105 @@ export interface PackageOrder {
   created_at?: string;
 }
 
+export const defaultFooterSettings = {
+  top_trust_strip: {
+    enabled: true,
+    items: [
+      {
+        id: 'fast_delivery',
+        icon: 'Truck',
+        title: 'দ্রুততম হোম ডেলিভারি',
+        subtitle: 'নির্ধারিত সময়ে আপনার দোরগোড়ায় ফ্রেশ ডেলিভারি',
+        enabled: true
+      },
+      {
+        id: 'fresh_quality',
+        icon: 'ShieldCheck',
+        title: '১০০% তাজা ও খাঁটি পণ্য',
+        subtitle: 'সরাসরি বিশ্বস্ত আড়ৎ ও কৃষক থেকে সংগৃহীত',
+        enabled: true
+      },
+      {
+        id: 'cod_payment',
+        icon: 'Wallet',
+        title: 'ক্যাশ অন ডেলিভারি',
+        subtitle: 'পণ্য হাতে পেয়ে নিশ্চিন্তে মূল্য পরিশোধ করুন',
+        enabled: true
+      },
+      {
+        id: 'easy_return',
+        icon: 'RotateCcw',
+        title: 'সহজ রিটার্ন ও রিপ্লেসমেন্ট',
+        subtitle: 'পণ্য অপছন্দ বা নষ্ট হলে তাৎক্ষণিক সমাধান',
+        enabled: true
+      }
+    ]
+  },
+  brand_section: {
+    enabled: true,
+    title: 'আড়ৎ এক্সপ্রেস',
+    subtitle: 'Arot Express — আপনার আড়ৎ, এক ক্লিকে।',
+    description: 'নিত্যপ্রয়োজনীয় তাজা মুদি বাজার সরাসরি আড়তের মূল্যে আপনার ঘরে পৌঁছে দিতে আমরা প্রতিশ্রুতিবদ্ধ। সেরা মান ও সেরা সেবাই আমাদের মূল লক্ষ্য।',
+    helpline: '০১৭১২-৩৪৫৬৭৮',
+    helpline_label: 'হটলাইন ও অর্ডার সহায়তা (সকাল ৮টা - রাত ১০টা)',
+    email: 'support@arotexpress.com',
+    address: 'বাড়ি #১২, রোড #০৪, ধানমন্ডি, ঢাকা-১২০৫, বাংলাদেশ',
+    working_hours: 'সকাল ৮:০০ - রাত ১০:০০ (প্রতিদিন)',
+    show_socials: true
+  },
+  quick_links: {
+    enabled: true,
+    title: 'গ্রাহক সেবা ও লিংক',
+    links: [
+      { id: 'track_order', label: 'অর্ডার ট্র্যাক করুন', action: 'track_order', url: '', enabled: true },
+      { id: 'return_policy', label: 'রিটার্ন ও রিফান্ড পলিসি', action: 'policy_return', url: '', enabled: true },
+      { id: 'delivery_info', label: 'ডেলিভারি চার্জ ও এরিয়া', action: 'policy_delivery', url: '', enabled: true },
+      { id: 'faq', label: 'সাধারণ জিজ্ঞাসা (FAQ)', action: 'policy_faq', url: '', enabled: true },
+      { id: 'terms', label: 'শর্তাবলী ও নিয়মাবলী', action: 'policy_terms', url: '', enabled: true },
+      { id: 'privacy', label: 'প্রাইভেসি পলিসি', action: 'policy_privacy', url: '', enabled: true },
+      { id: 'about_us', label: 'আমাদের সম্পর্কে', action: 'policy_about', url: '', enabled: true }
+    ]
+  },
+  category_links: {
+    enabled: true,
+    title: 'জনপ্রিয় ক্যাটাগরি',
+    auto_categories: true,
+    custom_links: [
+      { id: 'staples', label: 'চাল, ডাল ও ভোজ্য তেল', target: 'staples', enabled: true },
+      { id: 'fresh', label: 'তাজা বাজার ও শাকসবজি', target: 'fresh', enabled: true },
+      { id: 'spices', label: 'খাঁটি মসলা ও উপাদান', target: 'spices', enabled: true },
+      { id: 'breakfast', label: 'দুগ্ধ ও নাস্তা সামগ্রী', target: 'breakfast', enabled: true },
+      { id: 'package_box', label: 'মাসিক বাজার প্যাকেজ বক্স', target: 'package_box', enabled: true }
+    ]
+  },
+  newsletter_section: {
+    enabled: true,
+    title: 'অফার অ্যালার্ট ও ডিসকাউন্ট',
+    subtitle: 'আপনার ইমেইল অ্যাড্রেস দিয়ে সাপ্তাহিক সেরা অফার এবং স্পেশাল ডিসকাউন্টের নোটিফিকেশন পান।',
+    placeholder: 'আপনার ইমেইল অ্যাড্রেস লিখুন...',
+    button_text: 'যুক্ত হোন',
+    success_msg: 'ধন্যবাদ! আপনি সফলভাবে আমাদের স্পেশাল অফার আপডেটে যুক্ত হয়েছেন।'
+  },
+  payment_badges: {
+    enabled: true,
+    title: '১০০% নিরাপদ ও সুরক্ষিত পেমেন্ট পার্টনার',
+    items: [
+      { id: 'bkash', name: 'বিকাশ (bKash)', icon_code: 'bkash', enabled: true, color: '#E2136E', bg: '#FDF2F7' },
+      { id: 'nagad', name: 'নগদ (Nagad)', icon_code: 'nagad', enabled: true, color: '#F7941D', bg: '#FEF8F2' },
+      { id: 'rocket', name: 'রকেট (Rocket)', icon_code: 'rocket', enabled: true, color: '#8C3494', bg: '#F9F2FB' },
+      { id: 'upay', name: 'উপায় (Upay)', icon_code: 'upay', enabled: true, color: '#005CA9', bg: '#F0F7FD' },
+      { id: 'cod', name: 'ক্যাশ অন ডেলিভারি (COD)', icon_code: 'cod', enabled: true, color: '#006C4C', bg: '#F0F9F5' },
+      { id: 'ssl', name: 'SSL 256-bit Secure', icon_code: 'ssl', enabled: true, color: '#1B365D', bg: '#F0F4F8' }
+    ]
+  },
+  copyright_bar: {
+    enabled: true,
+    copyright_text: '© ২০২৬ আড়ৎ এক্সপ্রেস — সর্বস্বত্ব সংরক্ষিত।',
+    sub_text: 'উন্নত প্রযুক্তিতে তৈরি বাংলাদেশের বিশ্বস্ত অনলাইন গ্রোসারি প্ল্যাটফর্ম।',
+    show_secure_badge: true
+  }
+};
+
 // Clean Default State Structure (Data is loaded dynamically from PostgreSQL)
 export const initialData = {
   settings: {
@@ -170,6 +269,8 @@ export const initialData = {
     logo_text_en: 'Arot Express',
     package_min_items: 1
   },
+  footer_settings: defaultFooterSettings,
+  newsletter_subscribers: [] as any[],
   delivery_areas: [
     { id: 1, name: 'ধানমন্ডি ও মিরপুর', charge: 60, is_active: true },
     { id: 2, name: 'গুলশান, বনানী ও উত্তরা', charge: 70, is_active: true },
@@ -347,6 +448,19 @@ export class DBManager {
             id SERIAL PRIMARY KEY,
             key VARCHAR(100) UNIQUE NOT NULL,
             value TEXT NOT NULL
+          );
+
+          CREATE TABLE IF NOT EXISTS footer_settings (
+            id SERIAL PRIMARY KEY,
+            key VARCHAR(100) UNIQUE NOT NULL,
+            value TEXT NOT NULL
+          );
+
+          CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+            id SERIAL PRIMARY KEY,
+            contact VARCHAR(150) UNIQUE NOT NULL,
+            type VARCHAR(20) DEFAULT 'email',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
 
         -- Separate Table for Dedicated Admins
@@ -572,6 +686,8 @@ export class DBManager {
       const payRes = await client.query(`SELECT * FROM payment_methods ORDER BY id ASC`);
       const areaRes = await client.query(`SELECT * FROM delivery_areas ORDER BY id ASC`);
       const setRes = await client.query(`SELECT * FROM site_settings`);
+      const footerSetRes = await client.query(`SELECT * FROM footer_settings`);
+      const newsRes = await client.query(`SELECT * FROM newsletter_subscribers ORDER BY created_at DESC`);
       const usersRes = await client.query(`SELECT * FROM users WHERE role != 'admin' AND phone != 'admin' ORDER BY id ASC`);
       const adminsRes = await client.query(`SELECT * FROM admins ORDER BY id ASC`);
       const ordersRes = await client.query(`SELECT * FROM orders ORDER BY id DESC`);
@@ -757,6 +873,39 @@ export class DBManager {
         }
         DBManager.data.settings = { ...DBManager.data.settings, ...loadedSettings };
         console.log(`⚙️ Loaded site settings from PostgreSQL.`);
+      }
+
+      // Hydrate footer settings
+      if (footerSetRes.rows.length > 0) {
+        const loadedFooterSettings: any = {};
+        for (const row of footerSetRes.rows) {
+          try {
+            loadedFooterSettings[row.key] = JSON.parse(row.value);
+          } catch {
+            loadedFooterSettings[row.key] = row.value;
+          }
+        }
+        DBManager.data.footer_settings = { ...defaultFooterSettings, ...loadedFooterSettings };
+        console.log(`⚙️ Loaded footer settings from PostgreSQL.`);
+      } else {
+        // Seed default footer settings
+        for (const [key, val] of Object.entries(defaultFooterSettings)) {
+          await client.query(
+            `INSERT INTO footer_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING`,
+            [key, JSON.stringify(val)]
+          );
+        }
+        console.log(`🌱 Seeded default footer settings to PostgreSQL.`);
+      }
+
+      // Hydrate newsletter subscribers
+      if (newsRes.rows.length > 0) {
+        DBManager.data.newsletter_subscribers = newsRes.rows.map((n: any) => ({
+          id: n.id,
+          contact: n.contact,
+          type: n.type || 'email',
+          created_at: n.created_at
+        }));
       }
 
       // Hydrate customers (users)
@@ -1026,6 +1175,92 @@ export class DBManager {
       }
     }
     return this.data.settings;
+  }
+
+  // ==========================================
+  // FOOTER SETTINGS & CUSTOMIZATION
+  // ==========================================
+  static getFooterSettings() {
+    return this.data.footer_settings || defaultFooterSettings;
+  }
+
+  static updateFooterSettings(newSettings: any) {
+    this.data.footer_settings = {
+      ...(this.data.footer_settings || defaultFooterSettings),
+      ...newSettings
+    };
+    if (isPgConnected) {
+      for (const [key, val] of Object.entries(newSettings)) {
+        pool.query(
+          `INSERT INTO footer_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+          [key, JSON.stringify(val)]
+        ).catch((e: any) => console.warn('PG sync error (footer_settings):', e.message));
+      }
+    }
+    return this.data.footer_settings;
+  }
+
+  static resetFooterSettings() {
+    this.data.footer_settings = JSON.parse(JSON.stringify(defaultFooterSettings));
+    if (isPgConnected) {
+      pool.query(`DELETE FROM footer_settings`).catch((e: any) => console.warn('PG error clearing footer_settings:', e.message));
+      for (const [key, val] of Object.entries(defaultFooterSettings)) {
+        pool.query(
+          `INSERT INTO footer_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+          [key, JSON.stringify(val)]
+        ).catch((e: any) => console.warn('PG error resetting footer_settings:', e.message));
+      }
+    }
+    return this.data.footer_settings;
+  }
+
+  // ==========================================
+  // NEWSLETTER & SPECIAL OFFER SUBSCRIBERS
+  // ==========================================
+  static getNewsletterSubscribers() {
+    return this.data.newsletter_subscribers || [];
+  }
+
+  static addNewsletterSubscriber(contact: string, type: string = 'email') {
+    if (!contact || typeof contact !== 'string') {
+      return { error: 'দয়া করে আপনার সঠিক ইমেইল অ্যাড্রেস লিখুন' };
+    }
+    const clean = contact.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(clean)) {
+      return { error: 'সঠিক ইমেইল ফরম্যাট লিখুন (যেমন: name@example.com)' };
+    }
+    if (!this.data.newsletter_subscribers) {
+      this.data.newsletter_subscribers = [];
+    }
+    const existing = this.data.newsletter_subscribers.find((n: any) => n.contact.toLowerCase() === clean);
+    if (existing) {
+      return { success: true, message: 'আপনি ইতোমধ্যে আমাদের স্পেশাল অফার আপডেটে যুক্ত আছেন।' };
+    }
+    const newSub = {
+      id: Date.now(),
+      contact: clean,
+      type: 'email',
+      created_at: new Date().toISOString()
+    };
+    this.data.newsletter_subscribers.unshift(newSub);
+
+    if (isPgConnected) {
+      pool.query(
+        `INSERT INTO newsletter_subscribers (contact, type) VALUES ($1, $2) ON CONFLICT (contact) DO NOTHING`,
+        [newSub.contact, newSub.type]
+      ).catch((e: any) => console.warn('PG error inserting newsletter:', e.message));
+    }
+    return { success: true, message: 'ধন্যবাদ! আপনি সফলভাবে অফার আপডেটে যুক্ত হয়েছেন।' };
+  }
+
+  static deleteNewsletterSubscriber(id: number) {
+    if (!this.data.newsletter_subscribers) return false;
+    this.data.newsletter_subscribers = this.data.newsletter_subscribers.filter((n: any) => n.id !== id);
+    if (isPgConnected) {
+      pool.query(`DELETE FROM newsletter_subscribers WHERE id = $1`, [id]).catch((e: any) => console.warn('PG error deleting newsletter subscriber:', e.message));
+    }
+    return true;
   }
 
   // ==========================================

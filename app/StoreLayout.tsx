@@ -2,6 +2,7 @@
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Header from '@/src/components/Header.jsx';
+import Footer from '@/src/components/Footer.jsx';
 import CartDrawer from '@/src/components/CartDrawer.jsx';
 import AuthModal from '@/src/components/AuthModal.jsx';
 import ToastContainer from '@/src/components/ToastContainer.jsx';
@@ -62,16 +63,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       <ToastContainer />
       <SocialButtons variant="fixed" />
 
-      <footer>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
-          <span>
-            {settings?.footer_text || '© 2026 Arot Express — আপনার আড়ৎ, এক ক্লিকে।'}
-          </span>
-          <span className="mono">
-            {settings?.footer_address || 'Dhaka, Bangladesh'}
-          </span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

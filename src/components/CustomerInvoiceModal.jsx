@@ -5,6 +5,28 @@ import { X, Printer, Download, CheckCircle2, Phone, MapPin, Building2, Calendar,
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
 import { printElement } from '../utils/printHelper.js';
 
+function safeFormatDate(dateVal) {
+  try {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+}
+
+function safeFormatTime(dateVal) {
+  try {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    return '';
+  }
+}
+
 export default function CustomerInvoiceModal({ isOpen = true, order, settings, onClose }) {
   if (isOpen === false || !order) return null;
 
@@ -17,9 +39,14 @@ export default function CustomerInvoiceModal({ isOpen = true, order, settings, o
   const logoTextEn = settings?.logo_text_en || 'AE';
   const logoImageUrl = settings?.logo_image_url || '';
 
-  const items = Array.isArray(order.items_json)
-    ? order.items_json
-    : (typeof order.items_json === 'string' ? JSON.parse(order.items_json) : []);
+  let items = [];
+  try {
+    items = Array.isArray(order.items_json)
+      ? order.items_json
+      : (typeof order.items_json === 'string' ? JSON.parse(order.items_json) : []);
+  } catch (e) {
+    items = [];
+  }
 
   const subtotal = order.subtotal || (order.total_amount - (order.delivery_fee || 0));
   const deliveryFee = order.delivery_fee || 0;
@@ -136,11 +163,13 @@ export default function CustomerInvoiceModal({ isOpen = true, order, settings, o
                 {order.order_code || `#ORD-${order.id}`}
               </div>
               <div style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '2px' }}>
-                তারিখ: {new Date(order.created_at || Date.now()).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
+                তারিখ: {safeFormatDate(order.created_at)}
               </div>
-              <div style={{ fontSize: '11.5px', color: '#6b7280' }}>
-                সময়: <span className="mono">{new Date(order.created_at || Date.now()).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
+              {safeFormatTime(order.created_at) && (
+                <div style={{ fontSize: '11.5px', color: '#6b7280' }}>
+                  সময়: <span className="mono">{safeFormatTime(order.created_at)}</span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -6,6 +6,7 @@ interface CachedStoreData {
   groups: any[];
   categories: any[];
   settings: any;
+  footerSettings?: any;
   paymentMethods: any[];
   deliveryAreas: any[];
   packageProducts?: any[];
@@ -77,6 +78,8 @@ interface StoreDataContextType {
   groups: any[];
   categories: any[];
   settings: any;
+  footerSettings: any;
+  setFooterSettings: React.Dispatch<React.SetStateAction<any>>;
   paymentMethods: any[];
   deliveryAreas: any[];
   packageProducts: any[];
@@ -107,6 +110,7 @@ export function StoreDataProvider({
     groups?: any[];
     categories?: any[];
     settings?: any;
+    footerSettings?: any;
     paymentMethods?: any[];
     deliveryAreas?: any[];
     packageProducts?: any[];
@@ -120,6 +124,7 @@ export function StoreDataProvider({
   const [groups, setGroups] = useState<any[]>(() => initialData?.groups || initialCache?.groups || []);
   const [categories, setCategories] = useState<any[]>(() => initialData?.categories || initialCache?.categories || []);
   const [settings, setSettings] = useState<any>(() => initialData?.settings || initialCache?.settings || null);
+  const [footerSettings, setFooterSettings] = useState<any>(() => initialData?.footerSettings || initialCache?.footerSettings || null);
   const [paymentMethods, setPaymentMethods] = useState<any[]>(() => initialData?.paymentMethods || initialCache?.paymentMethods || []);
   const [deliveryAreas, setDeliveryAreas] = useState<any[]>(() => initialData?.deliveryAreas || initialCache?.deliveryAreas || []);
   const [packageProducts, setPackageProducts] = useState<any[]>(() => initialData?.packageProducts || initialCache?.packageProducts || []);
@@ -144,6 +149,8 @@ export function StoreDataProvider({
   categoriesRef.current = categories;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const footerSettingsRef = useRef(footerSettings);
+  footerSettingsRef.current = footerSettings;
   const paymentMethodsRef = useRef(paymentMethods);
   paymentMethodsRef.current = paymentMethods;
   const deliveryAreasRef = useRef(deliveryAreas);
@@ -181,9 +188,10 @@ export function StoreDataProvider({
     }
 
     try {
-      const [catRes, setRes, payRes, areaRes, pkgRes] = await Promise.all([
+      const [catRes, setRes, footRes, payRes, areaRes, pkgRes] = await Promise.all([
         fetch('/api/categories'),
         fetch('/api/settings'),
+        fetch('/api/footer-settings'),
         fetch('/api/payment-methods'),
         fetch('/api/delivery-areas'),
         fetch('/api/package-products')
@@ -192,6 +200,7 @@ export function StoreDataProvider({
       let newGroups = groupsRef.current;
       let newCategories = categoriesRef.current;
       let newSettings = settingsRef.current;
+      let newFooterSettings = footerSettingsRef.current;
       let newPaymentMethods = paymentMethodsRef.current;
       let newDeliveryAreas = deliveryAreasRef.current;
       let newPackageProducts = packageProductsRef.current;
@@ -238,6 +247,16 @@ export function StoreDataProvider({
         }
       }
 
+      if (footRes.ok) {
+        const footData = await footRes.json();
+        if (footData && typeof footData === 'object') {
+          if (hasDataChanged(footerSettingsRef.current, footData)) {
+            newFooterSettings = footData;
+            setFooterSettings(footData);
+          }
+        }
+      }
+
       if (payRes.ok) {
         const payData = await payRes.json();
         if (Array.isArray(payData)) {
@@ -268,6 +287,7 @@ export function StoreDataProvider({
         groups: newGroups,
         categories: newCategories,
         settings: newSettings,
+        footerSettings: newFooterSettings,
         paymentMethods: newPaymentMethods,
         deliveryAreas: newDeliveryAreas,
         packageProducts: newPackageProducts,
@@ -354,6 +374,8 @@ export function StoreDataProvider({
         groups,
         categories,
         settings,
+        footerSettings,
+        setFooterSettings,
         paymentMethods,
         deliveryAreas,
         packageProducts,
