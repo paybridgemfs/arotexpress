@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import Hero from '@/src/components/Hero.jsx';
+import TrustFeatures from '@/src/components/TrustFeatures.jsx';
 import CategoryGrid from '@/src/components/CategoryGrid.jsx';
 import StoreLayout from '@/app/StoreLayout';
 import { useStoreData } from '@/src/context/StoreDataContext';
@@ -76,6 +77,7 @@ export default function HomeClientView() {
             if (firstGroup) handleScrollToGroup(firstGroup.key);
           }}
         />
+        <TrustFeatures />
         <CategoryGrid
           groups={activeGroups}
           categories={activeCategories}

@@ -3,6 +3,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'motion/react';
 import Hero from '@/src/components/Hero.jsx';
+import TrustFeatures from '@/src/components/TrustFeatures.jsx';
 import CategoryGrid from '@/src/components/CategoryGrid.jsx';
 import ProductDetail from '@/src/components/ProductDetail.jsx';
 import StoreLayout from '@/app/StoreLayout';
@@ -42,6 +43,7 @@ export default function CategoryDetailClientView({ categoryIdParam }: { category
             if (firstGroup) handleScrollToGroup(firstGroup.key);
           }}
         />
+        <TrustFeatures />
         <CategoryGrid
           groups={activeGroups}
           categories={activeCategories}
