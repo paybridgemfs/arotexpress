@@ -158,6 +158,8 @@ export default function AdminPanel({ onNavigateHome }) {
   const [savingBrand, setSavingBrand] = useState(false);
 
   // Settings image upload states
+  const [settingsFaviconFile, setSettingsFaviconFile] = useState(null);
+  const [settingsFaviconPreview, setSettingsFaviconPreview] = useState(null);
   const [settingsLogoFile, setSettingsLogoFile] = useState(null);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState(null);
   const [settingsBannerFile, setSettingsBannerFile] = useState(null);
@@ -692,6 +694,12 @@ export default function AdminPanel({ onNavigateHome }) {
     try {
       let updatedSettings = { ...settings };
 
+      if (settingsFaviconFile) {
+        showToast('ফেভিকন ছবি ImgBB-তে আপলোড হচ্ছে...');
+        const faviconUrl = await uploadImage(settingsFaviconFile);
+        updatedSettings.favicon_image_url = faviconUrl;
+      }
+
       if (settingsLogoFile) {
         showToast('লোগো ছবি ImgBB-তে আপলোড হচ্ছে...');
         const logoUrl = await uploadImage(settingsLogoFile);
@@ -714,10 +722,14 @@ export default function AdminPanel({ onNavigateHome }) {
       });
       if (res.ok) {
         setSettings(updatedSettings);
+        setSettingsFaviconFile(null);
+        setSettingsFaviconPreview(null);
         setSettingsLogoFile(null);
+        setSettingsLogoPreview(null);
         setSettingsBannerFile(null);
+        setSettingsBannerPreview(null);
         updateAppMeta(updatedSettings);
-        showToast('হেডার, সাইট ও লোগো সেটিংস সংরক্ষিত হয়েছে');
+        showToast('হেডার লোগো, ফেভিকন ও সাইট সেটিংস সংরক্ষিত হয়েছে');
       } else {
         const errData = await res.json().catch(() => ({}));
         showToast(errData.error || 'সেটিংস সংরক্ষণে ব্যর্থ');
@@ -3086,76 +3098,98 @@ export default function AdminPanel({ onNavigateHome }) {
                   <span>ওয়েবসাইট ও রসিদ (ক্যাশ মেমো) সংক্রান্ত তথ্য</span>
                 </h4>
 
-                <div className="field-row" style={{ marginBottom: '16px' }}>
-                  <div className="field" style={{ margin: 0 }}>
-                    <label>লোগোর ধরন (Logo Type & Favicon)</label>
-                    <select
-                      value={settings.logo_type || 'text'}
-                      onChange={(e) => setSettings({ ...settings, logo_type: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--rule)', outline: 'none' }}
+                {/* 1. Favicon Upload (On Top) */}
+                <div className="field" style={{ marginBottom: '18px', background: '#F8FAF9', padding: '14px', borderRadius: '10px', border: '1px solid var(--rule)' }}>
+                  <label style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--ink)', display: 'block', marginBottom: '4px' }}>
+                    🌐 ওয়েবসাইটের ফেভিকন (Favicon / Browser Tab Icon)
+                  </label>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--muted)' }}>
+                    ব্রাউজারের ট্যাবে এই ছোট ফেভিকন আইকনটি প্রদর্শিত হবে। স্কয়ার সাইজের (1:1 অনুপাত, যেমন: 64x64 বা 128x128 পিক্সেল) ছবি আপলোড করুন।
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        border: '1.5px solid var(--rule)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#FFFFFF',
+                        flexShrink: 0,
+                        overflow: 'hidden'
+                      }}
+                      title="ফেভিকন প্রিভিউ"
                     >
-                      <option value="text">টেক্সট (Text & Dynamic Favicon)</option>
-                      <option value="image">ছবি (Image URL & Favicon)</option>
-                    </select>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>
-                      💡 এখানে প্রদত্ত লোগোটি হেডার, রসিদ এবং স্বয়ংক্রিয়ভাবে ব্রাউজারের <strong>ফেভিকন (Favicon / Tab Icon)</strong> হিসেবে সেট হবে।
+                      {(settingsFaviconPreview || settings.favicon_image_url) ? (
+                        <img
+                          src={settingsFaviconPreview || settings.favicon_image_url}
+                          alt="Favicon preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600 }}>Favicon</span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <ImageUploadInput
+                        value={settings.favicon_image_url || ''}
+                        file={settingsFaviconFile}
+                        previewUrl={settingsFaviconPreview || ''}
+                        onFileSelect={(file, preview) => {
+                          setSettingsFaviconFile(file);
+                          setSettingsFaviconPreview(preview);
+                        }}
+                        onClear={() => {
+                          setSettingsFaviconFile(null);
+                          setSettingsFaviconPreview(null);
+                          setSettings({ ...settings, favicon_image_url: '' });
+                        }}
+                        placeholder="ফেভিকন ছবি আপলোড করতে ক্লিক করুন..."
+                        disabled={savingSettings}
+                      />
                     </div>
                   </div>
                 </div>
 
-                {(!settings.logo_type || settings.logo_type === 'text') ? (
-                  <div className="field-row" style={{ marginBottom: '16px' }}>
-                    <div className="field" style={{ margin: 0 }}>
-                      <label>লোগো টেক্সট (ইংরেজি) - যেমন: AE</label>
-                      <input
-                        type="text"
-                        value={settings.logo_text_en || ''}
-                        onChange={(e) => setSettings({ ...settings, logo_text_en: e.target.value })}
-                        placeholder="AE"
-                        maxLength="10"
-                      />
+                {/* 2. Main Header Logo Upload (Below Favicon) */}
+                <div className="field" style={{ marginBottom: '18px', background: '#F8FAF9', padding: '14px', borderRadius: '10px', border: '1px solid var(--rule)' }}>
+                  <label style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--ink)', display: 'block', marginBottom: '4px' }}>
+                    🏷️ ওয়েবসাইটের মূল লোগো (Header & Website Logo)
+                  </label>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--muted)' }}>
+                    ওয়েবসাইটের হেডারে ব্র্যান্ড এরিয়াতে এই লোগোটি প্রদর্শিত হবে।
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        width: '80px',
+                        height: '44px',
+                        border: '1.5px solid var(--rule)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#FFFFFF',
+                        flexShrink: 0,
+                        overflow: 'hidden'
+                      }}
+                      title="লোগো প্রিভিউ"
+                    >
+                      {(settingsLogoPreview || settings.logo_image_url) ? (
+                        <img
+                          src={settingsLogoPreview || settings.logo_image_url}
+                          alt="Logo preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '10.5px', color: 'var(--muted)', fontWeight: 600 }}>লোগো নেই</span>
+                      )}
                     </div>
-                    <div className="field" style={{ margin: 0 }}>
-                      <label>লোগো টেক্সট (বাংলা) - যেমন: আ.এ</label>
-                      <input
-                        type="text"
-                        value={settings.logo_text_bn || ''}
-                        onChange={(e) => setSettings({ ...settings, logo_text_bn: e.target.value })}
-                        placeholder="আ.এ"
-                        maxLength="10"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="field" style={{ marginBottom: '16px' }}>
-                    <label>লোগো / ফেভিকন ইমেজ</label>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          border: '1px solid var(--rule)',
-                          borderRadius: 'var(--radius-md)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: '#F8FAF9',
-                          flexShrink: 0,
-                          overflow: 'hidden'
-                        }}
-                        title="লোগো প্রিভিউ"
-                      >
-                        {(settingsLogoPreview || settings.logo_image_url) ? (
-                          <img
-                            src={settingsLogoPreview || settings.logo_image_url}
-                            alt="Logo preview"
-                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: '10.5px', color: 'var(--muted)' }}>ছবি নেই</span>
-                        )}
-                      </div>
+                    <div style={{ flex: 1 }}>
                       <ImageUploadInput
                         value={settings.logo_image_url || ''}
                         file={settingsLogoFile}
@@ -3169,12 +3203,12 @@ export default function AdminPanel({ onNavigateHome }) {
                           setSettingsLogoPreview(null);
                           setSettings({ ...settings, logo_image_url: '' });
                         }}
-                        placeholder="লোগো ছবি আপলোড করতে ক্লিক করুন..."
+                        placeholder="হেডার লোগো ছবি আপলোড করতে ক্লিক করুন..."
                         disabled={savingSettings}
                       />
                     </div>
                   </div>
-                )}
+                </div>
 
                 <div className="field-row">
                   <div className="field" style={{ margin: 0 }}>

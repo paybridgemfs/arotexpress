@@ -81,7 +81,7 @@ export default function Header({
             <Menu size={22} />
           </motion.button>
 
-          {/* Logo & Brand Name */}
+          {/* Website Logo Only */}
           <motion.a
             className="brand-logo-wrap"
             onClick={(e) => {
@@ -90,17 +90,44 @@ export default function Header({
             }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              flexShrink: 0
+            }}
+            title={siteName}
           >
-            {logoType === 'image' && logoImageUrl ? (
-              <img src={logoImageUrl} alt={siteName} style={{ height: '40px', objectFit: 'contain', borderRadius: 'var(--radius-sm)' }} />
+            {logoImageUrl ? (
+              <img
+                src={logoImageUrl}
+                alt={siteName}
+                style={{
+                  height: '42px',
+                  maxHeight: '44px',
+                  maxWidth: '180px',
+                  width: 'auto',
+                  objectFit: 'contain',
+                  display: 'block'
+                }}
+              />
             ) : (
-              <div className="stamp">{logoTextEn}</div>
+              <div
+                style={{
+                  fontSize: '20px',
+                  fontWeight: 800,
+                  color: 'var(--green, #006C4C)',
+                  letterSpacing: '-0.4px',
+                  fontFamily: 'var(--font-head, inherit)'
+                }}
+              >
+                {siteName}
+              </div>
             )}
-            <div className="brandname">
-              <span className="en">{siteName}</span>
-              <span className="bn">{siteTagline}</span>
-            </div>
           </motion.a>
 
           {/* Desktop Searchbar */}
@@ -143,6 +170,7 @@ export default function Header({
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <User size={16} />
+                <span className="user-btn-name">{user.name ? user.name.split(' ')[0] : 'প্রোফাইল'}</span>
               </motion.button>
             ) : (
               <motion.button
@@ -243,11 +271,14 @@ export default function Header({
               {/* Drawer Header with Brand / User Profile Banner */}
               <div className="mn-head">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div className="stamp" style={{ width: '38px', height: '38px', fontSize: '14px' }}>AE</div>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--ink)' }}>Arot Express</div>
-                    <div style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>আপনার আড়ৎ, এক ক্লিকে</div>
-                  </div>
+                  {logoImageUrl ? (
+                    <img src={logoImageUrl} alt={siteName} style={{ height: '36px', maxWidth: '140px', objectFit: 'contain' }} />
+                  ) : (
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--ink)' }}>{siteName}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>{siteTagline}</div>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => setMobileNavOpen(false)}
