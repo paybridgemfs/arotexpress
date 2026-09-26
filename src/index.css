@@ -87,7 +87,7 @@
 }
 
 body {
-  background: var(--paper);
+  background: var(--surface);
   font-family: 'Dosis', 'Noto Serif Bengali', serif;
   color: var(--ink);
   min-height: 100vh;
