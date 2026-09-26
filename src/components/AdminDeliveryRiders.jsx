@@ -460,8 +460,12 @@ export default function AdminDeliveryRiders({ adminToken, orders = [], packageOr
       {/* Add / Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div
+          <motion.div
+            key="rider-modal-overlay"
             className="admin-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setIsModalOpen(false);
             }}
@@ -646,12 +650,16 @@ export default function AdminDeliveryRiders({ adminToken, orders = [], packageOr
                 </div>
               </form>
             </motion.div>
-          </div>
+          </motion.div>
         )}
         {/* Delete Rider Confirmation Modal */}
         {deleteTargetRider && (
-          <div
+          <motion.div
+            key="delete-rider-modal-overlay"
             className="admin-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={(e) => {
               if (e.target === e.currentTarget && !isDeleting) setDeleteTargetRider(null);
             }}
@@ -724,7 +732,7 @@ export default function AdminDeliveryRiders({ adminToken, orders = [], packageOr
                 </motion.button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

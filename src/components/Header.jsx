@@ -251,123 +251,125 @@ export default function Header({
       {/* Mobile Drawer (Native App Menu Sheet) */}
       <AnimatePresence>
         {mobileNavOpen && (
-          <>
-            <motion.div
-              id="mobile-overlay"
-              className="open"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileNavOpen(false)}
-            />
-            <motion.nav
-              id="mobile-nav"
-              className="open"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-            >
-              {/* Drawer Header with Brand / User Profile Banner */}
-              <div className="mn-head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {logoImageUrl ? (
-                    <img src={logoImageUrl} alt={siteName} style={{ height: '36px', maxWidth: '140px', objectFit: 'contain' }} />
-                  ) : (
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--ink)' }}>{siteName}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>{siteTagline}</div>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => setMobileNavOpen(false)}
-                  aria-label="মেনু বন্ধ করুন"
-                  className="close-drawer-btn"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* User Greeting / Auth Status */}
-              <div className="drawer-user-card">
-                {user ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <div>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>স্বাগতম,</div>
-                      <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>{user.name}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{user.phone}</div>
-                    </div>
-                    <button
-                      className="drawer-profile-btn"
-                      onClick={() => {
-                        setMobileNavOpen(false);
-                        onNavigateProfile();
-                      }}
-                    >
-                      প্রোফাইল
-                    </button>
-                  </div>
+          <motion.div
+            key="mobile-nav-overlay"
+            id="mobile-overlay"
+            className="open"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileNavOpen(false)}
+          />
+        )}
+        {mobileNavOpen && (
+          <motion.nav
+            key="mobile-nav-sidebar"
+            id="mobile-nav"
+            className="open"
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+          >
+            {/* Drawer Header with Brand / User Profile Banner */}
+            <div className="mn-head">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {logoImageUrl ? (
+                  <img src={logoImageUrl} alt={siteName} style={{ height: '36px', maxWidth: '140px', objectFit: 'contain' }} />
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink)' }}>অ্যাকাউন্ট নেই?</div>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>লগইন বা রেজিস্টার করুন</div>
-                    </div>
-                    <button
-                      className="drawer-login-btn"
-                      onClick={() => {
-                        setMobileNavOpen(false);
-                        openAuthModal('login');
-                      }}
-                    >
-                      লগইন
-                    </button>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--ink)' }}>{siteName}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>{siteTagline}</div>
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                aria-label="মেনু বন্ধ করুন"
+                className="close-drawer-btn"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-              {/* Drawer Category Links */}
-              <div className="drawer-section-title">
-                <LayoutGrid size={15} /> <span>ক্যাটাগরি সমূহ</span>
-              </div>
-
-              <div id="mobile-links">
-                {groups.map((g) => (
+            {/* User Greeting / Auth Status */}
+            <div className="drawer-user-card">
+              {user ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>স্বাগতম,</div>
+                    <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>{user.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{user.phone}</div>
+                  </div>
                   <button
-                    key={g.key}
-                    className={`nav-link ${activeGroupTab === g.key ? 'active' : ''}`}
+                    className="drawer-profile-btn"
                     onClick={() => {
                       setMobileNavOpen(false);
-                      handleGroupClick(g.key);
+                      onNavigateProfile();
                     }}
                   >
-                    <span className="nav-link-bn">{g.bn}</span>
-                    <span className="nav-link-en">{g.en}</span>
+                    প্রোফাইল
                   </button>
-                ))}
-              </div>
-
-              {/* Drawer Footer info */}
-              <div className="drawer-footer">
-                {user?.is_admin && (
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink)' }}>অ্যাকাউন্ট নেই?</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>লগইন বা রেজিস্টার করুন</div>
+                  </div>
                   <button
+                    className="drawer-login-btn"
                     onClick={() => {
                       setMobileNavOpen(false);
-                      navigate('/admin');
+                      openAuthModal('login');
                     }}
-                    className="drawer-admin-link"
-                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)', width: '100%', justifyContent: 'flex-start', marginBottom: '12px' }}
                   >
-                    <ShieldCheck size={16} /> <span>এডমিন প্যানেল</span>
+                    লগইন
                   </button>
-                )}
-                <p style={{ margin: 0, fontSize: '11px', color: 'var(--muted)' }}>
-                  © 2026 Arot Express · দ্রুত হোম ডেলিভারি
-                </p>
-              </div>
-            </motion.nav>
-          </>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Category Links */}
+            <div className="drawer-section-title">
+              <LayoutGrid size={15} /> <span>ক্যাটাগরি সমূহ</span>
+            </div>
+
+            <div id="mobile-links">
+              {groups.map((g) => (
+                <button
+                  key={g.key}
+                  className={`nav-link ${activeGroupTab === g.key ? 'active' : ''}`}
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    handleGroupClick(g.key);
+                  }}
+                >
+                  <span className="nav-link-bn">{g.bn}</span>
+                  <span className="nav-link-en">{g.en}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Drawer Footer info */}
+            <div className="drawer-footer">
+              {user?.is_admin && (
+                <button
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    navigate('/admin');
+                  }}
+                  className="drawer-admin-link"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)', width: '100%', justifyContent: 'flex-start', marginBottom: '12px' }}
+                >
+                  <ShieldCheck size={16} /> <span>এডমিন প্যানেল</span>
+                </button>
+              )}
+              <p style={{ margin: 0, fontSize: '11px', color: 'var(--muted)' }}>
+                © 2026 Arot Express · দ্রুত হোম ডেলিভারি
+              </p>
+            </div>
+          </motion.nav>
         )}
       </AnimatePresence>
     </>

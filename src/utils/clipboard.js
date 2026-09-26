@@ -48,7 +48,9 @@ export async function copyToClipboard(text) {
     textarea.setSelectionRange(0, textarea.value.length);
 
     const successful = document.execCommand('copy');
-    document.body.removeChild(textarea);
+    if (textarea && textarea.parentNode) {
+      textarea.parentNode.removeChild(textarea);
+    }
 
     return !!successful;
   } catch (err) {

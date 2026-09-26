@@ -1076,8 +1076,12 @@ export default function ProfileView({ onBackToHome }) {
       {/* Product Items Details Modal */}
       <AnimatePresence>
         {viewItemsModal && (
-          <div
+          <motion.div
+            key="view-items-modal-overlay"
             className="admin-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             style={{
               position: 'fixed',
               inset: 0,
@@ -1281,7 +1285,7 @@ export default function ProfileView({ onBackToHome }) {
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

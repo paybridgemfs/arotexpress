@@ -132,6 +132,7 @@ export default function CategoryGrid({
                     <AnimatePresence>
                       {inCartCount > 0 && (
                         <motion.span
+                          key={`in-cart-badge-${cat.id}`}
                           className="in-cart-badge"
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}

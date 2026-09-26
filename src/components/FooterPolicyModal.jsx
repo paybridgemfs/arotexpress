@@ -55,8 +55,12 @@ export default function FooterPolicyModal({
 
   return (
     <AnimatePresence>
-      <div
+      <motion.div
+        key="footer-policy-modal-overlay"
         className="admin-modal-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
         onClick={onClose}
       >
@@ -354,7 +358,7 @@ export default function FooterPolicyModal({
             </button>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 }

@@ -57,6 +57,7 @@ export default function CategoryDetailClientView({ categoryIdParam }: { category
         {/* Product Detail Modal / Sheet */}
         <AnimatePresence>
           <ProductDetail
+            key={`product-detail-modal-${selectedCategoryId}`}
             categoryId={selectedCategoryId}
             category={selectedCategory}
             isLoading={loading}

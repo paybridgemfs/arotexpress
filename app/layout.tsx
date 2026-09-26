@@ -227,38 +227,11 @@ export default async function RootLayout({
   return (
     <html lang="bn" data-scroll-behavior="smooth">
       <head>
-        {faviconUrl.startsWith('data:image/svg+xml') ? (
-          <link rel="icon" type="image/svg+xml" href={faviconUrl} />
-        ) : (
-          <link rel="icon" href={faviconUrl} />
-        )}
-        <link rel="shortcut icon" href={faviconUrl} />
-        <link rel="apple-touch-icon" href={faviconUrl} />
-        
-        {/* WhatsApp & Social Media Preview Direct Tags */}
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content={initialData?.settings?.site_name || 'আড়ৎ এক্সপ্রেস'} />
-        <meta property="og:title" content={siteTitle} />
-        <meta property="og:description" content={siteDescription} />
-        <meta property="og:url" content={siteUrl} />
-        {ogImageUrl && (
-          <>
-            <meta property="og:image" content={ogImageUrl} />
-            <meta property="og:image:secure_url" content={ogImageUrl} />
-            <meta property="og:image:width" content="1200" />
-            <meta property="og:image:height" content="630" />
-            <meta property="og:image:type" content="image/jpeg" />
-          </>
-        )}
-        <meta name="twitter:card" content={ogImageUrl ? 'summary_large_image' : 'summary'} />
-        <meta name="twitter:title" content={siteTitle} />
-        <meta name="twitter:description" content={siteDescription} />
-        {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
-
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;500;600;700;800&family=Noto+Serif+Bengali:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
         <script
+          id="schema-org-jsonld"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
