@@ -263,6 +263,7 @@ export const initialData = {
     payment_verify_api_url: '',
     payment_verify_api_key: '',
     banner_url: '',
+    favicon_image_url: '',
     logo_type: 'text',
     logo_image_url: '',
     logo_text_bn: 'আড়ৎ এক্সপ্রেস',

@@ -235,10 +235,10 @@ export function StoreDataProvider({
       if (setRes.ok) {
         const setData = await setRes.json();
         if (setData && typeof setData === 'object') {
+          updateAppMeta(setData);
           if (hasDataChanged(settingsRef.current, setData)) {
             newSettings = setData;
             setSettings(setData);
-            updateAppMeta(setData);
           }
           if (typeof setData.default_delivery_fee === 'number' && defaultDeliveryFeeRef.current !== setData.default_delivery_fee) {
             newDeliveryFee = setData.default_delivery_fee;

@@ -2,13 +2,12 @@
 export function updateAppMeta(settings) {
   if (typeof document === 'undefined' || !settings) return;
 
-  // 1. Update Meta Tags & Title
-  const siteName = settings.site_name?.trim() || 'Arot Express';
-  const siteTagline = settings.site_tagline?.trim() || 'আপনার আড়ৎ, এখন এক ক্লিকে';
+  // 1. Update Meta Tags & Document Title
+  const siteName = (settings.site_name || 'Arot Express').trim();
+  const siteTagline = (settings.site_tagline || 'আপনার আড়ৎ, এখন এক ক্লিকে').trim();
   
-  // The title requested by the user: "website er title e tagline/upo-shironam e ja thakbe setai bosbe"
+  // The title requested: "website er title e tagline/upo-shironam e ja thakbe setai bosbe"
   const documentTitle = siteTagline || siteName;
-  
   if (document.title !== documentTitle) {
     document.title = documentTitle;
   }
@@ -16,11 +15,11 @@ export function updateAppMeta(settings) {
   const metaTitleEl = document.getElementById('meta-title');
   if (metaTitleEl) metaTitleEl.innerText = documentTitle;
 
-  // Open Graph and Twitter tags: Use Hero Title and Hero Subtitle for better preview
+  // Open Graph and Twitter tags: Use Hero Title and Hero Subtitle for rich previews
   const ogTitle = (settings.header_title?.trim() || siteName).replace('\n', ' ');
   const ogDesc = settings.header_subtitle?.trim() || siteTagline;
   
-  // Explicitly check for banner_url, fallback to logo if banner is not provided
+  // Banner / OG Image resolution
   const bannerUrl = settings.banner_url?.trim() || settings.logo_image_url?.trim() || '';
 
   const setMetaContent = (nameOrProperty, content) => {
@@ -46,17 +45,22 @@ export function updateAppMeta(settings) {
   setMetaContent('twitter:title', ogTitle);
   setMetaContent('twitter:description', ogDesc);
   
-  // Explicitly use bannerUrl to set the og:image and twitter:image tags
   if (bannerUrl) {
     setMetaContent('og:image', bannerUrl);
     setMetaContent('twitter:image', bannerUrl);
   }
 
-  // 2. Update Favicon
+  // 2. Favicon Resolution & Dynamic DOM Injection
+  // Priority: 1) Explicitly uploaded favicon (favicon_image_url) -> 2) Uploaded logo (logo_image_url) -> 3) Default SVG
   let faviconUrl = '';
-  if (settings.logo_type === 'image' && settings.logo_image_url?.trim()) {
+  let isSvgData = false;
+
+  if (settings.favicon_image_url && typeof settings.favicon_image_url === 'string' && settings.favicon_image_url.trim()) {
+    faviconUrl = settings.favicon_image_url.trim();
+  } else if (settings.logo_image_url && typeof settings.logo_image_url === 'string' && settings.logo_image_url.trim()) {
     faviconUrl = settings.logo_image_url.trim();
   } else {
+    isSvgData = true;
     const text = (settings.logo_text_en || settings.logo_text_bn || 'AE').trim();
     const cleanText = text.slice(0, 5);
     const fontSize = cleanText.length <= 2 ? 34 : cleanText.length <= 3 ? 26 : 20;
@@ -74,28 +78,57 @@ export function updateAppMeta(settings) {
     faviconUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   }
 
-  // Update or create standard favicon link element
-  let link = document.querySelector("link[rel~='icon']");
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
+  if (faviconUrl) {
+    // Generate cache-busted URL for browser tab icon DOM links (avoids browser-level favicon caching)
+    const domFaviconUrl = (isSvgData || faviconUrl.startsWith('data:'))
+      ? faviconUrl
+      : (faviconUrl.includes('?') ? `${faviconUrl}&v=${Date.now()}` : `${faviconUrl}?v=${Date.now()}`);
+
+    // Remove all old or conflicting favicon links to ensure clean browser refresh
+    const oldIconLinks = document.querySelectorAll("link[rel*='icon']");
+    oldIconLinks.forEach((el) => {
+      try {
+        el.remove();
+      } catch (e) {}
+    });
+
+    // 1. Create standard <link rel="icon">
+    const standardIcon = document.createElement('link');
+    standardIcon.rel = 'icon';
+    if (isSvgData || faviconUrl.startsWith('data:image/svg+xml')) {
+      standardIcon.type = 'image/svg+xml';
+    } else if (faviconUrl.endsWith('.png') || faviconUrl.includes('.png')) {
+      standardIcon.type = 'image/png';
+    } else if (faviconUrl.endsWith('.ico') || faviconUrl.includes('.ico')) {
+      standardIcon.type = 'image/x-icon';
+    }
+    standardIcon.href = domFaviconUrl;
+    document.head.appendChild(standardIcon);
+
+    // 2. Create legacy shortcut icon <link rel="shortcut icon">
+    const shortcutIcon = document.createElement('link');
+    shortcutIcon.rel = 'shortcut icon';
+    shortcutIcon.href = domFaviconUrl;
+    document.head.appendChild(shortcutIcon);
+
+    // 3. Create apple touch icon <link rel="apple-touch-icon">
+    const appleIcon = document.createElement('link');
+    appleIcon.rel = 'apple-touch-icon';
+    appleIcon.href = domFaviconUrl;
+    document.head.appendChild(appleIcon);
   }
-  link.href = faviconUrl;
-  
-  // Add Canonical Link
+
+  // 3. Canonical Link
   let canonicalLink = document.querySelector('link[rel="canonical"]');
   if (!canonicalLink) {
     canonicalLink = document.createElement('link');
     canonicalLink.rel = 'canonical';
     document.head.appendChild(canonicalLink);
   }
-  canonicalLink.href = window.location.href.split('?')[0]; // Remove query params for canonical
-  
-  
-  // Add SEO Keywords
+  canonicalLink.href = window.location.href.split('?')[0];
+
+  // 4. SEO Keywords
   const keywords = `${siteName}, ${siteTagline}, ecommerce, grocery, online shopping`.replace(/[—\-।|,]/g, '').replace(/\s+/g, ', ');
-  
   let metaKeywords = document.querySelector('meta[name="keywords"]');
   if (!metaKeywords) {
     metaKeywords = document.createElement('meta');
@@ -103,15 +136,15 @@ export function updateAppMeta(settings) {
     document.head.appendChild(metaKeywords);
   }
   metaKeywords.content = keywords;
-  
-  // Add Schema.org JSON-LD structured data for better SEO
+
+  // 5. Schema.org JSON-LD structured data
   let scriptSchema = document.querySelector('script[type="application/ld+json"]');
   if (!scriptSchema) {
     scriptSchema = document.createElement('script');
     scriptSchema.type = 'application/ld+json';
     document.head.appendChild(scriptSchema);
   }
-  
+
   const schemaData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -124,13 +157,13 @@ export function updateAppMeta(settings) {
       "query-input": "required name=search_term_string"
     }
   };
-  
+
   const orgSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": siteName,
     "url": window.location.origin,
-    "logo": faviconUrl,
+    "logo": settings.logo_image_url || faviconUrl,
     "contactPoint": {
       "@type": "ContactPoint",
       "telephone": settings.site_helpline || "",
@@ -141,15 +174,6 @@ export function updateAppMeta(settings) {
       "addressLocality": settings.site_address || ""
     }
   };
-  
-  scriptSchema.textContent = JSON.stringify([schemaData, orgSchema]);
 
-  // Also update Apple Touch Icon
-  let appleLink = document.querySelector("link[rel='apple-touch-icon']");
-  if (!appleLink) {
-    appleLink = document.createElement('link');
-    appleLink.rel = 'apple-touch-icon';
-    document.head.appendChild(appleLink);
-  }
-  appleLink.href = faviconUrl;
+  scriptSchema.textContent = JSON.stringify([schemaData, orgSchema]);
 }

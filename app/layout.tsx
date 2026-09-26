@@ -46,6 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
         ]
       : [];
 
+    const defaultSvgFavicon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23006C4C'/%3E%3Ctext x='32' y='35' text-anchor='middle' dominant-baseline='central' fill='%23FFFFFF' font-family='sans-serif' font-weight='900' font-size='34'%3EAE%3C/text%3E%3C/svg%3E";
+    const customFavicon = (settings.favicon_image_url || settings.logo_image_url || '').trim();
+    const resolvedFaviconUrl = customFavicon ? resolveAbsoluteUrl(customFavicon, siteUrl) : defaultSvgFavicon;
+
     return {
       metadataBase: new URL(siteUrl),
       title: {
@@ -55,6 +59,16 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       applicationName: siteName,
       authors: [{ name: siteName }],
+      icons: {
+        icon: [
+          {
+            url: resolvedFaviconUrl,
+            ...(resolvedFaviconUrl.startsWith('data:image/svg+xml') ? { type: 'image/svg+xml' } : {})
+          }
+        ],
+        shortcut: [resolvedFaviconUrl],
+        apple: [resolvedFaviconUrl],
+      },
       keywords: [
         'arot express',
         'আড়ৎ এক্সপ্রেস',
@@ -145,7 +159,9 @@ export default async function RootLayout({
       ogImageUrl = resolveAbsoluteUrl(settings.logo_image_url.trim(), siteUrl);
     }
 
-    if (settings.logo_type === 'image' && settings.logo_image_url?.trim()) {
+    if (settings.favicon_image_url?.trim()) {
+      faviconUrl = settings.favicon_image_url.trim();
+    } else if (settings.logo_image_url?.trim()) {
       faviconUrl = settings.logo_image_url.trim();
     }
 
@@ -211,7 +227,12 @@ export default async function RootLayout({
   return (
     <html lang="bn" data-scroll-behavior="smooth">
       <head>
-        <link rel="icon" type="image/svg+xml" href={faviconUrl} />
+        {faviconUrl.startsWith('data:image/svg+xml') ? (
+          <link rel="icon" type="image/svg+xml" href={faviconUrl} />
+        ) : (
+          <link rel="icon" href={faviconUrl} />
+        )}
+        <link rel="shortcut icon" href={faviconUrl} />
         <link rel="apple-touch-icon" href={faviconUrl} />
         
         {/* WhatsApp & Social Media Preview Direct Tags */}
