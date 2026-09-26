@@ -143,7 +143,6 @@ export default function Header({
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <User size={16} />
-                <span className="user-btn-name">{user.name ? user.name.split(' ')[0] : 'প্রোফাইল'}</span>
               </motion.button>
             ) : (
               <motion.button
