@@ -1,6 +1,5 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { updateAppMeta } from '../utils/meta.js';
 
 interface CachedStoreData {
   groups: any[];
@@ -235,7 +234,6 @@ export function StoreDataProvider({
       if (setRes.ok) {
         const setData = await setRes.json();
         if (setData && typeof setData === 'object') {
-          updateAppMeta(setData);
           if (hasDataChanged(settingsRef.current, setData)) {
             newSettings = setData;
             setSettings(setData);
@@ -326,12 +324,6 @@ export function StoreDataProvider({
       window.removeEventListener('focus', handleRevalidate);
     };
   }, [fetchData]);
-
-  useEffect(() => {
-    if (settings) {
-      updateAppMeta(settings);
-    }
-  }, [settings]);
 
   const activeGroups = useMemo(() => {
     return groups.filter((g) => g.is_active !== false);

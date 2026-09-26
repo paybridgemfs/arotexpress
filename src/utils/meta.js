@@ -1,26 +1,34 @@
-// Utility to dynamically synchronize browser title and favicon safely with settings
-export function updateAppMeta(settings) {
-  if (typeof document === 'undefined' || !settings) return;
+// Utility to dynamically synchronize browser title safely with route and settings
+export function updateAppMeta(settings, customTitle = null) {
+  if (typeof document === 'undefined') return;
 
   try {
-    // 1. Update Document Title safely
-    const siteName = (settings.site_name || 'Arot Express').trim();
-    const siteTagline = (settings.site_tagline || '').trim();
+    if (customTitle && typeof customTitle === 'string') {
+      if (document.title !== customTitle) {
+        document.title = customTitle;
+      }
+      return;
+    }
+
+    if (!settings) return;
+
+    const siteName = (settings.site_name || 'আড়ৎ এক্সপ্রেস (Arot Express)').trim();
+    const siteTagline = (settings.site_tagline || 'তাজা পাইকারি ও খুচরা মুদি বাজার').trim();
     
-    const documentTitle = siteTagline || siteName;
+    const documentTitle = siteTagline ? `${siteName} — ${siteTagline}` : siteName;
     if (documentTitle && document.title !== documentTitle) {
       document.title = documentTitle;
     }
+  } catch (e) {
+    // Graceful silent fallback
+  }
+}
 
-    // 2. Favicon update (in-place modification of existing link tags only, without creating or removing DOM nodes)
-    const customFavicon = (settings.favicon_image_url || settings.logo_image_url || '').trim();
-    if (customFavicon) {
-      const iconLinks = document.querySelectorAll("link[rel*='icon']");
-      iconLinks.forEach((link) => {
-        if (link && link.href !== customFavicon) {
-          link.href = customFavicon;
-        }
-      });
+export function setPageTitle(title) {
+  if (typeof document === 'undefined' || !title) return;
+  try {
+    if (document.title !== title) {
+      document.title = title;
     }
   } catch (e) {
     // Graceful silent fallback

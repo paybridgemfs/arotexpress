@@ -69,6 +69,27 @@ import { updateAppMeta } from '../utils/meta.js';
 // Low stock threshold constant (< 5)
 const LOW_STOCK_THRESHOLD = 5;
 
+const ADMIN_TAB_TITLES = {
+  dashboard: 'অ্যাডমিন প্যানেল',
+  orders: 'অর্ডারসমূহ',
+  package_orders: 'প্যাকেজ অর্ডারসমূহ',
+  riders: 'ডেলিভারিম্যান',
+  users: 'কাস্টমার তালিকা',
+  products: 'ক্যাটাগরি ও পণ্য',
+  package_management: 'প্যাকেজ বক্স',
+  groups: 'গ্রুপ ব্যবস্থাপনা',
+  delivery: 'ডেলিভারি ও ঠিকানা',
+  payments: 'পেমেন্ট মেথড',
+  expenses: 'আয়-ব্যয় ও লাভ-ক্ষতি',
+  reports: 'আয়-ব্যয় ও লাভ-ক্ষতি',
+  reports_hub: 'রিপোর্টস ও প্রিন্ট',
+  settings: 'সাইট সেটিংস',
+  footer_settings: 'ফুটার সেটিংস',
+  footer: 'ফুটার সেটিংস',
+  social_links: 'সোশ্যাল লিংকস',
+  profile: 'অ্যাডমিন ক্রেডেনশিয়াল'
+};
+
 export default function AdminPanel({ onNavigateHome }) {
   const { adminUser, adminToken, adminLogin, adminLogout, updateAdminProfile, loading: authLoading, isAuthHydrated } = useAuth();
   const { showToast } = useCart();
@@ -143,6 +164,25 @@ export default function AdminPanel({ onNavigateHome }) {
   const [packageProducts, setPackageProducts] = useState([]);
   const [packageOrders, setPackageOrders] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
+
+  // Synchronize document title reactively for Admin Panel and every sidebar item
+  useEffect(() => {
+    const siteName = (settings && settings.site_name ? settings.site_name.trim() : '') || (storeContext?.settings?.site_name?.trim()) || 'আড়ৎ এক্সপ্রেস (Arot Express)';
+    
+    if (!adminToken) {
+      const loginTitle = `অ্যাডমিন লগইন — ${siteName}`;
+      if (document.title !== loginTitle) {
+        document.title = loginTitle;
+      }
+      return;
+    }
+
+    const itemTitle = ADMIN_TAB_TITLES[adminTab] || 'অ্যাডমিন প্যানেল';
+    const fullTitle = `${itemTitle} — ${siteName}`;
+    if (document.title !== fullTitle) {
+      document.title = fullTitle;
+    }
+  }, [adminTab, adminToken, settings?.site_name, storeContext?.settings?.site_name]);
 
   // Modals / Edit states for Categories & Brands
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);

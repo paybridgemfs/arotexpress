@@ -8,7 +8,15 @@ import { useStoreData } from '@/src/context/StoreDataContext';
 
 export default function ConfirmPage() {
   const router = useRouter();
-  const { lastOrder } = useStoreData();
+  const { lastOrder, settings } = useStoreData();
+
+  React.useEffect(() => {
+    const siteName = (settings && settings.site_name ? settings.site_name.trim() : '') || 'আড়ৎ এক্সপ্রেস (Arot Express)';
+    const title = `অর্ডার নিশ্চিতকরণ — ${siteName}`;
+    if (document.title !== title) {
+      document.title = title;
+    }
+  }, [settings?.site_name]);
 
   return (
     <StoreLayout>

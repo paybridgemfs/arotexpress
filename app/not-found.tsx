@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { ShoppingBag, ArrowLeft, Home, Search, AlertCircle } from 'lucide-react';
 
 export default function NotFound() {
+  React.useEffect(() => {
+    document.title = 'পৃষ্ঠাটি খুঁজে পাওয়া যায়নি (404) — আড়ৎ এক্সপ্রেস';
+  }, []);
   return (
     <div
       style={{

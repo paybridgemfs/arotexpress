@@ -12,8 +12,17 @@ export default function CheckoutPage() {
     paymentMethods,
     deliveryAreas,
     defaultDeliveryFee,
-    setLastOrder
+    setLastOrder,
+    settings
   } = useStoreData();
+
+  React.useEffect(() => {
+    const siteName = (settings && settings.site_name ? settings.site_name.trim() : '') || 'আড়ৎ এক্সপ্রেস (Arot Express)';
+    const title = `চেকআউট — ${siteName}`;
+    if (document.title !== title) {
+      document.title = title;
+    }
+  }, [settings?.site_name]);
 
   return (
     <StoreLayout>

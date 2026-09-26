@@ -24,6 +24,7 @@ import {
   Package
 } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
+import { useStoreData } from '../context/StoreDataContext.tsx';
 import { toBengaliNumber } from '../utils/bengali.js';
 import DeliveryRiderDashboard from './DeliveryRiderDashboard.jsx';
 import DeliveryRiderOrders from './DeliveryRiderOrders.jsx';
@@ -31,8 +32,17 @@ import DeliveryRiderReports from './DeliveryRiderReports.jsx';
 import DeliveryRiderProfile from './DeliveryRiderProfile.jsx';
 import PosReceiptModal from './PosReceiptModal.jsx';
 
+const RIDER_TAB_TITLES = {
+  dashboard: 'ডেলিভারি ম্যান প্যানেল',
+  orders: 'অ্যাসাইন করা অর্ডার',
+  reports: 'ডেলিভারি রিপোর্ট ও হিসাব',
+  profile: 'প্রোফাইল ও পাসওয়ার্ড'
+};
+
 export default function DeliveryRiderPanel({ onNavigateHome }) {
   const { showToast } = useCart();
+  const storeContext = useStoreData?.();
+  const settings = storeContext?.settings;
 
   // Rider auth state (stored in localStorage for persistent session)
   const [riderToken, setRiderToken] = useState(() => {
@@ -67,6 +77,25 @@ export default function DeliveryRiderPanel({ onNavigateHome }) {
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
+
+  // Synchronize document title reactively for Rider panel and each sidebar item
+  useEffect(() => {
+    const siteName = (settings && settings.site_name ? settings.site_name.trim() : '') || 'আড়ৎ এক্সপ্রেস (Arot Express)';
+
+    if (!riderToken) {
+      const loginTitle = `ডেলিভারি ম্যান লগইন — ${siteName}`;
+      if (document.title !== loginTitle) {
+        document.title = loginTitle;
+      }
+      return;
+    }
+
+    const itemTitle = RIDER_TAB_TITLES[activeTab] || 'ডেলিভারি ম্যান প্যানেল';
+    const fullTitle = `${itemTitle} — ${siteName}`;
+    if (document.title !== fullTitle) {
+      document.title = fullTitle;
+    }
+  }, [activeTab, riderToken, settings?.site_name]);
 
   // Receipt Modal state
   const [receiptOrder, setReceiptOrder] = useState(null);

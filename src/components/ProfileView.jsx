@@ -37,7 +37,7 @@ export default function ProfileView({ onBackToHome }) {
   const { user, token, logout, updateProfile } = useAuth();
   const { showToast, replaceCartWithOrder } = useCart();
   const { loadPackageOrderItems } = usePackageBox();
-  const { packageProducts = [] } = useStoreData();
+  const { packageProducts = [], settings } = useStoreData();
 
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'settings'
   const [orders, setOrders] = useState([]);
@@ -56,6 +56,26 @@ export default function ProfileView({ onBackToHome }) {
   const [newPassword, setNewPassword] = useState('');
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState({ text: '', type: '' });
+
+  // Synchronize dynamic profile title:
+  // - Orders tab: 'মোঃ সাগর মিয়া — অর্ডারসমূহ'
+  // - Settings tab: 'মোঃ সাগর মিয়া — প্রোফাইল সেটিংস'
+  useEffect(() => {
+    const siteName = (settings && settings.site_name ? settings.site_name.trim() : '') || 'আড়ৎ এক্সপ্রেস (Arot Express)';
+    const userName = (user && user.name ? user.name.trim() : '') || (name ? name.trim() : '');
+
+    if (activeTab === 'orders') {
+      const title = userName ? `${userName} — অর্ডারসমূহ` : `অর্ডারসমূহ — ${siteName}`;
+      if (document.title !== title) {
+        document.title = title;
+      }
+    } else if (activeTab === 'settings') {
+      const title = userName ? `${userName} — প্রোফাইল সেটিংস` : `প্রোফাইল সেটিংস — ${siteName}`;
+      if (document.title !== title) {
+        document.title = title;
+      }
+    }
+  }, [activeTab, user?.name, name, settings?.site_name]);
 
   // Calculate order financial breakdown safely
   const getOrderFinancials = (order) => {

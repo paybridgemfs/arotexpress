@@ -26,6 +26,16 @@ export default function HomeClientView() {
     fetchData(false);
   }, [fetchData]);
 
+  // Synchronize Homepage document title immediately
+  useEffect(() => {
+    const siteName = (settings && settings.site_name ? settings.site_name.trim() : '') || 'আড়ৎ এক্সপ্রেস (Arot Express)';
+    const siteTagline = (settings && settings.site_tagline ? settings.site_tagline.trim() : '') || 'তাজা পাইকারি ও খুচরা মুদি বাজার';
+    const title = `${siteName} — ${siteTagline}`;
+    if (document.title !== title) {
+      document.title = title;
+    }
+  }, [settings?.site_name, settings?.site_tagline]);
+
   useEffect(() => {
     const handleScroll = () => {
       const sections = document.querySelectorAll('.group-section');

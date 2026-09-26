@@ -31,6 +31,23 @@ export default function CategoryDetailClientView({ categoryIdParam }: { category
     (c: any) => c.id === selectedCategoryId || String(c.id) === String(categoryIdParam)
   );
 
+  // Synchronize category document title immediately
+  React.useEffect(() => {
+    const siteName = (settings && settings.site_name ? settings.site_name.trim() : '') || 'আড়ৎ এক্সপ্রেস (Arot Express)';
+    if (selectedCategory) {
+      const enSuffix = selectedCategory.en ? ` (${selectedCategory.en})` : '';
+      const title = `${selectedCategory.bn}${enSuffix} — ${siteName}`;
+      if (document.title !== title) {
+        document.title = title;
+      }
+    } else {
+      const title = `ক্যাটাগরি বিস্তারিত — ${siteName}`;
+      if (document.title !== title) {
+        document.title = title;
+      }
+    }
+  }, [selectedCategory, settings?.site_name]);
+
   return (
     <StoreLayout>
       <div style={{ position: 'relative', width: '100%' }}>
