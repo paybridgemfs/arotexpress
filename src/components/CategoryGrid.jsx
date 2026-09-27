@@ -56,7 +56,7 @@ export default function CategoryGrid({
               <div className="skel-block section-head-skel"></div>
             </div>
             <div className="grid">
-              {[1, 2, 3, 4, 5, 6].map((c) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
                 <div key={`sk-c-${c}`} className="skel-cat-card">
                   <div className="skel-circle skel-cat-icon"></div>
                   <div className="skel-block skel-cat-text"></div>
@@ -116,16 +116,17 @@ export default function CategoryGrid({
                   >
                     <span className="badge-num">{toBengaliNumber(cat.id)}</span>
                     <div
+                      className="cat-icon-container"
                       style={{
-                        width: '80px',
-                        height: '80px',
+                        width: '56px',
+                        height: '56px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        margin: '4px auto 12px auto'
+                        margin: '2px auto 6px auto'
                       }}
                     >
-                      <CategoryIcon icon={cat.icon} category={cat} size={80} />
+                      <CategoryIcon icon={cat.icon} category={cat} size={50} />
                     </div>
                     <span className="en">{cat.en}</span>
                     <span className="bn">{cat.bn}</span>

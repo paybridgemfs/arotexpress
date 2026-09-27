@@ -171,7 +171,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
           </div>
 
           <div className="products-grid-view">
-            {[1, 2, 3, 4, 5, 6].map((sk) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((sk) => (
               <div
                 className="product-card-modern"
                 key={`sk-prod-${sk}`}
