@@ -158,7 +158,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
             <div className="skel-block skel-breadcrumb" style={{ margin: 0, padding: '16px', width: '200px' }}></div>
           </div>
         </div>
-        <section className="section-wrap product-detail-section animate-pulse" style={{ paddingTop: '16px' }}>
+        <section className="section-wrap animate-pulse" style={{ paddingTop: '16px' }}>
           <div className="skel-pd-banner">
             <div
               className="skel-circle skel-pd-banner-icon"
@@ -253,7 +253,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
         </div>
       </div>
 
-      <section className="section-wrap product-detail-section" style={{ paddingTop: '16px' }}>
+      <section className="section-wrap" style={{ paddingTop: '16px' }}>
         <motion.div
           className="pd-banner"
           initial={{ opacity: 0 }}
