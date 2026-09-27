@@ -76,8 +76,8 @@ const ADMIN_TAB_TITLES = {
   riders: 'ডেলিভারিম্যান',
   users: 'কাস্টমার তালিকা',
   products: 'ক্যাটাগরি ও পণ্য',
-  package_management: 'প্যাকেজ বক্স',
   groups: 'গ্রুপ ব্যবস্থাপনা',
+  package_management: 'প্যাকেজ বক্স',
   delivery: 'ডেলিভারি ও ঠিকানা',
   payments: 'পেমেন্ট মেথড',
   expenses: 'আয়-ব্যয় ও লাভ-ক্ষতি',
@@ -1243,16 +1243,6 @@ export default function AdminPanel({ onNavigateHome }) {
             <Layers size={16} />
             <span>ক্যাটাগরি ও পণ্য ({categories.length})</span>
           </motion.button>
-
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            className={`admin-nav-item ${adminTab === 'package_management' ? 'active' : ''}`}
-            onClick={() => { setAdminTab('package_management'); setSidebarOpen(false); window.scrollTo(0, 0); }}
-          >
-            <Package size={16} />
-            <span>প্যাকেজ বক্স (Hero 10)</span>
-          </motion.button>
-
           <motion.button
             whileTap={{ scale: 0.98 }}
             className={`admin-nav-item ${adminTab === 'groups' ? 'active' : ''}`}
@@ -1260,6 +1250,14 @@ export default function AdminPanel({ onNavigateHome }) {
           >
             <FolderKanban size={16} />
             <span>গ্রুপ ব্যবস্থাপনা ({groups.length})</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            className={`admin-nav-item ${adminTab === 'package_management' ? 'active' : ''}`}
+            onClick={() => { setAdminTab('package_management'); setSidebarOpen(false); window.scrollTo(0, 0); }}
+          >
+            <Package size={16} />
+            <span>প্যাকেজ বক্স (Hero 10)</span>
           </motion.button>
 
           <motion.button
