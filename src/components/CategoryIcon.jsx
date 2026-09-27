@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   ShoppingBag,
   Package,
@@ -104,16 +105,39 @@ export default function CategoryIcon({
       icon.startsWith('data:image'));
 
   if (isImageUrl && !imageError) {
+    const isBlobOrData = icon.startsWith('blob:') || icon.startsWith('data:image');
+    const numericSize = typeof size === 'number' ? size : parseInt(size, 10) || 48;
+
+    if (isBlobOrData) {
+      return (
+        <img
+          src={icon}
+          alt={category?.bn || 'Category Logo'}
+          className={`cat-logo-image ${className}`}
+          style={{
+            width: `${numericSize}px`,
+            height: `${numericSize}px`,
+            objectFit: 'contain',
+            borderRadius: '4px',
+            ...style
+          }}
+          onError={() => setImageError(true)}
+        />
+      );
+    }
+
     return (
-      <img
+      <Image
         src={icon}
         alt={category?.bn || 'Category Logo'}
+        width={numericSize}
+        height={numericSize}
         className={`cat-logo-image ${className}`}
-        loading="eager"
-        decoding="async"
+        referrerPolicy="no-referrer"
+        priority
         style={{
-          width: typeof size === 'number' ? `${size}px` : size,
-          height: typeof size === 'number' ? `${size}px` : size,
+          width: `${numericSize}px`,
+          height: `${numericSize}px`,
           objectFit: 'contain',
           borderRadius: '4px',
           ...style

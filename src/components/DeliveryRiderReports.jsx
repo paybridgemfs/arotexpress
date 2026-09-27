@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   FileText,
   Printer,
@@ -315,19 +316,19 @@ export default function DeliveryRiderReports({ rider, orders = [] }) {
         {/* Printable Header */}
         <div style={{ textAlign: 'center', borderBottom: '2px solid var(--ink)', paddingBottom: '14px', marginBottom: '16px' }}>
           {logoImageUrl ? (
-            <img
-              src={logoImageUrl}
-              alt={siteName}
-              style={{
-                maxHeight: '44px',
-                maxWidth: '180px',
-                width: 'auto',
-                height: 'auto',
-                objectFit: 'contain',
-                margin: '0 auto 6px',
-                display: 'block'
-              }}
-            />
+            <div style={{ position: 'relative', width: '160px', height: '44px', margin: '0 auto 6px' }}>
+              <Image
+                src={logoImageUrl}
+                alt={siteName}
+                fill
+                sizes="160px"
+                referrerPolicy="no-referrer"
+                style={{
+                  objectFit: 'contain',
+                  objectPosition: 'center'
+                }}
+              />
+            </div>
           ) : (
             <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 4px 0' }}>{siteName}</h2>
           )}

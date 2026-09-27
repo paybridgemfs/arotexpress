@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { Receipt, Plus, Search, Calendar, Filter, Trash2, Edit2, Download, Printer, TrendingUp, TrendingDown, DollarSign, Wallet, FileText, Check, X, RefreshCw, Layers, AlertTriangle } from 'lucide-react';
 import { toBengaliNumber } from '../utils/bengali.js';
@@ -308,18 +309,19 @@ export default function AdminExpenseTracker({ adminToken, orders = [], categorie
             <div>
               {logoImageUrl ? (
                 <div style={{ marginBottom: '4px' }}>
-                  <img
-                    src={logoImageUrl}
-                    alt={siteName}
-                    style={{
-                      maxHeight: '44px',
-                      maxWidth: '200px',
-                      width: 'auto',
-                      height: 'auto',
-                      objectFit: 'contain',
-                      display: 'block'
-                    }}
-                  />
+                  <div style={{ position: 'relative', width: '180px', height: '44px' }}>
+                    <Image
+                      src={logoImageUrl}
+                      alt={siteName}
+                      fill
+                      sizes="180px"
+                      referrerPolicy="no-referrer"
+                      style={{
+                        objectFit: 'contain',
+                        objectPosition: 'left center'
+                      }}
+                    />
+                  </div>
                   <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{siteTagline}</div>
                 </div>
               ) : (

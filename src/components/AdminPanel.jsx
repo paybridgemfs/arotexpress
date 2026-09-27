@@ -1,6 +1,7 @@
 "use client";
 import { useRouter, usePathname } from 'next/navigation';
 import React, { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import ProtectedRoute from './ProtectedRoute.jsx';
 import {
@@ -1216,18 +1217,19 @@ export default function AdminPanel({ onNavigateHome }) {
       <aside className={`admin-sidebar ${sidebarOpen ? 'mobile-open' : ''}`}>
         <div className="admin-brand" style={{ display: 'flex', alignItems: 'center', minHeight: '52px', padding: '12px 14px', width: '100%', boxSizing: 'border-box' }}>
           {(settings?.logo_image_url || storeContext?.settings?.logo_image_url) ? (
-            <img
-              src={settings?.logo_image_url || storeContext?.settings?.logo_image_url}
-              alt={settings?.site_name || storeContext?.settings?.site_name || 'লোগো'}
-              style={{
-                maxHeight: '44px',
-                maxWidth: '180px',
-                width: 'auto',
-                height: 'auto',
-                objectFit: 'contain',
-                display: 'block'
-              }}
-            />
+            <div style={{ position: 'relative', width: '160px', height: '44px' }}>
+              <Image
+                src={settings?.logo_image_url || storeContext?.settings?.logo_image_url}
+                alt={settings?.site_name || storeContext?.settings?.site_name || 'লোগো'}
+                fill
+                sizes="160px"
+                referrerPolicy="no-referrer"
+                style={{
+                  objectFit: 'contain',
+                  objectPosition: 'left center'
+                }}
+              />
+            </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div className="stamp" style={{ width: '40px', height: '40px', fontSize: '14px', flexShrink: 0 }}>AE</div>
@@ -1888,13 +1890,14 @@ export default function AdminPanel({ onNavigateHome }) {
                                         <td>
                                           <div className="admin-prod-name-wrap">
                                             {b.image ? (
-                                              <img
+                                              <Image
                                                 src={b.image}
                                                 alt={b.name}
+                                                width={40}
+                                                height={40}
                                                 className="admin-prod-thumb"
-                                                onError={(e) => {
-                                                  e.currentTarget.style.display = 'none';
-                                                }}
+                                                referrerPolicy="no-referrer"
+                                                style={{ objectFit: 'contain' }}
                                               />
                                             ) : (
                                               <div className="admin-prod-thumb">
@@ -2012,13 +2015,14 @@ export default function AdminPanel({ onNavigateHome }) {
                                     <div className="admin-prod-mobile-header">
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         {b.image ? (
-                                          <img
+                                          <Image
                                             src={b.image}
                                             alt={b.name}
+                                            width={40}
+                                            height={40}
                                             className="admin-prod-thumb"
-                                            onError={(e) => {
-                                              e.currentTarget.style.display = 'none';
-                                            }}
+                                            referrerPolicy="no-referrer"
+                                            style={{ objectFit: 'contain' }}
                                           />
                                         ) : (
                                           <div className="admin-prod-thumb">

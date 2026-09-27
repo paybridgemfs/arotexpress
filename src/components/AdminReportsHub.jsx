@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   FileText,
@@ -1404,19 +1405,19 @@ export default function AdminReportsHub({
                       <div>
                         {logoImageUrl ? (
                           <div style={{ marginBottom: '6px' }}>
-                            <img
-                              src={logoImageUrl}
-                              alt={siteName}
-                              style={{
-                                maxHeight: '48px',
-                                maxWidth: '220px',
-                                width: 'auto',
-                                height: 'auto',
-                                objectFit: 'contain',
-                                display: 'block',
-                                marginBottom: '4px'
-                              }}
-                            />
+                            <div style={{ position: 'relative', width: '180px', height: '48px', marginBottom: '4px' }}>
+                              <Image
+                                src={logoImageUrl}
+                                alt={siteName}
+                                fill
+                                sizes="180px"
+                                referrerPolicy="no-referrer"
+                                style={{
+                                  objectFit: 'contain',
+                                  objectPosition: 'left center'
+                                }}
+                              />
+                            </div>
                             <div style={{ fontSize: '12px', color: '#333', marginBottom: '2px' }}>{siteTagline}</div>
                           </div>
                         ) : (

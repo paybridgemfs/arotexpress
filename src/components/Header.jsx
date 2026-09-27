@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Search, X, User, ShoppingCart, LogIn, LayoutGrid, ShieldCheck } from 'lucide-react';
@@ -103,21 +104,20 @@ export default function Header({
             title={siteName}
           >
             {logoImageUrl ? (
-              <img
-                src={logoImageUrl}
-                alt={siteName}
-                fetchPriority="high"
-                loading="eager"
-                decoding="async"
-                style={{
-                  height: '42px',
-                  maxHeight: '44px',
-                  maxWidth: '180px',
-                  width: 'auto',
-                  objectFit: 'contain',
-                  display: 'block'
-                }}
-              />
+              <div style={{ position: 'relative', width: '160px', height: '42px', flexShrink: 0 }}>
+                <Image
+                  src={logoImageUrl}
+                  alt={siteName}
+                  fill
+                  sizes="(max-width: 768px) 140px, 180px"
+                  priority
+                  referrerPolicy="no-referrer"
+                  style={{
+                    objectFit: 'contain',
+                    objectPosition: 'left center'
+                  }}
+                />
+              </div>
             ) : (
               <div
                 style={{
@@ -278,7 +278,16 @@ export default function Header({
             <div className="mn-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {logoImageUrl ? (
-                  <img src={logoImageUrl} alt={siteName} style={{ height: '36px', maxWidth: '140px', objectFit: 'contain' }} />
+                  <div style={{ position: 'relative', width: '130px', height: '36px', flexShrink: 0 }}>
+                    <Image
+                      src={logoImageUrl}
+                      alt={siteName}
+                      fill
+                      sizes="130px"
+                      referrerPolicy="no-referrer"
+                      style={{ objectFit: 'contain', objectPosition: 'left center' }}
+                    />
+                  </div>
                 ) : (
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--ink)' }}>{siteName}</div>

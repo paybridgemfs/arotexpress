@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Minus, Plus, Package } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
@@ -311,13 +312,31 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                 style={{ opacity: isOutOfStock ? 0.7 : 1 }}
               >
                 <div className="product-image-wrap">
-                  {b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image'))) ? (
-                    <img src={b.image || category.icon} alt={b.name} className="product-thumb-img" loading="lazy" decoding="async" />
-                  ) : (
-                    <div className="product-placeholder-icon">
-                      <CategoryIcon icon={category.icon} category={category} size={48} />
-                    </div>
-                  )}
+                  {(() => {
+                    const rawImg = b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image')) ? category.icon : null);
+                    if (!rawImg) {
+                      return (
+                        <div className="product-placeholder-icon">
+                          <CategoryIcon icon={category.icon} category={category} size={48} />
+                        </div>
+                      );
+                    }
+                    const isBlobOrData = rawImg.startsWith('blob:') || rawImg.startsWith('data:image');
+                    if (isBlobOrData) {
+                      return <img src={rawImg} alt={b.name} className="product-thumb-img" />;
+                    }
+                    return (
+                      <Image
+                        src={rawImg}
+                        alt={b.name}
+                        fill
+                        sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
+                        referrerPolicy="no-referrer"
+                        className="product-thumb-img"
+                        style={{ objectFit: 'contain', padding: '6px' }}
+                      />
+                    );
+                  })()}
                   <span className={`stock-badge-tag ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
                     {isOutOfStock ? 'স্টক শেষ' : `মজুত: ${formatStockDisplay(stock, b.unit)}`}
                   </span>

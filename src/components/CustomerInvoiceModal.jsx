@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { X, Printer, Download, CheckCircle2, Phone, MapPin, Building2, Calendar, Clock, CreditCard, Banknote, Truck, User } from 'lucide-react';
 import { useStoreData } from '../context/StoreDataContext';
@@ -141,18 +142,19 @@ export default function CustomerInvoiceModal({ isOpen = true, order, settings: p
             <div>
               {logoImageUrl ? (
                 <div style={{ marginBottom: '6px' }}>
-                  <img
-                    src={logoImageUrl}
-                    alt={siteName}
-                    style={{
-                      maxHeight: '48px',
-                      maxWidth: '220px',
-                      width: 'auto',
-                      height: 'auto',
-                      objectFit: 'contain',
-                      display: 'block'
-                    }}
-                  />
+                  <div style={{ position: 'relative', width: '180px', height: '48px' }}>
+                    <Image
+                      src={logoImageUrl}
+                      alt={siteName}
+                      fill
+                      sizes="180px"
+                      referrerPolicy="no-referrer"
+                      style={{
+                        objectFit: 'contain',
+                        objectPosition: 'left center'
+                      }}
+                    />
+                  </div>
                   <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '3px' }}>{siteTagline}</div>
                 </div>
               ) : (

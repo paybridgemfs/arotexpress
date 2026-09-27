@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart,
@@ -470,18 +471,19 @@ export default function AdminFinanceTracker({
             <div>
               {logoImageUrl ? (
                 <div style={{ marginBottom: '4px' }}>
-                  <img
-                    src={logoImageUrl}
-                    alt={siteName}
-                    style={{
-                      maxHeight: '44px',
-                      maxWidth: '200px',
-                      width: 'auto',
-                      height: 'auto',
-                      objectFit: 'contain',
-                      display: 'block'
-                    }}
-                  />
+                  <div style={{ position: 'relative', width: '180px', height: '44px' }}>
+                    <Image
+                      src={logoImageUrl}
+                      alt={siteName}
+                      fill
+                      sizes="180px"
+                      referrerPolicy="no-referrer"
+                      style={{
+                        objectFit: 'contain',
+                        objectPosition: 'left center'
+                      }}
+                    />
+                  </div>
                   <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{siteTagline}</div>
                 </div>
               ) : (

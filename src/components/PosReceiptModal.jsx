@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Receipt, Printer, X, FileText } from 'lucide-react';
 import { useStoreData } from '../context/StoreDataContext';
@@ -125,19 +126,19 @@ export default function PosReceiptModal({ order, settings: initialSettings, onCl
             {/* Header - Dynamic from Database Settings */}
             <div className="pos-header" style={{ textAlign: 'center', marginBottom: '8px' }}>
               {logoImageUrl ? (
-                <img
-                  src={logoImageUrl}
-                  alt={siteName}
-                  style={{
-                    maxHeight: '48px',
-                    maxWidth: '180px',
-                    width: 'auto',
-                    height: 'auto',
-                    objectFit: 'contain',
-                    margin: '0 auto 6px',
-                    display: 'block'
-                  }}
-                />
+                <div style={{ position: 'relative', width: '160px', height: '48px', margin: '0 auto 6px' }}>
+                  <Image
+                    src={logoImageUrl}
+                    alt={siteName}
+                    fill
+                    sizes="160px"
+                    referrerPolicy="no-referrer"
+                    style={{
+                      objectFit: 'contain',
+                      objectPosition: 'center'
+                    }}
+                  />
+                </div>
               ) : (
                 <>
                   <div className="pos-store-stamp">{logoTextBn}</div>
