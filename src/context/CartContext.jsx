@@ -110,12 +110,13 @@ export function CartProvider({ children }) {
   const changeQty = (key, delta, itemMeta = null) => {
     const newCart = { ...cart };
     const current = newCart[key];
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
 
     if (!current) {
       if (delta > 0 && itemMeta) {
         newCart[key] = { ...itemMeta, qty: delta };
         showToast(`${itemMeta.brand} কার্টে যোগ হয়েছে`);
-        if (!hasAutoOpenedRef.current) {
+        if (isDesktop && !hasAutoOpenedRef.current) {
           setIsCartOpen(true);
           hasAutoOpenedRef.current = true;
         }
@@ -132,7 +133,7 @@ export function CartProvider({ children }) {
           if (!cart[key]) {
             showToast(`${current.brand} কার্টে যোগ হয়েছে`);
           }
-          if (!hasAutoOpenedRef.current) {
+          if (isDesktop && !hasAutoOpenedRef.current) {
             setIsCartOpen(true);
             hasAutoOpenedRef.current = true;
           }
