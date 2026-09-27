@@ -55,7 +55,7 @@ export default function CategoryGrid({
             <div className="section-head mb-4">
               <div className="skel-block section-head-skel"></div>
             </div>
-            <div className="grid">
+            <div className="grid home-category-grid">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
                 <div key={`sk-c-${c}`} className="skel-cat-card">
                   <div className="skel-circle skel-cat-icon"></div>
@@ -99,8 +99,8 @@ export default function CategoryGrid({
               </span>
             </div>
 
-            <div className="grid">
-              {visibleCats.map((cat, cIdx) => {
+            <div className="grid home-category-grid">
+              {groupCats.map((cat, cIdx) => {
                 const inCartCount = getCatCartCount(cat.id);
                 return (
                   <motion.button
