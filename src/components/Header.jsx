@@ -106,6 +106,9 @@ export default function Header({
               <img
                 src={logoImageUrl}
                 alt={siteName}
+                fetchPriority="high"
+                loading="eager"
+                decoding="async"
                 style={{
                   height: '42px',
                   maxHeight: '44px',

@@ -63,7 +63,7 @@ import CustomerInvoiceModal from './CustomerInvoiceModal.jsx';
 import PosReceiptModal from './PosReceiptModal.jsx';
 import CategoryIcon from './CategoryIcon.jsx';
 import ImageUploadInput from './ImageUploadInput.jsx';
-import { uploadImage } from '../utils/upload.js';
+import { uploadImage, deleteImage } from '../utils/upload.js';
 import { updateAppMeta } from '../utils/meta.js';
 
 // Low stock threshold constant (< 5)
@@ -76,8 +76,8 @@ const ADMIN_TAB_TITLES = {
   riders: 'ডেলিভারিম্যান',
   users: 'কাস্টমার তালিকা',
   products: 'ক্যাটাগরি ও পণ্য',
-  groups: 'গ্রুপ ব্যবস্থাপনা',
   package_management: 'প্যাকেজ বক্স',
+  groups: 'গ্রুপ ব্যবস্থাপনা',
   delivery: 'ডেলিভারি ও ঠিকানা',
   payments: 'পেমেন্ট মেথড',
   expenses: 'আয়-ব্যয় ও লাভ-ক্ষতি',
@@ -487,11 +487,19 @@ export default function AdminPanel({ onNavigateHome }) {
 
     setSavingCategory(true);
     let finalIcon = newCatData.icon ? newCatData.icon.trim() : '';
+    let finalDeleteUrl = editingCategory?.image_delete_url || '';
 
     try {
       if (catImageFile) {
         showToast('লোগো ছবি ImgBB-তে আপলোড হচ্ছে...');
-        finalIcon = await uploadImage(catImageFile);
+        const uploadRes = await uploadImage(catImageFile, adminToken, true);
+        if (uploadRes && uploadRes.url) {
+          if (editingCategory?.image_delete_url) {
+            deleteImage(editingCategory.image_delete_url, adminToken);
+          }
+          finalIcon = uploadRes.url;
+          finalDeleteUrl = uploadRes.delete_url || '';
+        }
       }
 
       const url = editingCategory ? `/api/categories/${editingCategory.id}` : '/api/categories';
@@ -503,7 +511,7 @@ export default function AdminPanel({ onNavigateHome }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${adminToken}`
         },
-        body: JSON.stringify({ ...newCatData, icon: finalIcon })
+        body: JSON.stringify({ ...newCatData, icon: finalIcon, image_delete_url: finalDeleteUrl })
       });
       if (res.ok) {
         const savedCat = await res.json();
@@ -534,6 +542,16 @@ export default function AdminPanel({ onNavigateHome }) {
   const handleDeleteCategory = async (id) => {
     if (!window.confirm('আপনি কি এই ক্যাটাগরি এবং এর অধীনস্থ সকল পণ্য মুছে ফেলতে চান?')) return;
     try {
+      const catToDelete = categories.find((c) => c.id === id);
+      if (catToDelete?.image_delete_url) {
+        deleteImage(catToDelete.image_delete_url, adminToken);
+      }
+      if (catToDelete?.brands) {
+        catToDelete.brands.forEach((b) => {
+          if (b.image_delete_url) deleteImage(b.image_delete_url, adminToken);
+        });
+      }
+
       const res = await fetch(`/api/categories/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${adminToken}` }
@@ -554,11 +572,19 @@ export default function AdminPanel({ onNavigateHome }) {
 
     setSavingBrand(true);
     let finalImage = brandForm.image ? brandForm.image.trim() : '';
+    let finalDeleteUrl = editingBrand?.image_delete_url || '';
 
     try {
       if (brandImageFile) {
         showToast('পণ্যের ছবি ImgBB-তে আপলোড হচ্ছে...');
-        finalImage = await uploadImage(brandImageFile);
+        const uploadRes = await uploadImage(brandImageFile, adminToken, true);
+        if (uploadRes && uploadRes.url) {
+          if (editingBrand?.image_delete_url) {
+            deleteImage(editingBrand.image_delete_url, adminToken);
+          }
+          finalImage = uploadRes.url;
+          finalDeleteUrl = uploadRes.delete_url || '';
+        }
       }
 
       const brandPayload = {
@@ -567,6 +593,7 @@ export default function AdminPanel({ onNavigateHome }) {
         price: parseFloat(brandForm.price) || 0,
         cost_price: parseFloat(brandForm.cost_price) || 0,
         image: finalImage,
+        image_delete_url: finalDeleteUrl,
         stock: parseInt(brandForm.stock) || 0,
         force_stock_out: Boolean(brandForm.force_stock_out)
       };
@@ -649,9 +676,14 @@ export default function AdminPanel({ onNavigateHome }) {
   const handleDeleteBrand = async (catId, brandOrId) => {
     const brandId = typeof brandOrId === 'object' ? brandOrId.id : (typeof brandOrId === 'number' ? brandOrId : null);
     const brandName = typeof brandOrId === 'object' ? brandOrId.name : 'পণ্য';
+    const brandObj = typeof brandOrId === 'object' ? brandOrId : null;
 
     if (!window.confirm(`আপনি কি '${brandName}' পণ্যটি মুছে ফেলতে চান?`)) return;
     try {
+      if (brandObj?.image_delete_url) {
+        deleteImage(brandObj.image_delete_url, adminToken);
+      }
+
       const res = await fetch(`/api/products/${brandId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${adminToken}` }
@@ -739,20 +771,38 @@ export default function AdminPanel({ onNavigateHome }) {
 
       if (settingsFaviconFile) {
         showToast('ফেভিকন ছবি ImgBB-তে আপলোড হচ্ছে...');
-        const faviconUrl = await uploadImage(settingsFaviconFile);
-        updatedSettings.favicon_image_url = faviconUrl;
+        const uploadRes = await uploadImage(settingsFaviconFile, adminToken, true);
+        if (uploadRes?.url) {
+          if (settings?.favicon_delete_url) {
+            deleteImage(settings.favicon_delete_url, adminToken);
+          }
+          updatedSettings.favicon_image_url = uploadRes.url;
+          updatedSettings.favicon_delete_url = uploadRes.delete_url || '';
+        }
       }
 
       if (settingsLogoFile) {
         showToast('লোগো ছবি ImgBB-তে আপলোড হচ্ছে...');
-        const logoUrl = await uploadImage(settingsLogoFile);
-        updatedSettings.logo_image_url = logoUrl;
+        const uploadRes = await uploadImage(settingsLogoFile, adminToken, true);
+        if (uploadRes?.url) {
+          if (settings?.logo_delete_url) {
+            deleteImage(settings.logo_delete_url, adminToken);
+          }
+          updatedSettings.logo_image_url = uploadRes.url;
+          updatedSettings.logo_delete_url = uploadRes.delete_url || '';
+        }
       }
 
       if (settingsBannerFile) {
         showToast('ব্যানার ছবি ImgBB-তে আপলোড হচ্ছে...');
-        const bannerUrl = await uploadImage(settingsBannerFile);
-        updatedSettings.banner_url = bannerUrl;
+        const uploadRes = await uploadImage(settingsBannerFile, adminToken, true);
+        if (uploadRes?.url) {
+          if (settings?.banner_delete_url) {
+            deleteImage(settings.banner_delete_url, adminToken);
+          }
+          updatedSettings.banner_url = uploadRes.url;
+          updatedSettings.banner_delete_url = uploadRes.delete_url || '';
+        }
       }
 
       const res = await fetch('/api/settings', {
@@ -1243,14 +1293,7 @@ export default function AdminPanel({ onNavigateHome }) {
             <Layers size={16} />
             <span>ক্যাটাগরি ও পণ্য ({categories.length})</span>
           </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            className={`admin-nav-item ${adminTab === 'groups' ? 'active' : ''}`}
-            onClick={() => { setAdminTab('groups'); setSidebarOpen(false); window.scrollTo(0, 0); }}
-          >
-            <FolderKanban size={16} />
-            <span>গ্রুপ ব্যবস্থাপনা ({groups.length})</span>
-          </motion.button>
+
           <motion.button
             whileTap={{ scale: 0.98 }}
             className={`admin-nav-item ${adminTab === 'package_management' ? 'active' : ''}`}
@@ -1258,6 +1301,15 @@ export default function AdminPanel({ onNavigateHome }) {
           >
             <Package size={16} />
             <span>প্যাকেজ বক্স (Hero 10)</span>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            className={`admin-nav-item ${adminTab === 'groups' ? 'active' : ''}`}
+            onClick={() => { setAdminTab('groups'); setSidebarOpen(false); window.scrollTo(0, 0); }}
+          >
+            <FolderKanban size={16} />
+            <span>গ্রুপ ব্যবস্থাপনা ({groups.length})</span>
           </motion.button>
 
           <motion.button

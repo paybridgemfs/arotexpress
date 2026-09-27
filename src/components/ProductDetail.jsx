@@ -312,7 +312,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
               >
                 <div className="product-image-wrap">
                   {b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image'))) ? (
-                    <img src={b.image || category.icon} alt={b.name} className="product-thumb-img" />
+                    <img src={b.image || category.icon} alt={b.name} className="product-thumb-img" loading="lazy" decoding="async" />
                   ) : (
                     <div className="product-placeholder-icon">
                       <CategoryIcon icon={category.icon} category={category} size={48} />

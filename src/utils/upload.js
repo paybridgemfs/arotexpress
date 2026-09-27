@@ -1,25 +1,16 @@
 /**
  * Uploads an image file or base64 directly from the client's browser to ImgBB.
  * 
- * Why Client-side Direct:
- * 1. Cloud servers (like Render/AWS/GCP IPs) are blocked by ImgBB Cloudflare WAF with:
- *    "You have been forbidden to use this website".
- * 2. Uploading directly from the client browser uses the user's real residential/mobile IP,
- *    bypassing cloud IP bans completely.
- * 
- * How API Key is Kept Hidden:
- * - We never expose the raw API key publicly in the frontend bundle or client HTML.
- * - An authenticated admin calls /api/upload/ticket (guarded by admin JWT).
- * - The server generates a single-use, 60-second ephemeral ticket.
- * - The client trades the ticket in-memory right at the moment of upload to send the payload to ImgBB.
- * - Once uploaded, only the permanent image URL (https://i.ibb.co/...) is saved to the database.
+ * Returns:
+ * - If returnDetails is true: { url: string, delete_url: string | null, display_url: string, thumb_url: string | null }
+ * - Otherwise: url string (for backward compatibility)
  */
-export async function uploadImage(fileOrData, optionalAdminToken = null) {
+export async function uploadImage(fileOrData, optionalAdminToken = null, returnDetails = false) {
   if (!fileOrData) return null;
 
-  // If already an online URL (http/https), save directly without re-uploading
+  // If already an online URL (http/https), return directly without re-uploading
   if (typeof fileOrData === 'string' && (fileOrData.startsWith('http://') || fileOrData.startsWith('https://'))) {
-    return fileOrData;
+    return returnDetails ? { url: fileOrData, delete_url: null, display_url: fileOrData, thumb_url: null } : fileOrData;
   }
 
   // Get Admin token from parameters or localStorage
@@ -90,6 +81,47 @@ export async function uploadImage(fileOrData, optionalAdminToken = null) {
     throw new Error(jsonRes?.error?.message || 'ছবি আপলোড করতে ব্যর্থ হয়েছে।');
   }
 
-  // Return the permanent image URL to be saved in PostgreSQL
-  return jsonRes.data?.url || jsonRes.data?.display_url;
+  const directUrl = jsonRes.data?.url || jsonRes.data?.display_url;
+  const deleteUrl = jsonRes.data?.delete_url || null;
+
+  if (returnDetails) {
+    return {
+      url: directUrl,
+      delete_url: deleteUrl,
+      display_url: jsonRes.data?.display_url || directUrl,
+      thumb_url: jsonRes.data?.thumb?.url || null
+    };
+  }
+
+  // Return the permanent image URL
+  return directUrl;
+}
+
+/**
+ * Deletes an image from ImgBB using its delete_url
+ */
+export async function deleteImage(deleteUrl, optionalAdminToken = null) {
+  if (!deleteUrl || typeof deleteUrl !== 'string') return;
+
+  try {
+    let token = optionalAdminToken;
+    if (!token && typeof window !== 'undefined') {
+      token = localStorage.getItem('arot_admin_token');
+    }
+
+    const authHeaders = {
+      'Content-Type': 'application/json'
+    };
+    if (token) {
+      authHeaders['Authorization'] = `Bearer ${token}`;
+    }
+
+    await fetch('/api/upload/delete', {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ delete_url: deleteUrl })
+    });
+  } catch (e) {
+    console.warn('Image deletion request error:', e);
+  }
 }

@@ -24,6 +24,7 @@ export interface CategoryBrand {
   price: number;
   cost_price?: number;
   image?: string;
+  image_delete_url?: string;
   stock?: number;
   force_stock_out?: boolean;
 }
@@ -34,6 +35,7 @@ export interface Category {
   en: string;
   bn: string;
   icon: string;
+  image_delete_url?: string;
   brands: CategoryBrand[];
 }
 
@@ -517,6 +519,10 @@ export class DBManager {
         ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS stock INT DEFAULT 100;
         ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS force_stock_out BOOLEAN DEFAULT FALSE;
         ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2) DEFAULT 0;
+        ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
+        ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
+        ALTER TABLE groups ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
+        ALTER TABLE package_products ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
         DROP TABLE IF EXISTS weekly_prices, daily_prices, price_snapshots, daily_price_history CASCADE;
         DELETE FROM site_settings WHERE key = 'featured_products';
 
@@ -731,6 +737,7 @@ export class DBManager {
             price: parseFloat(b.price) || 0,
             cost_price: parseFloat(b.cost_price) || 0,
             image: b.image_url || '',
+            image_delete_url: b.image_delete_url || '',
             stock: b.stock !== undefined && b.stock !== null ? parseInt(b.stock) : 100,
             force_stock_out: b.force_stock_out || false
           });
@@ -742,6 +749,7 @@ export class DBManager {
           en: c.en_name,
           bn: c.bn_name,
           icon: c.icon,
+          image_delete_url: c.image_delete_url || '',
           brands: brandMap[c.id] || []
         }));
       } else {
@@ -1466,8 +1474,8 @@ export class DBManager {
       this.data.categories[idx] = { ...this.data.categories[idx], ...updated };
       if (isPgConnected) {
         pool.query(
-          `UPDATE categories SET group_key = $1, en_name = $2, bn_name = $3, icon = $4 WHERE id = $5`,
-          [this.data.categories[idx].group, this.data.categories[idx].en, this.data.categories[idx].bn, this.data.categories[idx].icon, id]
+          `UPDATE categories SET group_key = $1, en_name = $2, bn_name = $3, icon = $4, image_delete_url = $5 WHERE id = $6`,
+          [this.data.categories[idx].group, this.data.categories[idx].en, this.data.categories[idx].bn, this.data.categories[idx].icon, this.data.categories[idx].image_delete_url || '', id]
         ).catch((e) => console.warn('PG sync error (cat update):', e.message));
       }
       return this.data.categories[idx];
@@ -1495,6 +1503,7 @@ export class DBManager {
         price: priceNum,
         cost_price: brand.cost_price !== undefined ? Number(brand.cost_price) : 0,
         image: brand.image || '',
+        image_delete_url: brand.image_delete_url || '',
         stock: brand.stock !== undefined ? Number(brand.stock) : 100,
         force_stock_out: brand.force_stock_out || false
       };
@@ -1509,8 +1518,8 @@ export class DBManager {
           );
 
           const pbRes = await pool.query(
-            `INSERT INTO product_brands (category_id, name, unit, price, cost_price, image_url, stock, force_stock_out) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-            [categoryId, newBrand.name, newBrand.unit, newBrand.price, newBrand.cost_price, newBrand.image, newBrand.stock, newBrand.force_stock_out]
+            `INSERT INTO product_brands (category_id, name, unit, price, cost_price, image_url, image_delete_url, stock, force_stock_out) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+            [categoryId, newBrand.name, newBrand.unit, newBrand.price, newBrand.cost_price, newBrand.image, newBrand.image_delete_url, newBrand.stock, newBrand.force_stock_out]
           );
           if (pbRes.rows[0]?.id) {
             newBrand.id = pbRes.rows[0].id;
@@ -1585,8 +1594,8 @@ export class DBManager {
 
         if (isPgConnected) {
           pool.query(
-            `UPDATE product_brands SET name = $1, unit = $2, price = $3, cost_price = $4, image_url = $5, stock = $6, force_stock_out = $7 WHERE id = $8`,
-            [cat.brands[bIdx].name, cat.brands[bIdx].unit, cat.brands[bIdx].price, cat.brands[bIdx].cost_price, cat.brands[bIdx].image || '', cat.brands[bIdx].stock, cat.brands[bIdx].force_stock_out, productId]
+            `UPDATE product_brands SET name = $1, unit = $2, price = $3, cost_price = $4, image_url = $5, image_delete_url = $6, stock = $7, force_stock_out = $8 WHERE id = $9`,
+            [cat.brands[bIdx].name, cat.brands[bIdx].unit, cat.brands[bIdx].price, cat.brands[bIdx].cost_price, cat.brands[bIdx].image || '', cat.brands[bIdx].image_delete_url || '', cat.brands[bIdx].stock, cat.brands[bIdx].force_stock_out, productId]
           ).catch((e) => console.warn('PG sync error (brand update by ID):', e.message));
         }
         return cat.brands[bIdx];

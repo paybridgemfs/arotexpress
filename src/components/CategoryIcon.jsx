@@ -109,6 +109,8 @@ export default function CategoryIcon({
         src={icon}
         alt={category?.bn || 'Category Logo'}
         className={`cat-logo-image ${className}`}
+        loading="eager"
+        decoding="async"
         style={{
           width: typeof size === 'number' ? `${size}px` : size,
           height: typeof size === 'number' ? `${size}px` : size,

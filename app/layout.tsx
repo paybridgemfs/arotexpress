@@ -227,6 +227,10 @@ export default async function RootLayout({
   return (
     <html lang="bn" data-scroll-behavior="smooth">
       <head>
+        <link rel="preconnect" href="https://i.ibb.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://i.ibb.co" />
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;500;600;700;800&family=Noto+Serif+Bengali:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
