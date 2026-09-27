@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext.jsx';
 
 const CartContext = createContext(null);
@@ -8,6 +8,9 @@ export function CartProvider({ children }) {
   const { user, token } = useAuth();
   const [cart, setCart] = useState({});
   const [isHydrated, setIsHydrated] = useState(false);
+
+  // Track if cart has already auto-opened once after page load
+  const hasAutoOpenedRef = useRef(false);
 
   // Hydrate cart from localStorage on client mount to guarantee clean SSR hydration
   useEffect(() => {
@@ -97,6 +100,13 @@ export function CartProvider({ children }) {
     }, 2200);
   };
 
+  const handleSetIsCartOpen = (val) => {
+    setIsCartOpen(val);
+    if (val === false) {
+      hasAutoOpenedRef.current = true;
+    }
+  };
+
   const changeQty = (key, delta, itemMeta = null) => {
     const newCart = { ...cart };
     const current = newCart[key];
@@ -105,6 +115,10 @@ export function CartProvider({ children }) {
       if (delta > 0 && itemMeta) {
         newCart[key] = { ...itemMeta, qty: delta };
         showToast(`${itemMeta.brand} কার্টে যোগ হয়েছে`);
+        if (!hasAutoOpenedRef.current) {
+          setIsCartOpen(true);
+          hasAutoOpenedRef.current = true;
+        }
       }
     } else {
       const nextQty = current.qty + delta;
@@ -114,8 +128,14 @@ export function CartProvider({ children }) {
         showToast(`${brandName} কার্ট থেকে সরানো হয়েছে`);
       } else {
         newCart[key] = { ...current, qty: nextQty };
-        if (delta > 0 && !cart[key]) {
-          showToast(`${current.brand} কার্টে যোগ হয়েছে`);
+        if (delta > 0) {
+          if (!cart[key]) {
+            showToast(`${current.brand} কার্টে যোগ হয়েছে`);
+          }
+          if (!hasAutoOpenedRef.current) {
+            setIsCartOpen(true);
+            hasAutoOpenedRef.current = true;
+          }
         }
       }
     }
@@ -200,7 +220,7 @@ export function CartProvider({ children }) {
       value={{
         cart,
         isCartOpen,
-        setIsCartOpen,
+        setIsCartOpen: handleSetIsCartOpen,
         changeQty,
         addBulkToCart,
         replaceCartWithOrder,
