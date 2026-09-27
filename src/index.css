@@ -5540,8 +5540,8 @@ header, .main-app-header {
 
 @media (max-width: 420px) {
   .grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 7px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
   }
 }
 
