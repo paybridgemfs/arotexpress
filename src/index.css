@@ -588,13 +588,13 @@ header, .main-app-header {
 /* HERO SECTION (M3 BANNER & RATE LEDGER)            */
 /* ================================================= */
 .hero {
-  max-width: 1440px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 32px 20px 24px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.15fr 0.95fr;
   gap: 28px;
   align-items: center;
-  justify-content: space-around;
   animation: fadeUp 0.4s var(--ease);
 }
 
@@ -942,7 +942,7 @@ header, .main-app-header {
 /* TRUST FEATURES (VALUE PROPOSITION BADGES)         */
 /* ================================================= */
 .trust-features-section {
-  max-width: 1440px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 0 20px 20px;
 }
@@ -1307,7 +1307,7 @@ header, .main-app-header {
   color: #FFFFFF;
   border: none;
   border-radius: var(--radius-pill);
-  padding: 6px 10px;
+  padding: 9px 18px;
   font-size: 13.5px;
   font-weight: 700;
   white-space: nowrap;
@@ -1412,6 +1412,7 @@ header, .main-app-header {
     height: 100dvh;
     background: #FFFFFF;
     border-left: 1px solid var(--rule);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
     z-index: 100;
     display: flex;
     flex-direction: column;
@@ -1446,6 +1447,7 @@ header, .main-app-header {
     height: 100vh;
     height: 100dvh;
     background: #FFFFFF;
+    box-shadow: 0 -4px 28px rgba(0, 0, 0, 0.2);
     z-index: 100;
     display: flex;
     flex-direction: column;
