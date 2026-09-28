@@ -313,7 +313,10 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
               >
                 <div className="product-image-wrap">
                   {(() => {
-                    const rawImg = b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image')) ? category.icon : null);
+                    let rawImg = b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image')) ? category.icon : null);
+                    if (rawImg && typeof rawImg === 'string' && rawImg.includes('pngimg.com')) {
+                      rawImg = null;
+                    }
                     if (!rawImg) {
                       return (
                         <div className="product-placeholder-icon">
