@@ -10,6 +10,7 @@ import AuthModal from '@/src/components/AuthModal.jsx';
 import ToastContainer from '@/src/components/ToastContainer.jsx';
 import ScrollManager from '@/src/components/ScrollManager';
 import SocialButtons from '@/src/components/SocialButtons.jsx';
+import FrontendLoadingScreen from '@/src/components/FrontendLoadingScreen';
 import { useStoreData } from '@/src/context/StoreDataContext';
 import { useCart } from '@/src/context/CartContext.jsx';
 import { toBengaliNumber } from '@/src/utils/bengali.js';
@@ -37,6 +38,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className={`store-root-layout ${isCartOpen ? 'cart-drawer-active' : ''}`}>
+      <FrontendLoadingScreen />
       <ScrollManager />
       <Header
         settings={settings}

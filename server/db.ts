@@ -105,6 +105,19 @@ export interface DBGroup {
   sort_order: number;
 }
 
+export interface GDriveConfig {
+  id?: number;
+  account_email?: string;
+  account_name?: string;
+  account_picture?: string;
+  access_token?: string;
+  refresh_token?: string;
+  token_expiry?: number;
+  folder_id?: string;
+  is_connected?: boolean;
+  updated_at?: string;
+}
+
 export interface PackageProduct {
   id: number;
   product_id?: number;
@@ -619,6 +632,20 @@ export class DBManager {
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_vehicle VARCHAR(50);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
+
+        CREATE TABLE IF NOT EXISTS gdrive_config (
+          id INT PRIMARY KEY DEFAULT 1,
+          account_email VARCHAR(255),
+          account_name VARCHAR(255),
+          account_picture TEXT,
+          access_token TEXT,
+          refresh_token TEXT,
+          token_expiry BIGINT,
+          folder_id VARCHAR(255),
+          is_connected BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
 
         CREATE TABLE IF NOT EXISTS package_products (
           id SERIAL PRIMARY KEY,
@@ -2932,6 +2959,101 @@ export class DBManager {
       return { ...pkg, is_package_order: true };
     }
     return null;
+  }
+
+  // Google Drive Config Management
+  static async getGDriveConfig(): Promise<GDriveConfig | null> {
+    if (isPgConnected) {
+      try {
+        const res = await pool.query('SELECT * FROM gdrive_config WHERE id = 1 LIMIT 1');
+        if (res.rows && res.rows.length > 0) {
+          const row = res.rows[0];
+          return {
+            id: row.id,
+            account_email: row.account_email || '',
+            account_name: row.account_name || '',
+            account_picture: row.account_picture || '',
+            access_token: row.access_token || '',
+            refresh_token: row.refresh_token || '',
+            token_expiry: row.token_expiry ? Number(row.token_expiry) : 0,
+            folder_id: row.folder_id || '',
+            is_connected: Boolean(row.is_connected),
+            updated_at: row.updated_at
+          };
+        }
+      } catch (e: any) {
+        console.warn('PG error getting gdrive_config:', e.message);
+      }
+    }
+    return null;
+  }
+
+  static async saveGDriveConfig(config: Partial<GDriveConfig>): Promise<GDriveConfig> {
+    const existing = await this.getGDriveConfig();
+    const merged: GDriveConfig = {
+      id: 1,
+      account_email: config.account_email !== undefined ? config.account_email : (existing?.account_email || ''),
+      account_name: config.account_name !== undefined ? config.account_name : (existing?.account_name || ''),
+      account_picture: config.account_picture !== undefined ? config.account_picture : (existing?.account_picture || ''),
+      access_token: config.access_token !== undefined ? config.access_token : (existing?.access_token || ''),
+      refresh_token: config.refresh_token !== undefined ? config.refresh_token : (existing?.refresh_token || ''),
+      token_expiry: config.token_expiry !== undefined ? config.token_expiry : (existing?.token_expiry || 0),
+      folder_id: config.folder_id !== undefined ? config.folder_id : (existing?.folder_id || ''),
+      is_connected: config.is_connected !== undefined ? config.is_connected : true,
+      updated_at: new Date().toISOString()
+    };
+
+    if (isPgConnected) {
+      try {
+        await pool.query(
+          `INSERT INTO gdrive_config (id, account_email, account_name, account_picture, access_token, refresh_token, token_expiry, folder_id, is_connected, updated_at)
+           VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, NOW())
+           ON CONFLICT (id) DO UPDATE SET
+             account_email = EXCLUDED.account_email,
+             account_name = EXCLUDED.account_name,
+             account_picture = EXCLUDED.account_picture,
+             access_token = EXCLUDED.access_token,
+             refresh_token = COALESCE(NULLIF(EXCLUDED.refresh_token, ''), gdrive_config.refresh_token),
+             token_expiry = EXCLUDED.token_expiry,
+             folder_id = EXCLUDED.folder_id,
+             is_connected = EXCLUDED.is_connected,
+             updated_at = NOW()`,
+          [
+            merged.account_email,
+            merged.account_name,
+            merged.account_picture,
+            merged.access_token,
+            merged.refresh_token,
+            merged.token_expiry,
+            merged.folder_id,
+            merged.is_connected
+          ]
+        );
+      } catch (e: any) {
+        console.warn('PG error saving gdrive_config:', e.message);
+      }
+    }
+    return merged;
+  }
+
+  static async disconnectGDrive(): Promise<boolean> {
+    if (isPgConnected) {
+      try {
+        await pool.query(
+          `UPDATE gdrive_config SET 
+             is_connected = FALSE,
+             access_token = NULL,
+             refresh_token = NULL,
+             token_expiry = NULL,
+             updated_at = NOW()
+           WHERE id = 1`
+        );
+        return true;
+      } catch (e: any) {
+        console.warn('PG error disconnecting gdrive:', e.message);
+      }
+    }
+    return false;
   }
 }
 

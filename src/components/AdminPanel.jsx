@@ -41,7 +41,8 @@ import {
   Image as ImageIcon,
   Loader2,
   Share2,
-  PanelBottom
+  PanelBottom,
+  HardDrive
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
@@ -59,6 +60,7 @@ import AdminPackageOrders from './AdminPackageOrders.jsx';
 import AdminPackageManagement from './AdminPackageManagement.jsx';
 import AdminSocialLinks from './AdminSocialLinks.jsx';
 import AdminFooterSettings from './AdminFooterSettings.jsx';
+import AdminGDrive from './AdminGDrive.jsx';
 import LowStockBanner from './LowStockBanner.jsx';
 import CustomerInvoiceModal from './CustomerInvoiceModal.jsx';
 import PosReceiptModal from './PosReceiptModal.jsx';
@@ -88,7 +90,8 @@ const ADMIN_TAB_TITLES = {
   footer_settings: 'ফুটার সেটিংস',
   footer: 'ফুটার সেটিংস',
   social_links: 'সোশ্যাল লিংকস',
-  profile: 'অ্যাডমিন ক্রেডেনশিয়াল'
+  profile: 'অ্যাডমিন ক্রেডেনশিয়াল',
+  gdrive: 'গুগল ড্রাইভ'
 };
 
 export default function AdminPanel({ onNavigateHome }) {
@@ -492,7 +495,7 @@ export default function AdminPanel({ onNavigateHome }) {
 
     try {
       if (catImageFile) {
-        showToast('লোগো ছবি ImgBB-তে আপলোড হচ্ছে...');
+        showToast('লোগো ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
         const uploadRes = await uploadImage(catImageFile, adminToken, true);
         if (uploadRes && uploadRes.url) {
           if (editingCategory?.image_delete_url) {
@@ -577,7 +580,7 @@ export default function AdminPanel({ onNavigateHome }) {
 
     try {
       if (brandImageFile) {
-        showToast('পণ্যের ছবি ImgBB-তে আপলোড হচ্ছে...');
+        showToast('পণ্যের ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
         const uploadRes = await uploadImage(brandImageFile, adminToken, true);
         if (uploadRes && uploadRes.url) {
           if (editingBrand?.image_delete_url) {
@@ -771,7 +774,7 @@ export default function AdminPanel({ onNavigateHome }) {
       let updatedSettings = { ...settings };
 
       if (settingsFaviconFile) {
-        showToast('ফেভিকন ছবি ImgBB-তে আপলোড হচ্ছে...');
+        showToast('ফেভিকন ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
         const uploadRes = await uploadImage(settingsFaviconFile, adminToken, true);
         if (uploadRes?.url) {
           if (settings?.favicon_delete_url) {
@@ -783,7 +786,7 @@ export default function AdminPanel({ onNavigateHome }) {
       }
 
       if (settingsLogoFile) {
-        showToast('লোগো ছবি ImgBB-তে আপলোড হচ্ছে...');
+        showToast('লোগো ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
         const uploadRes = await uploadImage(settingsLogoFile, adminToken, true);
         if (uploadRes?.url) {
           if (settings?.logo_delete_url) {
@@ -795,7 +798,7 @@ export default function AdminPanel({ onNavigateHome }) {
       }
 
       if (settingsBannerFile) {
-        showToast('ব্যানার ছবি ImgBB-তে আপলোড হচ্ছে...');
+        showToast('ব্যানার ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
         const uploadRes = await uploadImage(settingsBannerFile, adminToken, true);
         if (uploadRes?.url) {
           if (settings?.banner_delete_url) {
@@ -1384,6 +1387,20 @@ export default function AdminPanel({ onNavigateHome }) {
           >
             <KeyRound size={16} />
             <span>অ্যাডমিন ক্রেডেনশিয়াল</span>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            className={`admin-nav-item ${adminTab === 'gdrive' ? 'active' : ''}`}
+            onClick={() => { setAdminTab('gdrive'); setSidebarOpen(false); window.scrollTo(0, 0); }}
+            style={{
+              marginTop: '4px',
+              borderTop: '1px dashed rgba(0, 108, 76, 0.15)',
+              paddingTop: '10px'
+            }}
+          >
+            <HardDrive size={16} style={{ color: adminTab === 'gdrive' ? 'currentColor' : '#137333' }} />
+            <span style={{ fontWeight: 600 }}>গুগল ড্রাইভ</span>
           </motion.button>
         </nav>
 
@@ -3650,6 +3667,11 @@ export default function AdminPanel({ onNavigateHome }) {
               </motion.button>
             </form>
           </div>
+        )}
+
+        {/* GOOGLE DRIVE STORAGE TAB */}
+        {adminTab === 'gdrive' && (
+          <AdminGDrive showToast={showToast} />
         )}
           </motion.div>
         </AnimatePresence>
