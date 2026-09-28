@@ -333,7 +333,9 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                         src={rawImg}
                         alt={b.name}
                         fill
-                        sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
+                        width={50}
+                        height={50}
+                        placeholder="blur"
                         referrerPolicy="no-referrer"
                         className="product-thumb-img"
                         style={{ objectFit: 'contain', padding: '6px' }}
