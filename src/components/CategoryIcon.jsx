@@ -135,6 +135,8 @@ export default function CategoryIcon({
         height={numericSize}
         className={`cat-logo-image ${className}`}
         referrerPolicy="no-referrer"
+        preload={true}
+        placeholder="blur"
         priority
         style={{
           width: `${numericSize}px`,
