@@ -111,8 +111,6 @@ export default function Header({
                   fill
                   sizes="(max-width: 768px) 140px, 180px"
                   priority
-		  preload
-		  placeholder="blur"
                   referrerPolicy="no-referrer"
                   style={{
                     objectFit: 'contain',

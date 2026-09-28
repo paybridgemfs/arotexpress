@@ -526,11 +526,7 @@ export class DBManager {
         DROP TABLE IF EXISTS weekly_prices, daily_prices, price_snapshots, daily_price_history CASCADE;
         DELETE FROM site_settings WHERE key = 'featured_products';
 
-        -- Clean up any legacy broken pngimg.com URLs
-        UPDATE categories SET icon = '' WHERE icon LIKE '%pngimg.com%';
-        UPDATE product_brands SET image_url = '' WHERE image_url LIKE '%pngimg.com%';
-        UPDATE groups SET icon = '' WHERE icon LIKE '%pngimg.com%';
-        UPDATE package_products SET image_url = '' WHERE image_url LIKE '%pngimg.com%';
+        -- Alter existing columns to avoid value too long error for categories
         ALTER TABLE categories ALTER COLUMN icon TYPE TEXT;
         ALTER TABLE categories ALTER COLUMN group_key TYPE VARCHAR(150);
         ALTER TABLE categories ALTER COLUMN en_name TYPE VARCHAR(150);

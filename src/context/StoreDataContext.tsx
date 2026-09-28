@@ -13,54 +13,24 @@ interface CachedStoreData {
   timestamp: number;
 }
 
-const CACHE_STORAGE_KEY = 'arot_store_cache_v4';
+const CACHE_STORAGE_KEY = 'arot_store_cache_v1';
 const DEDUPE_INTERVAL_MS = 5000; // 5 seconds deduplication window
 
 let memoryCache: CachedStoreData | null = null;
 
-// Helper to sanitize any legacy broken image URLs from cache or API
-const sanitizeItemImages = (data: CachedStoreData): CachedStoreData => {
-  if (!data) return data;
-  if (Array.isArray(data.categories)) {
-    data.categories = data.categories.map((c: any) => {
-      let icon = c.icon;
-      if (typeof icon === 'string' && icon.includes('pngimg.com')) {
-        icon = '';
-      }
-      const brands = Array.isArray(c.brands)
-        ? c.brands.map((b: any) => ({
-            ...b,
-            image: typeof b.image === 'string' && b.image.includes('pngimg.com') ? '' : b.image
-          }))
-        : [];
-      return { ...c, icon, brands };
-    });
-  }
-  return data;
-};
-
 const getInitialCache = (): CachedStoreData | null => {
   if (memoryCache && Array.isArray(memoryCache.categories) && memoryCache.categories.length > 0) {
-    return sanitizeItemImages(memoryCache);
+    return memoryCache;
   }
   if (typeof window !== 'undefined') {
     try {
-      // Clear all legacy caches
-      ['arot_store_cache_v1', 'arot_store_cache_v2', 'arot_store_cache'].forEach(k => {
-        try {
-          sessionStorage.removeItem(k);
-          localStorage.removeItem(k);
-        } catch {}
-      });
-
       // Check sessionStorage first for tab-scoped freshness
       const rawSession = sessionStorage.getItem(CACHE_STORAGE_KEY);
       if (rawSession) {
         const parsed = JSON.parse(rawSession);
         if (parsed && Array.isArray(parsed.categories) && parsed.categories.length > 0) {
-          const sanitized = sanitizeItemImages(parsed);
-          memoryCache = sanitized;
-          return sanitized;
+          memoryCache = parsed;
+          return parsed;
         }
       }
       // Fallback to localStorage for instant startup across sessions
@@ -68,9 +38,8 @@ const getInitialCache = (): CachedStoreData | null => {
       if (rawLocal) {
         const parsed = JSON.parse(rawLocal);
         if (parsed && Array.isArray(parsed.categories) && parsed.categories.length > 0) {
-          const sanitized = sanitizeItemImages(parsed);
-          memoryCache = sanitized;
-          return sanitized;
+          memoryCache = parsed;
+          return parsed;
         }
       }
     } catch (e) {
@@ -248,17 +217,7 @@ export function StoreDataProvider({
       if (catRes.ok) {
         const data = await catRes.json();
         const fetchedGroups = Array.isArray(data.groups) ? data.groups : [];
-        const rawCats = Array.isArray(data.categories) ? data.categories : [];
-        const fetchedCats = rawCats.map((c: any) => ({
-          ...c,
-          icon: typeof c.icon === 'string' && c.icon.includes('pngimg.com') ? '' : c.icon,
-          brands: Array.isArray(c.brands)
-            ? c.brands.map((b: any) => ({
-                ...b,
-                image: typeof b.image === 'string' && b.image.includes('pngimg.com') ? '' : b.image
-              }))
-            : []
-        }));
+        const fetchedCats = Array.isArray(data.categories) ? data.categories : [];
 
         if (fetchedCats.length > 0 || fetchedGroups.length > 0) {
           if (hasDataChanged(groupsRef.current, fetchedGroups)) {

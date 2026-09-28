@@ -332,8 +332,6 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                         fill
                         sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
                         referrerPolicy="no-referrer"
-			preload
-			placeholder="blur"
                         className="product-thumb-img"
                         style={{ objectFit: 'contain', padding: '6px' }}
                       />
