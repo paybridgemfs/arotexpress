@@ -313,10 +313,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
               >
                 <div className="product-image-wrap">
                   {(() => {
-                    let rawImg = b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image')) ? category.icon : null);
-                    if (rawImg && typeof rawImg === 'string' && rawImg.includes('pngimg.com')) {
-                      rawImg = null;
-                    }
+                    const rawImg = b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image')) ? category.icon : null);
                     if (!rawImg) {
                       return (
                         <div className="product-placeholder-icon">
@@ -333,10 +330,10 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                         src={rawImg}
                         alt={b.name}
                         fill
-                        width={50}
-                        height={50}
-                        placeholder="blur"
+                        sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
                         referrerPolicy="no-referrer"
+			preload
+			placeholder="blur"
                         className="product-thumb-img"
                         style={{ objectFit: 'contain', padding: '6px' }}
                       />

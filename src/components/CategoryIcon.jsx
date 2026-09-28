@@ -98,7 +98,6 @@ export default function CategoryIcon({
   // Check if icon is a valid image/logo URL
   const isImageUrl =
     typeof icon === 'string' &&
-    !icon.includes('pngimg.com') &&
     (icon.startsWith('http://') ||
       icon.startsWith('https://') ||
       icon.startsWith('/') ||
@@ -135,8 +134,8 @@ export default function CategoryIcon({
         height={numericSize}
         className={`cat-logo-image ${className}`}
         referrerPolicy="no-referrer"
-        placeholder="blur"
         priority
+	placeholder="blur"
         style={{
           width: `${numericSize}px`,
           height: `${numericSize}px`,

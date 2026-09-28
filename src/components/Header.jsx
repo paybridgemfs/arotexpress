@@ -110,8 +110,9 @@ export default function Header({
                   alt={siteName}
                   fill
                   sizes="(max-width: 768px) 140px, 180px"
-                  preload
                   priority
+		  preload
+		  placeholder="blur"
                   referrerPolicy="no-referrer"
                   style={{
                     objectFit: 'contain',
