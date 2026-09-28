@@ -5,6 +5,11 @@ export function proxy(request: NextRequest) {
   const APP_URL = process.env.APP_URL;
   const { pathname } = request.nextUrl;
 
+  // Bypass security check for OAuth callbacks and Webhooks
+  if (pathname.startsWith('/api/gdrive/callback')) {
+    return NextResponse.next();
+  }
+
   // Security check for /api routes when APP_URL is configured
   if (pathname.startsWith('/api')) {
     const origin = request.headers.get('origin');
@@ -24,6 +29,7 @@ export function proxy(request: NextRequest) {
       if (host && urlStr.includes(host)) return true;
       if (forwardedHost && urlStr.includes(forwardedHost)) return true;
       if (urlStr.includes('localhost') || urlStr.includes('127.0.0.1') || urlStr.includes('.run.app')) return true;
+      if (urlStr.includes('google.com') || urlStr.includes('accounts.google.com')) return true;
       return false;
     };
 
