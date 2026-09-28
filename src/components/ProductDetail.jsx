@@ -333,7 +333,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                         sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
                         referrerPolicy="no-referrer"
                         className="product-thumb-img"
-                        placeholder="blur"
+                        preload
                         style={{ objectFit: 'contain', padding: '6px' }}
                       />
                     );
