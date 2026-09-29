@@ -1,83 +1,95 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag } from 'lucide-react';
 import { useStoreData } from '../context/StoreDataContext';
 
 export default function FrontendLoadingScreen() {
-  const { settings, loading } = useStoreData();
-  const [show, setShow] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const { settings, loading, categories } = useStoreData();
+  const [mounted, setMounted] = useState(false);
+  const [show, setShow] = useState(true);
+  const [progress, setProgress] = useState(15);
+  const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
-    // Only show on first initial site load in this session
+    setMounted(true);
+    // If already loaded in this browser session, do not show loader at all
     try {
       if (typeof window !== 'undefined') {
         const hasLoaded = sessionStorage.getItem('arot_initial_loaded');
-        if (hasLoaded) {
+        if (hasLoaded === 'true') {
           setShow(false);
           return;
         }
       }
     } catch {
-      // Ignore sessionStorage access errors
+      // Ignore sessionStorage restriction errors
     }
 
-    setShow(true);
-
-    // Smooth simulated progress bar
-    let cur = 15;
-    setProgress(15);
+    // Smooth progressive loader
+    let cur = 20;
+    setProgress(20);
 
     const interval = setInterval(() => {
-      cur += Math.floor(Math.random() * 20) + 10;
-      if (cur >= 95) {
-        cur = 95;
+      cur += Math.floor(Math.random() * 18) + 8;
+      if (cur >= 92) {
+        cur = 92;
         clearInterval(interval);
       }
       setProgress(cur);
-    }, 120);
+    }, 100);
 
     return () => clearInterval(interval);
   }, []);
 
-  // When store data is ready (or after minimum animation time), complete the progress bar and dismiss
+  // When store data and categories are ready, smoothly complete to 100% and fade out
   useEffect(() => {
-    if (!show) return;
+    if (!mounted || !show) return;
 
-    if (!loading) {
-      setProgress(100);
+    const isDataReady = !loading && Array.isArray(categories) && categories.length > 0;
+
+    if (isDataReady) {
+      const elapsed = Date.now() - startTimeRef.current;
+      const minDisplayTime = 600; // minimum duration so animation looks polished and calm
+      const remainingTime = Math.max(0, minDisplayTime - elapsed);
+
       const timer = setTimeout(() => {
+        setProgress(100);
+        setTimeout(() => {
+          setShow(false);
+          try {
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('arot_initial_loaded', 'true');
+            }
+          } catch {}
+        }, 320);
+      }, remainingTime);
+
+      return () => clearTimeout(timer);
+    }
+  }, [loading, categories, mounted, show]);
+
+  // Safety fallback: dismiss after max 2.2 seconds under any slow network condition
+  useEffect(() => {
+    if (!mounted || !show) return;
+    const fallback = setTimeout(() => {
+      setProgress(100);
+      setTimeout(() => {
         setShow(false);
         try {
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('arot_initial_loaded', 'true');
           }
         } catch {}
-      }, 400);
+      }, 200);
+    }, 2200);
 
-      return () => clearTimeout(timer);
-    }
-  }, [loading, show]);
+    return () => clearTimeout(fallback);
+  }, [mounted, show]);
 
-  // Fallback auto-dismiss after 2 seconds to avoid any hanging
-  useEffect(() => {
-    if (!show) return;
-    const fallbackTimer = setTimeout(() => {
-      setProgress(100);
-      setShow(false);
-      try {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('arot_initial_loaded', 'true');
-        }
-      } catch {}
-    }, 2000);
-
-    return () => clearTimeout(fallbackTimer);
-  }, [show]);
-
-  if (!show) return null;
+  // If already loaded in session, render nothing
+  if (mounted && !show) return null;
 
   const logoUrl = settings?.logo_image_url;
   const siteName = settings?.site_name || 'আড়ৎ এক্সপ্রেস';
@@ -86,37 +98,38 @@ export default function FrontendLoadingScreen() {
     <AnimatePresence>
       {show && (
         <motion.div
-          key="site-initial-loader"
+          key="site-initial-loading-curtain"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.35, ease: 'easeInOut' }}
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 999999,
+            zIndex: 9999999,
             backgroundColor: '#FFFFFF',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            userSelect: 'none'
+            userSelect: 'none',
+            WebkitUserSelect: 'none'
           }}
         >
-          {/* Logo container */}
+          {/* Brand Logo or Name */}
           <motion.div
-            initial={{ scale: 0.92, opacity: 0.8 }}
+            initial={{ scale: 0.94, opacity: 0.9 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '28px'
+              marginBottom: '26px'
             }}
           >
             {logoUrl ? (
-              <div style={{ position: 'relative', width: '200px', height: '60px', maxWidth: '80vw' }}>
+              <div style={{ position: 'relative', width: '200px', height: '56px', maxWidth: '80vw' }}>
                 <Image
                   src={logoUrl}
                   alt={siteName}
@@ -131,8 +144,8 @@ export default function FrontendLoadingScreen() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div
                   style={{
-                    width: '44px',
-                    height: '44px',
+                    width: '42px',
+                    height: '42px',
                     borderRadius: '12px',
                     background: 'linear-gradient(135deg, #006C4C 0%, #004D36 100%)',
                     display: 'flex',
@@ -141,7 +154,7 @@ export default function FrontendLoadingScreen() {
                     color: '#FFFFFF'
                   }}
                 >
-                  <ShoppingBag size={24} />
+                  <ShoppingBag size={22} />
                 </div>
                 <span
                   style={{
@@ -174,7 +187,7 @@ export default function FrontendLoadingScreen() {
                 backgroundColor: '#006C4C',
                 borderRadius: '9999px',
                 width: `${progress}%`,
-                transition: 'width 0.2s ease'
+                transition: 'width 0.18s ease'
               }}
             />
           </div>

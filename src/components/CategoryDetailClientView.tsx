@@ -6,7 +6,6 @@ import Hero from '@/src/components/Hero.jsx';
 import TrustFeatures from '@/src/components/TrustFeatures.jsx';
 import CategoryGrid from '@/src/components/CategoryGrid.jsx';
 import ProductDetail from '@/src/components/ProductDetail.jsx';
-import StoreLayout from '@/app/StoreLayout';
 import { useStoreData } from '@/src/context/StoreDataContext';
 
 export default function CategoryDetailClientView({ categoryIdParam }: { categoryIdParam: string }) {
@@ -49,45 +48,43 @@ export default function CategoryDetailClientView({ categoryIdParam }: { category
   }, [selectedCategory, settings?.site_name]);
 
   return (
-    <StoreLayout>
-      <div style={{ position: 'relative', width: '100%' }}>
-        {/* Background Grid View */}
-        <Hero
-          settings={settings}
-          categories={activeCategories}
-          onExploreClick={() => {
-            const firstGroup = activeGroups[0];
-            if (firstGroup) handleScrollToGroup(firstGroup.key);
-          }}
-        />
-        <TrustFeatures />
-        <CategoryGrid
-          groups={activeGroups}
-          categories={activeCategories}
-          searchQuery={searchQuery}
-          isLoading={loading}
-          onSelectCategory={(id: any) => {
-            router.push(`/category/${id}`);
-          }}
-        />
+    <div style={{ position: 'relative', width: '100%' }}>
+      {/* Background Grid View */}
+      <Hero
+        settings={settings}
+        categories={activeCategories}
+        onExploreClick={() => {
+          const firstGroup = activeGroups[0];
+          if (firstGroup) handleScrollToGroup(firstGroup.key);
+        }}
+      />
+      <TrustFeatures />
+      <CategoryGrid
+        groups={activeGroups}
+        categories={activeCategories}
+        searchQuery={searchQuery}
+        isLoading={loading}
+        onSelectCategory={(id: any) => {
+          router.push(`/category/${id}`);
+        }}
+      />
 
-        {/* Product Detail Modal / Sheet */}
-        <AnimatePresence>
-          <ProductDetail
-            key={`product-detail-modal-${selectedCategoryId}`}
-            categoryId={selectedCategoryId}
-            category={selectedCategory}
-            isLoading={loading}
-            onBack={() => {
-              if (window.history.length > 1) {
-                router.back();
-              } else {
-                router.push('/');
-              }
-            }}
-          />
-        </AnimatePresence>
-      </div>
-    </StoreLayout>
+      {/* Product Detail Modal / Sheet */}
+      <AnimatePresence>
+        <ProductDetail
+          key={`product-detail-modal-${selectedCategoryId}`}
+          categoryId={selectedCategoryId}
+          category={selectedCategory}
+          isLoading={loading}
+          onBack={() => {
+            if (window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+        />
+      </AnimatePresence>
+    </div>
   );
 }

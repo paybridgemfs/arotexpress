@@ -5,7 +5,6 @@ import { motion } from 'motion/react';
 import Hero from '@/src/components/Hero.jsx';
 import TrustFeatures from '@/src/components/TrustFeatures.jsx';
 import CategoryGrid from '@/src/components/CategoryGrid.jsx';
-import StoreLayout from '@/app/StoreLayout';
 import { useStoreData } from '@/src/context/StoreDataContext';
 
 export default function HomeClientView() {
@@ -69,35 +68,33 @@ export default function HomeClientView() {
   }, [activeGroups, activeCategories, searchQuery, setActiveGroupTab]);
 
   return (
-    <StoreLayout>
-      <motion.div
-        key="home-view"
-        id="home-view"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.22 }}
-        style={{ width: '100%' }}
-      >
-        <Hero
-          settings={settings}
-          categories={activeCategories}
-          onExploreClick={() => {
-            const firstGroup = activeGroups[0];
-            if (firstGroup) handleScrollToGroup(firstGroup.key);
-          }}
-        />
-        <TrustFeatures />
-        <CategoryGrid
-          groups={activeGroups}
-          categories={activeCategories}
-          searchQuery={searchQuery}
-          isLoading={loading}
-          onSelectCategory={(id: any) => {
-            router.push(`/category/${id}`);
-          }}
-        />
-      </motion.div>
-    </StoreLayout>
+    <motion.div
+      key="home-view"
+      id="home-view"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      style={{ width: '100%' }}
+    >
+      <Hero
+        settings={settings}
+        categories={activeCategories}
+        onExploreClick={() => {
+          const firstGroup = activeGroups[0];
+          if (firstGroup) handleScrollToGroup(firstGroup.key);
+        }}
+      />
+      <TrustFeatures />
+      <CategoryGrid
+        groups={activeGroups}
+        categories={activeCategories}
+        searchQuery={searchQuery}
+        isLoading={loading}
+        onSelectCategory={(id: any) => {
+          router.push(`/category/${id}`);
+        }}
+      />
+    </motion.div>
   );
 }
