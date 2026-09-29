@@ -425,7 +425,7 @@ header, .main-app-header {
   background: #FFFFFF;
   color: #0F172A;
   border-radius: 6px;
-  padding: 3px 8px;
+  padding: 1.5px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -444,7 +444,6 @@ header, .main-app-header {
   font-size: 13px;
   font-weight: 800;
   color: #0F172A;
-  line-height: 1;
 }
 
 @media (min-width: 768px) {
