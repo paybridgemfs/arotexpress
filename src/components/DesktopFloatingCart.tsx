@@ -15,12 +15,11 @@ export default function DesktopFloatingCart() {
           <motion.button
             key="desktop-floating-cart-btn"
             id="desktop-floating-cart-btn"
-            aria-label="কার্ট খুলুন"
-            title="কার্ট দেখতে ক্লিক করুন"
             initial={{ x: 80, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 80, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+	    whileHover={{x: -2}}
             whileTap={{ scale: 0.96 }}
             onClick={() => setIsCartOpen(true)}
           >

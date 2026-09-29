@@ -375,8 +375,8 @@ header, .main-app-header {
 .desktop-floating-cart-wrapper {
   position: fixed;
   right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 40%;
+  transform: translateY(-40%);
   z-index: 90;
   pointer-events: none;
 }
