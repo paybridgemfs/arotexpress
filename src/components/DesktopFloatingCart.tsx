@@ -21,7 +21,6 @@ export default function DesktopFloatingCart() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 80, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            whileHover={{ x: -4 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => setIsCartOpen(true)}
           >
