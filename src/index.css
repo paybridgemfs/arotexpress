@@ -369,6 +369,99 @@ header, .main-app-header {
   animation: bump 0.3s var(--ease);
 }
 
+/* ================================================= */
+/* DESKTOP FLOATING RIGHT CART BUTTON                */
+/* ================================================= */
+.desktop-floating-cart-wrapper {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 90;
+  pointer-events: none;
+}
+
+#desktop-floating-cart-btn {
+  pointer-events: auto;
+  border: none;
+  background: linear-gradient(145deg, #006C4C 0%, #004D36 100%);
+  border-radius: 12px 0 0 12px;
+  padding: 9px 12px 9px 14px;
+  box-shadow: -4px 6px 20px rgba(0, 108, 76, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+  user-select: none;
+  min-width: 72px;
+}
+
+#desktop-floating-cart-btn:hover {
+  background: linear-gradient(145deg, #007D58 0%, #005A3F 100%);
+  box-shadow: -6px 8px 24px rgba(0, 108, 76, 0.45), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.floating-cart-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.floating-cart-count {
+  font-size: 15px;
+  font-weight: 800;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.floating-cart-price-box {
+  background: #FFFFFF;
+  color: #0F172A;
+  border-radius: 6px;
+  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.floating-cart-currency {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green, #006C4C);
+}
+
+.floating-cart-amount {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1;
+}
+
+@media (min-width: 768px) {
+  #cart-btn {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .desktop-floating-cart-wrapper {
+    display: none !important;
+  }
+  #cart-btn {
+    display: inline-flex !important;
+  }
+}
+
 @keyframes bump {
   0% { transform: scale(1); }
   40% { transform: scale(1.35); }

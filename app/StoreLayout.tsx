@@ -11,6 +11,7 @@ import ToastContainer from '@/src/components/ToastContainer.jsx';
 import ScrollManager from '@/src/components/ScrollManager';
 import SocialButtons from '@/src/components/SocialButtons.jsx';
 import FrontendLoadingScreen from '@/src/components/FrontendLoadingScreen';
+import DesktopFloatingCart from '@/src/components/DesktopFloatingCart';
 import { useStoreData } from '@/src/context/StoreDataContext';
 import { useCart } from '@/src/context/CartContext.jsx';
 import { toBengaliNumber } from '@/src/utils/bengali.js';
@@ -99,6 +100,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       <AuthModal />
       <ToastContainer />
       <SocialButtons variant="fixed" />
+      <DesktopFloatingCart />
 
       <Footer />
     </div>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
@@ -247,7 +248,20 @@ export default function Footer() {
             {brandSection.enabled !== false && (
               <div className="footer-col footer-col-brand">
                 <div className="footer-brand-header">
-                  <h3 className="footer-brand-title">{siteBrandTitle}</h3>
+                  {settings?.logo_image_url ? (
+                    <div style={{ position: 'relative', width: '160px', height: '42px', marginBottom: '8px' }}>
+                      <Image
+                        src={settings.logo_image_url}
+                        alt={siteBrandTitle}
+                        fill
+                        sizes="160px"
+                        style={{ objectFit: 'contain', objectPosition: 'left center' }}
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  ) : (
+                    <h3 className="footer-brand-title">{siteBrandTitle}</h3>
+                  )}
                   <span className="footer-brand-tagline">{siteBrandSubtitle}</span>
                 </div>
                 
