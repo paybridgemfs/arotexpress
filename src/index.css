@@ -387,7 +387,6 @@ header, .main-app-header {
   background: linear-gradient(145deg, #006C4C 0%, #004D36 100%);
   border-radius: 12px 0 0 12px;
   padding: 9px 12px 9px 14px;
-  box-shadow: -4px 6px 20px rgba(0, 108, 76, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -396,14 +395,8 @@ header, .main-app-header {
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  transition: box-shadow 0.2s ease, background 0.2s ease;
   user-select: none;
   min-width: 72px;
-}
-
-#desktop-floating-cart-btn:hover {
-  background: linear-gradient(145deg, #007D58 0%, #005A3F 100%);
-  box-shadow: -6px 8px 24px rgba(0, 108, 76, 0.45), 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .floating-cart-top-row {
