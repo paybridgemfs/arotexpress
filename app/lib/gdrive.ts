@@ -1,7 +1,7 @@
 import { DBManager } from '../../server/db';
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '946784607418-chm082t91m0grdpi8s632tl10mcnj7la.apps.googleusercontent.com';
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
 const FOLDER_NAME = 'ArotExpress Photos';
 
 export function formatBytes(bytes: number, decimals = 2): string {
