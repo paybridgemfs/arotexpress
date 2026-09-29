@@ -136,6 +136,7 @@ export default function FrontendLoadingScreen() {
                   fill
                   sizes="200px"
                   style={{ objectFit: 'contain' }}
+		  preload
                   priority
                   referrerPolicy="no-referrer"
                 />
