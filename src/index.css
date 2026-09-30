@@ -673,9 +673,9 @@ header, .main-app-header {
 /* HERO SECTION (M3 BANNER & RATE LEDGER)            */
 /* ================================================= */
 .hero {
-  max-width: 1160px;
+  max-width: 1444px;
   margin: 0 auto;
-  padding: 32px 20px 24px;
+  padding: 32px 40px 24px;
   display: grid;
   grid-template-columns: 1.15fr 0.95fr;
   gap: 28px;
@@ -1027,9 +1027,9 @@ header, .main-app-header {
 /* TRUST FEATURES (VALUE PROPOSITION BADGES)         */
 /* ================================================= */
 .trust-features-section {
-  max-width: 1160px;
+  max-width: 1444px;
   margin: 0 auto;
-  padding: 0 20px 20px;
+  padding: 0 40px 20px;
 }
 
 .trust-features-grid {
