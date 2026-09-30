@@ -1510,7 +1510,9 @@ img.cat-logo-image {
   .store-root-layout.cart-drawer-active {
     padding-right: 0;
   }
-
+  .products-grid-view {
+    padding-bottom: 100px;
+  }
   .cart-mobile-backdrop {
     position: fixed;
     inset: 0;
