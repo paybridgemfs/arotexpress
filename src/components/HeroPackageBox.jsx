@@ -155,7 +155,7 @@ export default function HeroPackageBox() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Package size={14} style={{ color: '#006C4C', flexShrink: 0 }} />
           <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)' }}>
-            আড়ৎ মূল্য পেতে প্রি-অর্ডার করুন
+          আড়ৎ মূল্য পেতে প্রি-অর্ডার করুন
           </span>
           <span
             style={{
@@ -291,7 +291,7 @@ export default function HeroPackageBox() {
               ? `অর্ডার করুন (${toBengaliNumber(distinctProductsCount)}টি পণ্য)`
               : distinctProductsCount === 0
               ? 'পণ্য সিলেক্ট করুন'
-              : `${toBengaliNumber(minItems)}টি ভিন্ন পণ্য নিন`}
+              : `কমপক্ষে ${toBengaliNumber(minItems)}টি ভিন্ন পণ্য নিন`}
           </span>
           <ArrowRight size={13} color={canOrder ? '#ffffff' : '#64748B'} />
         </button>

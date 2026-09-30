@@ -90,9 +90,11 @@ export default function CategoryIcon({
   style = {}
 }) {
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     setImageError(false);
+    setImageLoaded(false);
   }, [icon]);
 
   // Check if icon is a valid image/logo URL
@@ -111,40 +113,90 @@ export default function CategoryIcon({
 
     if (isBlobOrData) {
       return (
-        <img
+        <div
+          style={{
+            position: 'relative',
+            width: `${numericSize}px`,
+            height: `${numericSize}px`,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...style
+          }}
+          className={className}
+        >
+          {!imageLoaded && (
+            <div
+              className="cat-icon-skeleton skeleton-shimmer"
+              style={{
+                width: `${numericSize}px`,
+                height: `${numericSize}px`,
+                borderRadius: '8px'
+              }}
+            />
+          )}
+          <img
+            src={icon}
+            alt={category?.bn || 'Category Logo'}
+            className="cat-logo-image"
+            style={{
+              width: `${numericSize}px`,
+              height: `${numericSize}px`,
+              objectFit: 'contain',
+              borderRadius: '4px',
+              opacity: imageLoaded ? 1 : 0,
+              transition: 'opacity 0.2s ease'
+            }}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageError(true)}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: `${numericSize}px`,
+          height: `${numericSize}px`,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...style
+        }}
+        className={className}
+      >
+        {!imageLoaded && (
+          <div
+            className="cat-icon-skeleton skeleton-shimmer"
+            style={{
+              width: `${numericSize}px`,
+              height: `${numericSize}px`,
+              borderRadius: '8px'
+            }}
+          />
+        )}
+        <Image
           src={icon}
           alt={category?.bn || 'Category Logo'}
-          className={`cat-logo-image ${className}`}
+          width={numericSize}
+          height={numericSize}
+          className="cat-logo-image"
+          referrerPolicy="no-referrer"
+          priority
           style={{
             width: `${numericSize}px`,
             height: `${numericSize}px`,
             objectFit: 'contain',
             borderRadius: '4px',
-            ...style
+            opacity: imageLoaded ? 1 : 0,
+            transition: 'opacity 0.2s ease'
           }}
+          onLoad={() => setImageLoaded(true)}
           onError={() => setImageError(true)}
         />
-      );
-    }
-
-    return (
-      <Image
-        src={icon}
-        alt={category?.bn || 'Category Logo'}
-        width={numericSize}
-        height={numericSize}
-        className={`cat-logo-image ${className}`}
-        referrerPolicy="no-referrer"
-        priority
-        style={{
-          width: `${numericSize}px`,
-          height: `${numericSize}px`,
-          objectFit: 'contain',
-          borderRadius: '4px',
-          ...style
-        }}
-        onError={() => setImageError(true)}
-      />
+      </div>
     );
   }
 

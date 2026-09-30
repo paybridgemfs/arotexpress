@@ -387,6 +387,7 @@ header, .main-app-header {
   background: linear-gradient(145deg, #006C4C 0%, #004D36 100%);
   border-radius: 12px 0 0 12px;
   padding: 9px 12px 9px 14px;
+  box-shadow: -4px 6px 20px rgba(0, 108, 76, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -395,8 +396,14 @@ header, .main-app-header {
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  transition: box-shadow 0.2s ease, background 0.2s ease;
   user-select: none;
   min-width: 72px;
+}
+
+#desktop-floating-cart-btn:hover {
+  background: linear-gradient(145deg, #007D58 0%, #005A3F 100%);
+  box-shadow: -6px 8px 24px rgba(0, 108, 76, 0.45), 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .floating-cart-top-row {
@@ -418,7 +425,7 @@ header, .main-app-header {
   background: #FFFFFF;
   color: #0F172A;
   border-radius: 6px;
-  padding: 1.5px 8px;
+  padding: 3px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -437,6 +444,7 @@ header, .main-app-header {
   font-size: 13px;
   font-weight: 800;
   color: #0F172A;
+  line-height: 1;
 }
 
 @media (min-width: 768px) {
@@ -673,9 +681,9 @@ header, .main-app-header {
 /* HERO SECTION (M3 BANNER & RATE LEDGER)            */
 /* ================================================= */
 .hero {
-  max-width: 1444px;
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 32px 40px 24px;
+  padding: 32px 20px 24px;
   display: grid;
   grid-template-columns: 1.15fr 0.95fr;
   gap: 28px;
@@ -1027,9 +1035,9 @@ header, .main-app-header {
 /* TRUST FEATURES (VALUE PROPOSITION BADGES)         */
 /* ================================================= */
 .trust-features-section {
-  max-width: 1444px;
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 0 40px 20px;
+  padding: 0 20px 20px;
 }
 
 .trust-features-grid {
@@ -1510,9 +1518,7 @@ img.cat-logo-image {
   .store-root-layout.cart-drawer-active {
     padding-right: 0;
   }
-  .products-grid-view {
-    padding-bottom: 100px;
-  }
+
   .cart-mobile-backdrop {
     position: fixed;
     inset: 0;
@@ -5669,7 +5675,7 @@ img.cat-logo-image {
 }
 
 /* ================================================= */
-/* SKELETON LOADING ANIMATIONS                       */
+/* SKELETON & SHIMMER LOADING ANIMATIONS             */
 /* ================================================= */
 @keyframes skeleton-pulse {
   0%, 100% {
@@ -5680,8 +5686,74 @@ img.cat-logo-image {
   }
 }
 
+@keyframes shimmer-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .animate-pulse {
   animation: skeleton-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #EEF2F6;
+}
+
+.skeleton-shimmer::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.5) 40%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer-wave 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  content: '';
+  pointer-events: none;
+}
+
+.cat-icon-container {
+  position: relative;
+}
+
+.cat-icon-skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  z-index: 1;
+}
+
+.product-image-wrap {
+  position: relative;
+  overflow: hidden;
+  background: #F8FAFC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-image-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--radius-md);
+}
+
+.product-thumb-img {
+  transition: opacity 0.25s ease-in-out;
 }
 
 .skel-block {

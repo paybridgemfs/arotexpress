@@ -7,6 +7,58 @@ import { useCart } from '../context/CartContext.jsx';
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
 import CategoryIcon from './CategoryIcon.jsx';
 
+function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  let rawImg = image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image')) ? category.icon : null);
+  if (rawImg && typeof rawImg === 'string' && rawImg.includes('pngimg.com')) {
+    rawImg = null;
+  }
+
+  return (
+    <div className="product-image-wrap">
+      {rawImg && !error ? (
+        <>
+          {!loaded && (
+            <div className="product-image-skeleton skeleton-shimmer" />
+          )}
+          {rawImg.startsWith('blob:') || rawImg.startsWith('data:image') ? (
+            <img
+              src={rawImg}
+              alt={alt}
+              className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{ objectFit: 'contain', padding: '6px' }}
+              onLoad={() => setLoaded(true)}
+              onError={() => setError(true)}
+            />
+          ) : (
+            <Image
+              src={rawImg}
+              alt={alt}
+              fill
+              sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
+              referrerPolicy="no-referrer"
+              className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{ objectFit: 'contain', padding: '6px' }}
+              onLoad={() => setLoaded(true)}
+              onError={() => setError(true)}
+            />
+          )}
+        </>
+      ) : (
+        <div className="product-placeholder-icon">
+          <CategoryIcon icon={category?.icon} category={category} size={48} />
+        </div>
+      )}
+
+      <span className={`stock-badge-tag ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
+        {isOutOfStock ? 'স্টক শেষ' : `মজুত: ${formatStockDisplay(stock, unit)}`}
+      </span>
+    </div>
+  );
+}
+
 export default function ProductDetail({ categoryId, category, isLoading, onBack }) {
   const { cart, changeQty } = useCart();
   const [headerHeight, setHeaderHeight] = useState(() => {
@@ -311,39 +363,14 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                 whileHover={!isOutOfStock ? { y: -4, boxShadow: 'var(--shadow-md)' } : {}}
                 style={{ opacity: isOutOfStock ? 0.7 : 1 }}
               >
-                <div className="product-image-wrap">
-                  {(() => {
-                    let rawImg = b.image || (category?.icon && typeof category.icon === 'string' && (category.icon.startsWith('http') || category.icon.startsWith('/') || category.icon.startsWith('data:image')) ? category.icon : null);
-                    if (rawImg && typeof rawImg === 'string' && rawImg.includes('pngimg.com')) {
-                      rawImg = null;
-                    }
-                    if (!rawImg) {
-                      return (
-                        <div className="product-placeholder-icon">
-                          <CategoryIcon icon={category.icon} category={category} size={48} />
-                        </div>
-                      );
-                    }
-                    const isBlobOrData = rawImg.startsWith('blob:') || rawImg.startsWith('data:image');
-                    if (isBlobOrData) {
-                      return <img src={rawImg} alt={b.name} className="product-thumb-img" />;
-                    }
-                    return (
-                      <Image
-                        src={rawImg}
-                        alt={b.name}
-                        fill
-                        sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
-                        referrerPolicy="no-referrer"
-                        className="product-thumb-img"
-                        style={{ objectFit: 'contain', padding: '6px' }}
-                      />
-                    );
-                  })()}
-                  <span className={`stock-badge-tag ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
-                    {isOutOfStock ? 'স্টক শেষ' : `মজুত: ${formatStockDisplay(stock, b.unit)}`}
-                  </span>
-                </div>
+                <ProductItemImage
+                  image={b.image}
+                  category={category}
+                  alt={b.name}
+                  isOutOfStock={isOutOfStock}
+                  stock={stock}
+                  unit={b.unit}
+                />
 
                 <div className="product-card-content">
                   <div className="product-unit-text">{b.unit}</div>

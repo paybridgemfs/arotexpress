@@ -13,7 +13,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   Loader2,
-  Package
+  Package,
+  ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
@@ -197,6 +198,7 @@ export default function CheckoutView({
 
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('package_order_data');
+          sessionStorage.setItem('arot_last_placed_order', JSON.stringify(data));
         }
         showToast('আপনার প্যাকেজ অর্ডার সফল হয়েছে!');
         onOrderSuccess(data);
@@ -256,6 +258,9 @@ export default function CheckoutView({
       try {
         sessionStorage.removeItem('package_order_data');
         localStorage.removeItem('arot_active_package_order');
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('arot_last_placed_order', JSON.stringify(data));
+        }
         if (isPackageOrder) {
           localStorage.removeItem('arot_package_box_quantities');
           window.dispatchEvent(new Event('arot_package_cleared'));
@@ -272,6 +277,91 @@ export default function CheckoutView({
       setSubmitting(false);
     }
   };
+
+  // Dedicated empty cart screen when cart has no items and user is not in package mode
+  if (cartEntries.length === 0 && !isPackageOrder) {
+    return (
+      <motion.div
+        id="checkout-view"
+        style={{ display: 'block' }}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.28 }}
+      >
+        <section className="section-wrap" style={{ paddingTop: '26px' }}>
+          <motion.button
+            className="breadcrumb"
+            onClick={onBackToShop}
+            whileHover={{ x: -4 }}
+            whileTap={{ scale: 0.96 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <ArrowLeft size={16} /> <span>দোকানে ফিরে যান</span>
+          </motion.button>
+
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid var(--rule)',
+              borderRadius: 'var(--radius-xl)',
+              padding: '60px 24px',
+              textAlign: 'center',
+              maxWidth: '560px',
+              margin: '30px auto',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          >
+            <div
+              style={{
+                width: '76px',
+                height: '76px',
+                borderRadius: '50%',
+                background: '#F1F5F3',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--green)',
+                marginBottom: '18px'
+              }}
+            >
+              <ShoppingCart size={38} />
+            </div>
+
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text)', margin: '0 0 10px 0' }}>
+              আপনার কার্ট বর্তমানে খালি!
+            </h2>
+
+            <p style={{ fontSize: '14px', color: 'var(--muted)', margin: '0 0 24px 0', lineHeight: 1.5 }}>
+              চেকআউট করতে এবং অর্ডার সম্পন্ন করতে অনুগ্রহ করে প্রথমে আপনার প্রয়োজনীয় পণ্যগুলো কার্টে যোগ করুন।
+            </p>
+
+            <motion.button
+              type="button"
+              className="cta"
+              onClick={onBackToShop}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px 28px',
+                fontSize: '14.5px',
+                fontWeight: 700,
+                borderRadius: 'var(--radius-pill)',
+                cursor: 'pointer'
+              }}
+            >
+              <ShoppingCart size={18} />
+              <span>পণ্য বাছাই করুন ও কেনাকাটা শুরু করুন</span>
+            </motion.button>
+          </div>
+        </section>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
