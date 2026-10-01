@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Minus, Plus, Package } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
+import { toBengaliNumber } from '../utils/bengali.js';
 import CategoryIcon from './CategoryIcon.jsx';
 
 function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
@@ -27,7 +28,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
               src={rawImg}
               alt={alt}
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '6px' }}
+              style={{ objectFit: 'contain', padding: '4px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />
@@ -36,10 +37,10 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
               src={rawImg}
               alt={alt}
               fill
-              sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
               referrerPolicy="no-referrer"
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '6px' }}
+              style={{ objectFit: 'contain', padding: '4px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />
@@ -47,13 +48,15 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
         </>
       ) : (
         <div className="product-placeholder-icon">
-          <CategoryIcon icon={category?.icon} category={category} size={48} />
+          <CategoryIcon icon={category?.icon} category={category} size={52} />
         </div>
       )}
 
-      <span className={`stock-badge-tag ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
-        {isOutOfStock ? 'স্টক শেষ' : ``}
-      </span>
+      {isOutOfStock && (
+        <span className="stock-badge-tag out-of-stock">
+          স্টক শেষ
+        </span>
+      )}
     </div>
   );
 }
