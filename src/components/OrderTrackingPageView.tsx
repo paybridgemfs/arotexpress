@@ -61,7 +61,7 @@ function safeFormatTime(dateVal: any) {
 }
 
 export default function OrderTrackingPageView({ initialOrderCode = '' }: { initialOrderCode?: string }) {
-  const { user, openAuthModal } = useAuth();
+  const { user, token, adminToken, openAuthModal } = useAuth();
   const { replaceCartWithOrder, showToast } = useCart();
   const { loadPackageOrderItems } = usePackageBox();
   const { packageProducts = [], settings } = useStoreData();
@@ -91,10 +91,10 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
 
   const handleTrack = async (targetOrderId?: string, targetPhone?: string) => {
     const oid = (targetOrderId !== undefined ? targetOrderId : orderId).trim();
-    const ph = (targetPhone !== undefined ? targetPhone : (user ? phone : '')).trim();
+    const ph = (targetPhone !== undefined ? targetPhone : (user ? (user.phone || phone) : '')).trim();
 
     if (!oid && !ph) {
-      setError(user ? 'অনুগ্রহ করে অর্ডার কোড অথবা আপনার মোবাইল নম্বর দিন।' : 'অনুগ্রহ করে আপনার অর্ডারের কোড প্রদান করুন (যেমন: AE-123456)।');
+      setError(user ? 'অনুগ্রহ করে অর্ডার কোড দিন অথবা আপনার সব অর্ডার দেখুন।' : 'অনুগ্রহ করে আপনার অর্ডারের কোড প্রদান করুন (যেমন: AE-123456)।');
       return;
     }
 
@@ -105,9 +105,18 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const token = typeof window !== 'undefined' ? localStorage.getItem('arot_express_token') : null;
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      const activeAuthToken =
+        token ||
+        adminToken ||
+        (typeof window !== 'undefined'
+          ? (localStorage.getItem('arot_customer_token') ||
+             localStorage.getItem('arot_admin_token') ||
+             localStorage.getItem('arot_rider_token') ||
+             localStorage.getItem('arot_express_token'))
+          : null);
+
+      if (activeAuthToken) {
+        headers['Authorization'] = `Bearer ${activeAuthToken}`;
       }
 
       const res = await fetch('/api/orders/track', {
