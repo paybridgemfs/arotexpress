@@ -50,6 +50,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         onSelectCategory={(id: any) => router.push(`/category/${id}`)}
         onNavigateHome={() => router.push('/')}
         onNavigateProfile={() => router.push('/profile')}
+        onNavigateTrack={() => router.push('/track')}
         onScrollToGroup={handleScrollToGroup}
       />
 

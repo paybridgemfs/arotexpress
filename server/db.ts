@@ -2257,6 +2257,27 @@ export class DBManager {
     return null;
   }
 
+  static findOrdersByPhone(phone: string) {
+    if (!phone) return [];
+    const cleanDigits = phone.replace(/[^0-9]/g, '');
+    if (!cleanDigits || cleanDigits.length < 6) return [];
+
+    const isMatch = (orderPhone?: string) => {
+      if (!orderPhone) return false;
+      const oDigits = String(orderPhone).replace(/[^0-9]/g, '');
+      return oDigits.endsWith(cleanDigits) || cleanDigits.endsWith(oDigits);
+    };
+
+    const regularOrders = (this.data.orders || []).filter(o => isMatch(o.customer_phone));
+    const pkgOrders = (this.data.package_orders || [])
+      .filter(o => isMatch(o.customer_phone))
+      .map(o => ({ ...o, is_package_order: true }));
+
+    const combined = [...regularOrders, ...pkgOrders];
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return combined;
+  }
+
   // Delivery Riders CRUD
   static getDeliveryRiders() {
     return (this.data.delivery_riders || []).map(({ password_hash, ...r }) => r);

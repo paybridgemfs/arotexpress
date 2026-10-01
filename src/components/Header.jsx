@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, Search, X, User, ShoppingCart, LogIn, LayoutGrid, ShieldCheck } from 'lucide-react';
+import { Menu, Search, X, User, ShoppingCart, LogIn, LayoutGrid, ShieldCheck, Truck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
@@ -17,6 +17,7 @@ export default function Header({
   onSelectCategory,
   onNavigateHome,
   onNavigateProfile,
+  onNavigateTrack,
   onScrollToGroup
 }) {
   const router = useRouter();
@@ -163,6 +164,24 @@ export default function Header({
 
           {/* Header Action Buttons */}
           <div className="header-actions">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="user-btn track-btn"
+              onClick={() => {
+                if (typeof onNavigateTrack === 'function') {
+                  onNavigateTrack();
+                } else {
+                  navigate('/track');
+                }
+              }}
+              title="অর্ডার লাইভ ট্র্যাক করুন"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Truck size={16} />
+              <span className="user-btn-name">ট্র্যাক</span>
+            </motion.button>
+
             {mounted && user ? (
               <motion.button
                 whileHover={{ scale: 1.03 }}
@@ -341,6 +360,41 @@ export default function Header({
                 </div>
               )}
             </div>
+
+            {/* Live Order Tracking Button in Drawer */}
+            <button
+              onClick={() => {
+                setMobileNavOpen(false);
+                if (typeof onNavigateTrack === 'function') {
+                  onNavigateTrack();
+                } else {
+                  navigate('/track');
+                }
+              }}
+              style={{
+                width: '100%',
+                background: '#F0FDF4',
+                border: '1px solid #BBF7D0',
+                borderRadius: 'var(--radius-lg)',
+                padding: '12px 14px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                color: '#166534',
+                fontWeight: 700,
+                fontSize: '13.5px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Truck size={18} color="#16A34A" />
+                <span>লাইভ অর্ডার ট্র্যাকিং</span>
+              </div>
+              <span style={{ fontSize: '11px', background: '#DCFCE7', padding: '2px 8px', borderRadius: '10px' }}>
+                ট্র্যাক করুন →
+              </span>
+            </button>
 
             {/* Drawer Category Links */}
             <div className="drawer-section-title">

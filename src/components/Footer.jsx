@@ -140,7 +140,7 @@ export default function Footer() {
   const handleQuickLinkClick = (link) => {
     if (!link) return;
     if (link.action === 'track_order') {
-      setIsOrderTrackingOpen(true);
+      router.push('/track');
     } else if (link.action?.startsWith('policy_')) {
       const tabName = link.action.replace('policy_', '');
       setPolicyModal({ isOpen: true, tab: tabName });
