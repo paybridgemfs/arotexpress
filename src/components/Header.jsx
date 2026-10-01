@@ -111,6 +111,7 @@ export default function Header({
                   alt={siteName}
                   fill
                   sizes="(max-width: 768px) 140px, 180px"
+		  preload
                   priority
                   referrerPolicy="no-referrer"
                   style={{

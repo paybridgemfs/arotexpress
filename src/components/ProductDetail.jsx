@@ -315,7 +315,6 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25 }}
         >
-          <div className="badge-num">{toBengaliNumber(category.id)}</div>
           <div
             style={{
               width: '48px',

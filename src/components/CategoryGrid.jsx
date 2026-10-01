@@ -114,16 +114,13 @@ export default function CategoryGrid({
                     whileHover={{ y: -5, boxShadow: 'var(--shadow-md)' }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <span className="badge-num">{toBengaliNumber(cat.id)}</span>
                     <div
                       className="cat-icon-container"
                       style={{
-                        width: '56px',
-                        height: '56px',
+                        width: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        margin: '2px auto 6px auto'
                       }}
                     >
                       <CategoryIcon icon={cat.icon} category={cat} size={50} />
