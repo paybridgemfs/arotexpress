@@ -53,7 +53,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
       )}
 
       <span className={`stock-badge-tag ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
-        {isOutOfStock ? 'স্টক শেষ' : `মজুত: ${formatStockDisplay(stock, unit)}`}
+        {isOutOfStock ? 'স্টক শেষ' : ""}
       </span>
     </div>
   );
