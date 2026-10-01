@@ -28,7 +28,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
               src={rawImg}
               alt={alt}
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '4px' }}
+              style={{ objectFit: 'contain', padding: '6px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />
@@ -37,10 +37,10 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
               src={rawImg}
               alt={alt}
               fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
+              sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
               referrerPolicy="no-referrer"
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '4px' }}
+              style={{ objectFit: 'contain', padding: '6px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />
@@ -48,7 +48,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
         </>
       ) : (
         <div className="product-placeholder-icon">
-          <CategoryIcon icon={category?.icon} category={category} size={52} />
+          <CategoryIcon icon={category?.icon} category={category} size={48} />
         </div>
       )}
 

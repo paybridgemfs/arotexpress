@@ -5096,7 +5096,7 @@ img.cat-logo-image {
   }
 
   .product-image-wrap {
-    height: 145px;
+    height: 125px;
   }
 
   .product-name-title {
@@ -5748,9 +5748,6 @@ img.cat-logo-image {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 175px;
-  width: 100%;
-  border-radius: 10px;
 }
 
 .product-image-skeleton {
