@@ -117,13 +117,15 @@ export default function CategoryGrid({
                     <div
                       className="cat-icon-container"
                       style={{
-                        width: '100%',
+                        width: '74px',
+                        height: '74px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        margin: '2px auto 8px auto'
                       }}
                     >
-                      <CategoryIcon icon={cat.icon} category={cat} size={50} />
+                      <CategoryIcon icon={cat.icon} category={cat} size={66} />
                     </div>
                     <span className="en">{cat.en}</span>
                     <span className="bn">{cat.bn}</span>

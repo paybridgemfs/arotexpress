@@ -1244,10 +1244,7 @@ header, .main-app-header {
   border: 2px solid #FFFFFF;
   box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
 }
-img.cat-logo-image {
-  scale: 1.4;
-  transform: translateY(-5px);
-}
+
 #no-results {
   text-align: center;
   padding: 60px 20px;
