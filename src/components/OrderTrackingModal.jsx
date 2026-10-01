@@ -84,7 +84,12 @@ export default function OrderTrackingModal({ initialOrderCode = '', initialOrder
     setError('');
     try {
       const headers = {};
-      const token = typeof window !== 'undefined' ? localStorage.getItem('arot_express_token') : null;
+      const token = typeof window !== 'undefined'
+        ? (localStorage.getItem('arot_customer_token') ||
+           localStorage.getItem('arot_admin_token') ||
+           localStorage.getItem('arot_rider_token') ||
+           localStorage.getItem('arot_express_token'))
+        : null;
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
