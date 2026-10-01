@@ -4949,6 +4949,11 @@ img.cat-logo-image {
     display: none !important;
   }
 
+  .header-actions .track-btn,
+  .track-btn.desktop-only {
+    display: none !important;
+  }
+
   .mobile-search-row {
     display: block;
     padding: 6px 16px 10px;

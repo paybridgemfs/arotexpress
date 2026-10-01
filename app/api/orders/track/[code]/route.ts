@@ -2,23 +2,57 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/app/lib/db';
 import { authenticateToken } from '@/app/lib/auth';
 
+function normalizePhoneDigits(phone?: string) {
+  if (!phone) return '';
+  return String(phone).replace(/[^0-9]/g, '');
+}
+
 function maskPhoneNumber(phone?: string) {
   if (!phone) return '';
   const clean = String(phone).trim();
-  if (clean.length <= 5) return clean;
+  if (clean.length <= 5) return '01*********';
   return clean.substring(0, 3) + '*****' + clean.substring(clean.length - 2);
 }
 
 function maskName(name?: string) {
-  if (!name) return '';
+  if (!name) return 'গ্রাহক';
   const clean = String(name).trim();
   const parts = clean.split(' ');
   return parts
     .map((p) => {
-      if (p.length <= 2) return p;
-      return p[0] + '*'.repeat(p.length - 2) + p[p.length - 1];
+      if (p.length <= 2) return p[0] + '*';
+      return p[0] + '*'.repeat(Math.min(p.length - 2, 4)) + p[p.length - 1];
     })
     .join(' ');
+}
+
+function maskAddress(address?: string, area?: string) {
+  if (area) {
+    return `${area} (ব্যক্তিগত নিরাপত্তা রক্ষার্থে বাসার পূর্ণাঙ্গ ঠিকানা গোপন রাখা হয়েছে)`;
+  }
+  return 'ব্যক্তিগত নিরাপত্তা রক্ষার্থে পূর্ণাঙ্গ ঠিকানা গোপন রাখা হয়েছে';
+}
+
+function maskItems(itemsJson: any) {
+  let items = itemsJson;
+  if (typeof items === 'string') {
+    try {
+      items = JSON.parse(items);
+    } catch {
+      items = [];
+    }
+  }
+  if (!Array.isArray(items)) return [];
+
+  return items.map((it: any, idx: number) => ({
+    product_name: `পণ্য #${idx + 1}`,
+    brand: `পণ্য #${idx + 1}`,
+    qty: it.qty || it.quantity || 1,
+    unit: it.unit || 'আইটেম',
+    price: it.price || it.final_price || 0,
+    final_price: it.price || it.final_price || 0,
+    is_masked: true
+  }));
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
@@ -37,10 +71,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   // Check if requester is authenticated as the owner or an admin
   const authResult = await authenticateToken(req);
   const user = !authResult.error ? (authResult.user as any) : null;
-  const isOwnerOrAdmin = user && (user.role === 'admin' || (order.user_id && user.id === order.user_id));
+  const isAdmin = user && user.role === 'admin';
+  
+  let isOwner = false;
+  if (isAdmin) {
+    isOwner = true;
+  } else if (user) {
+    const userPhone = normalizePhoneDigits(user.phone);
+    const orderPhone = normalizePhoneDigits(order.customer_phone);
+    if (order.user_id && user.id === order.user_id) {
+      isOwner = true;
+    } else if (userPhone && orderPhone && (userPhone.endsWith(orderPhone) || orderPhone.endsWith(userPhone))) {
+      isOwner = true;
+    }
+  }
 
-  if (isOwnerOrAdmin) {
-    return NextResponse.json({ ...order, is_package_order: isPackage });
+  if (isOwner) {
+    return NextResponse.json({
+      ...order,
+      is_package_order: isPackage,
+      is_owner: true,
+      is_masked: false
+    });
   }
 
   // Sanitize sensitive PII for unauthenticated or public guest tracking
@@ -55,17 +107,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     delivery_fee: order.delivery_fee,
     payment_method: order.payment_method,
     payment_status: order.payment_status,
-    items_json: order.items_json,
-    // Masked customer details to protect privacy while confirming identity to user
+    items_json: maskItems(order.items_json),
+    items_count: Array.isArray(order.items_json)
+      ? order.items_json.length
+      : (typeof order.items_json === 'string' ? (JSON.parse(order.items_json || '[]').length) : 0),
     customer_name: maskName(order.customer_name),
     customer_phone: maskPhoneNumber(order.customer_phone),
-    delivery_address: order.delivery_address,
+    delivery_address: maskAddress(order.delivery_address, order.delivery_area),
     delivery_area: order.delivery_area,
-    // Rider info needed for delivery communication
     delivery_rider_name: order.delivery_rider_name,
     delivery_rider_phone: order.delivery_rider_phone,
     delivery_rider_vehicle: order.delivery_rider_vehicle,
-    delivery_note: order.delivery_note
+    delivery_note: order.delivery_note,
+    is_masked: true,
+    is_owner: false
   };
 
   return NextResponse.json(sanitizedOrder);

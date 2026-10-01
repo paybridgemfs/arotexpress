@@ -10,20 +10,49 @@ function normalizePhoneDigits(phone?: string) {
 function maskPhoneNumber(phone?: string) {
   if (!phone) return '';
   const clean = String(phone).trim();
-  if (clean.length <= 5) return clean;
+  if (clean.length <= 5) return '01*********';
   return clean.substring(0, 3) + '*****' + clean.substring(clean.length - 2);
 }
 
 function maskName(name?: string) {
-  if (!name) return '';
+  if (!name) return 'গ্রাহক';
   const clean = String(name).trim();
   const parts = clean.split(' ');
   return parts
     .map((p) => {
-      if (p.length <= 2) return p;
-      return p[0] + '*'.repeat(p.length - 2) + p[p.length - 1];
+      if (p.length <= 2) return p[0] + '*';
+      return p[0] + '*'.repeat(Math.min(p.length - 2, 4)) + p[p.length - 1];
     })
     .join(' ');
+}
+
+function maskAddress(address?: string, area?: string) {
+  if (area) {
+    return `${area} (ব্যক্তিগত নিরাপত্তা রক্ষার্থে বাসার পূর্ণাঙ্গ ঠিকানা গোপন রাখা হয়েছে)`;
+  }
+  return 'ব্যক্তিগত নিরাপত্তা রক্ষার্থে পূর্ণাঙ্গ ঠিকানা গোপন রাখা হয়েছে';
+}
+
+function maskItems(itemsJson: any) {
+  let items = itemsJson;
+  if (typeof items === 'string') {
+    try {
+      items = JSON.parse(items);
+    } catch {
+      items = [];
+    }
+  }
+  if (!Array.isArray(items)) return [];
+
+  return items.map((it: any, idx: number) => ({
+    product_name: `পণ্য #${idx + 1}`,
+    brand: `পণ্য #${idx + 1}`,
+    qty: it.qty || it.quantity || 1,
+    unit: it.unit || 'আইটেম',
+    price: it.price || it.final_price || 0,
+    final_price: it.price || it.final_price || 0,
+    is_masked: true
+  }));
 }
 
 export async function GET(req: NextRequest) {
@@ -52,89 +81,67 @@ async function handleTrackingLookup(req: NextRequest, orderId: string, phone: st
   const cleanPhone = phone.trim();
   const phoneDigits = normalizePhoneDigits(cleanPhone);
 
-  if (!cleanOrderId && !cleanPhone) {
-    return NextResponse.json(
-      { error: 'অনুগ্রহ করে অর্ডার আইডি অথবা মোবাইল নম্বর প্রদান করুন' },
-      { status: 400 }
-    );
-  }
-
-  // Check if authenticated as admin or customer
+  // Check authentication
   const authResult = await authenticateToken(req);
   const authUser = !authResult.error ? (authResult.user as any) : null;
   const isAdmin = authUser && authUser.role === 'admin';
 
-  // CASE 1: Both Order ID and Phone provided
-  if (cleanOrderId && cleanPhone) {
-    let order = DBManager.findOrderByCode(cleanOrderId);
-    if (!order) {
+  // 1. Phone number search requested:
+  // SECURITY REQUIREMENT: Phone number lookup is strictly restricted to logged-in users for their own numbers (or admins)
+  if (cleanPhone && !cleanOrderId) {
+    if (!authUser) {
       return NextResponse.json(
-        { error: `"${cleanOrderId}" কোডের কোনো অর্ডার পাওয়া যায়নি। সঠিক কোড দিন (যেমন: AE-123456)` },
-        { status: 404 }
+        {
+          error: 'মোবাইল নম্বর দিয়ে অর্ডারের তালিকা দেখতে অনুগ্রহ করে প্রথমে আপনার অ্যাকাউন্টে লগইন করুন।',
+          requiresAuth: true
+        },
+        { status: 401 }
       );
     }
 
-    const orderPhoneDigits = normalizePhoneDigits(order.customer_phone);
-    const isPhoneMatched =
+    const authUserPhoneDigits = normalizePhoneDigits(authUser.phone);
+    const isSelfPhone =
       phoneDigits &&
-      orderPhoneDigits &&
-      (orderPhoneDigits.endsWith(phoneDigits) || phoneDigits.endsWith(orderPhoneDigits));
+      authUserPhoneDigits &&
+      (authUserPhoneDigits.endsWith(phoneDigits) || phoneDigits.endsWith(authUserPhoneDigits));
 
-    const isOwner = authUser && order.user_id && authUser.id === order.user_id;
-
-    if (!isPhoneMatched && !isAdmin && !isOwner) {
+    if (!isAdmin && !isSelfPhone) {
       return NextResponse.json(
         {
-          error: 'এই অর্ডার আইডির সাথে দেওয়া মোবাইল নম্বরের মিল পাওয়া যায়নি। অনুগ্রহ করে অর্ডারে ব্যবহৃত সঠিক নম্বরটি দিন।',
-          code: 'PHONE_MISMATCH'
+          error: 'আপনি কেবলমাত্র আপনার নিজস্ব অ্যাকাউন্টে ব্যবহৃত মোবাইল নম্বরের অর্ডার দেখতে পারবেন।',
+          code: 'UNAUTHORIZED_PHONE_QUERY'
         },
         { status: 403 }
       );
     }
 
-    // Full verified order return
-    return NextResponse.json({
-      verified: true,
-      order: {
-        ...order,
-        is_package_order: Boolean(order.is_package_order || (order.order_code && order.order_code.startsWith('PK-')))
-      }
-    });
-  }
+    const targetPhoneToSearch = isAdmin ? cleanPhone : authUser.phone;
+    const orders = DBManager.findOrdersByPhone(targetPhoneToSearch);
 
-  // CASE 2: Only Phone provided -> List all orders for this customer
-  if (!cleanOrderId && cleanPhone) {
-    if (phoneDigits.length < 6) {
-      return NextResponse.json(
-        { error: 'সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)' },
-        { status: 400 }
-      );
-    }
-
-    const orders = DBManager.findOrdersByPhone(cleanPhone);
     if (!orders || orders.length === 0) {
       return NextResponse.json(
         {
-          error: `"${cleanPhone}" নম্বরে কোনো সক্রিয় বা পূর্ববর্তী অর্ডার পাওয়া যায়নি।`,
+          error: `আপনার অ্যাকাউন্টে (${targetPhoneToSearch}) কোনো সক্রিয় বা পূর্ববর্তী অর্ডার পাওয়া যায়নি।`,
           orders: []
         },
         { status: 404 }
       );
     }
 
-    // If exactly 1 order found, return it directly with verified flag
     if (orders.length === 1) {
       return NextResponse.json({
         verified: true,
+        is_owner: true,
+        is_masked: false,
         order: orders[0],
         multiple: false,
         totalFound: 1
       });
     }
 
-    // If multiple orders found, return list of orders
     return NextResponse.json({
       verified: true,
+      is_owner: true,
       orders: orders.map((o: any) => ({
         id: o.id,
         order_code: o.order_code,
@@ -154,8 +161,8 @@ async function handleTrackingLookup(req: NextRequest, orderId: string, phone: st
     });
   }
 
-  // CASE 3: Only Order ID provided
-  if (cleanOrderId && !cleanPhone) {
+  // 2. Order ID search requested (both unauthenticated and authenticated):
+  if (cleanOrderId) {
     let order = DBManager.findOrderByCode(cleanOrderId);
     if (!order) {
       return NextResponse.json(
@@ -164,17 +171,40 @@ async function handleTrackingLookup(req: NextRequest, orderId: string, phone: st
       );
     }
 
-    const isOwnerOrAdmin = isAdmin || (authUser && order.user_id && authUser.id === order.user_id);
     const isPackage = Boolean(order.is_package_order || (order.order_code && order.order_code.startsWith('PK-')));
+    const orderPhoneDigits = normalizePhoneDigits(order.customer_phone);
 
-    if (isOwnerOrAdmin) {
+    // Determine ownership
+    let isOwner = false;
+    if (isAdmin) {
+      isOwner = true;
+    } else if (authUser) {
+      const authUserPhoneDigits = normalizePhoneDigits(authUser.phone);
+      if (order.user_id && authUser.id === order.user_id) {
+        isOwner = true;
+      } else if (
+        orderPhoneDigits &&
+        authUserPhoneDigits &&
+        (orderPhoneDigits.endsWith(authUserPhoneDigits) || authUserPhoneDigits.endsWith(orderPhoneDigits))
+      ) {
+        isOwner = true;
+      }
+    }
+
+    // A: Logged in owner -> Full UNMASKED details
+    if (isOwner) {
       return NextResponse.json({
         verified: true,
-        order: { ...order, is_package_order: isPackage }
+        is_owner: true,
+        is_masked: false,
+        order: {
+          ...order,
+          is_package_order: isPackage
+        }
       });
     }
 
-    // Public sanitized order with masked details, prompting for phone if needed
+    // B: Guest or non-owner -> MASKED details (Protecting User Identity & Order Privacy)
     const sanitizedOrder = {
       id: order.id,
       order_code: order.order_code,
@@ -186,24 +216,34 @@ async function handleTrackingLookup(req: NextRequest, orderId: string, phone: st
       delivery_fee: order.delivery_fee,
       payment_method: order.payment_method,
       payment_status: order.payment_status,
-      items_json: order.items_json,
+      // Masked item list & masked customer info
+      items_json: maskItems(order.items_json),
+      items_count: Array.isArray(order.items_json)
+        ? order.items_json.length
+        : (typeof order.items_json === 'string' ? (JSON.parse(order.items_json || '[]').length) : 0),
       customer_name: maskName(order.customer_name),
       customer_phone: maskPhoneNumber(order.customer_phone),
-      delivery_address: order.delivery_address,
+      delivery_address: maskAddress(order.delivery_address, order.delivery_area),
       delivery_area: order.delivery_area,
+      // Delivery man info remains accessible for order coordination
       delivery_rider_name: order.delivery_rider_name,
       delivery_rider_phone: order.delivery_rider_phone,
       delivery_rider_vehicle: order.delivery_rider_vehicle,
       delivery_note: order.delivery_note,
-      is_masked: true
+      is_masked: true,
+      is_owner: false
     };
 
     return NextResponse.json({
       verified: false,
+      is_owner: false,
       is_masked: true,
       order: sanitizedOrder
     });
   }
 
-  return NextResponse.json({ error: 'অর্ডার ট্র্যাক করা সম্ভব হয়নি' }, { status: 400 });
+  return NextResponse.json(
+    { error: 'অনুগ্রহ করে অর্ডার কোড অথবা মোবাইল নম্বর প্রদান করুন' },
+    { status: 400 }
+  );
 }

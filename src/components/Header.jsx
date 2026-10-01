@@ -167,7 +167,7 @@ export default function Header({
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="user-btn track-btn"
+              className="user-btn track-btn desktop-only"
               onClick={() => {
                 if (typeof onNavigateTrack === 'function') {
                   onNavigateTrack();

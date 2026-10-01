@@ -347,11 +347,15 @@ export default function CheckoutView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                padding: '12px 28px',
+                padding: '13px 28px',
                 fontSize: '14.5px',
                 fontWeight: 700,
                 borderRadius: 'var(--radius-pill)',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                background: 'var(--green, #006C4C)',
+                color: '#FFFFFF',
+                border: 'none',
+                boxShadow: 'var(--shadow-green, 0 4px 14px rgba(0, 108, 76, 0.3))'
               }}
             >
               <ShoppingCart size={18} />

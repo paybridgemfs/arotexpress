@@ -411,30 +411,34 @@ export default function OrderTrackingModal({ initialOrderCode = '', initialOrder
 
                 {/* Action Buttons: 1-Click Reorder & Cash Memo Invoice */}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px', paddingTop: '14px', borderTop: '1px dashed var(--rule, #e5e0d8)' }}>
-                  <motion.button
-                    type="button"
-                    className="admin-btn"
-                    onClick={handleReorder}
-                    disabled={reordering}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    style={{ flex: '1 1 180px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 14px', fontSize: '13px', borderRadius: '8px' }}
-                  >
-                    <ShoppingBag size={15} />
-                    <span>পুনরায় অর্ডার (Re-order)</span>
-                  </motion.button>
+                  {!order.is_masked && (
+                    <>
+                      <motion.button
+                        type="button"
+                        className="admin-btn"
+                        onClick={handleReorder}
+                        disabled={reordering}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        style={{ flex: '1 1 180px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 14px', fontSize: '13px', borderRadius: '8px' }}
+                      >
+                        <ShoppingBag size={15} />
+                        <span>পুনরায় অর্ডার (Re-order)</span>
+                      </motion.button>
 
-                  <motion.button
-                    type="button"
-                    className="admin-btn secondary"
-                    onClick={() => setShowInvoice(true)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    style={{ flex: '1 1 160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 14px', fontSize: '13px', borderRadius: '8px' }}
-                  >
-                    <Printer size={15} />
-                    <span>ক্যাশ মেমো / ইনভয়েস</span>
-                  </motion.button>
+                      <motion.button
+                        type="button"
+                        className="admin-btn secondary"
+                        onClick={() => setShowInvoice(true)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        style={{ flex: '1 1 160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 14px', fontSize: '13px', borderRadius: '8px' }}
+                      >
+                        <Printer size={15} />
+                        <span>ক্যাশ মেমো / ইনভয়েস</span>
+                      </motion.button>
+                    </>
+                  )}
                 </div>
               </motion.div>
             )}

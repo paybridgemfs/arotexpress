@@ -25,7 +25,11 @@ import {
   ChevronRight,
   ReceiptText,
   BadgeAlert,
-  ArrowLeft
+  ArrowLeft,
+  Lock,
+  LogIn,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
@@ -57,13 +61,14 @@ function safeFormatTime(dateVal: any) {
 }
 
 export default function OrderTrackingPageView({ initialOrderCode = '' }: { initialOrderCode?: string }) {
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const { replaceCartWithOrder, showToast } = useCart();
   const { loadPackageOrderItems } = usePackageBox();
   const { packageProducts = [], settings } = useStoreData();
 
   const [orderId, setOrderId] = useState(initialOrderCode || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [searchMode, setSearchMode] = useState<'code' | 'my_orders'>('code');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [order, setOrder] = useState<any>(null);
@@ -72,7 +77,7 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
   const [reordering, setReordering] = useState(false);
 
   useEffect(() => {
-    if (user?.phone && !phone) {
+    if (user?.phone) {
       setPhone(user.phone);
     }
   }, [user]);
@@ -80,16 +85,16 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
   useEffect(() => {
     if (initialOrderCode) {
       setOrderId(initialOrderCode);
-      handleTrack(initialOrderCode, phone);
+      handleTrack(initialOrderCode, '');
     }
   }, [initialOrderCode]);
 
   const handleTrack = async (targetOrderId?: string, targetPhone?: string) => {
     const oid = (targetOrderId !== undefined ? targetOrderId : orderId).trim();
-    const ph = (targetPhone !== undefined ? targetPhone : phone).trim();
+    const ph = (targetPhone !== undefined ? targetPhone : (user ? phone : '')).trim();
 
     if (!oid && !ph) {
-      setError('অনুগ্রহ করে অর্ডার আইডি অথবা মোবাইল নম্বর প্রদান করুন।');
+      setError(user ? 'অনুগ্রহ করে অর্ডার কোড অথবা আপনার মোবাইল নম্বর দিন।' : 'অনুগ্রহ করে আপনার অর্ডারের কোড প্রদান করুন (যেমন: AE-123456)।');
       return;
     }
 
@@ -108,12 +113,20 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
       const res = await fetch('/api/orders/track', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ order_id: oid, phone: ph })
+        body: JSON.stringify({
+          order_id: oid || undefined,
+          phone: ph || undefined
+        })
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (data.requiresAuth) {
+          setError(data.error || 'এই সুবিধাটি পেতে অনুগ্রহ করে লগইন করুন।');
+          openAuthModal('login');
+          return;
+        }
         throw new Error(data.error || 'অর্ডারটি ট্র্যাক করা সম্ভব হয়নি।');
       }
 
@@ -131,13 +144,28 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
     }
   };
 
+  const handleFetchMyOrders = () => {
+    if (!user) {
+      openAuthModal('login');
+      return;
+    }
+    setOrderId('');
+    handleTrack('', user.phone);
+  };
+
   const handleSelectFromList = (selectedCode: string) => {
     setOrderId(selectedCode);
-    handleTrack(selectedCode, phone);
+    handleTrack(selectedCode, user?.phone || '');
   };
 
   const handleReorder = async () => {
     if (!order) return;
+    if (order.is_masked) {
+      showToast('পুনরায় অর্ডার করতে অনুগ্রহ করে প্রথমে আপনার অ্যাকাউন্টে লগইন করুন');
+      openAuthModal('login');
+      return;
+    }
+
     let items = order.items_json;
     if (typeof items === 'string') {
       try {
@@ -220,7 +248,7 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
             আপনার অর্ডারের বর্তমান অবস্থা জানুন
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--muted, #64748B)', maxWidth: '560px', margin: '0 auto', lineHeight: 1.5 }}>
-            অর্ডার আইডি অথবা অর্ডারে ব্যবহৃত মোবাইল নম্বর দিয়ে আপনার পণ্যের প্রস্তুতি ও ডেলিভারিম্যানের লাইভ অবস্থান দেখুন।
+            অর্ডার কোড দিয়ে যে কোনো পার্সেলের লাইভ ডেলিভারি স্ট্যাটাস ও রাইডারের ফোন নম্বর দেখুন।
           </p>
         </div>
 
@@ -243,10 +271,10 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
               handleTrack();
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: user ? 'repeat(auto-fit, minmax(240px, 1fr))' : '1fr', gap: '14px', marginBottom: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--ink, #1F2937)', marginBottom: '6px' }}>
-                  অর্ডার আইডি / কোড:
+                  অর্ডার কোড / আইডি:
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Package size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted, #94A3B8)' }} />
@@ -268,47 +296,77 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
                 </div>
               </div>
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink, #1F2937)' }}>
-                    গ্রাহকের মোবাইল নম্বর:
-                  </label>
-                  {user?.phone && phone !== user.phone && (
-                    <button
-                      type="button"
-                      onClick={() => setPhone(user.phone)}
-                      style={{ background: 'none', border: 'none', fontSize: '11.5px', color: 'var(--green)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      আমার নম্বর বসান
-                    </button>
-                  )}
+              {/* Phone Field ONLY visible if user is logged in to ensure user order privacy */}
+              {user && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink, #1F2937)' }}>
+                      আমার অ্যাকাউন্ট নম্বর:
+                    </label>
+                    <span style={{ fontSize: '11.5px', color: 'var(--green)', fontWeight: 700 }}>লগইন আছেন</span>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted, #94A3B8)' }} />
+                    <input
+                      type="tel"
+                      value={user.phone}
+                      readOnly
+                      style={{
+                        width: '100%',
+                        padding: '11px 12px 11px 36px',
+                        fontSize: '14px',
+                        borderRadius: '8px',
+                        border: '1px solid #CBD5E1',
+                        background: '#F1F5F9',
+                        color: 'var(--ink)',
+                        cursor: 'not-allowed'
+                      }}
+                    />
+                  </div>
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted, #94A3B8)' }} />
-                  <input
-                    type="tel"
-                    placeholder="01XXXXXXXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '11px 12px 11px 36px',
-                      fontSize: '14px',
-                      borderRadius: '8px',
-                      border: '1px solid #CBD5E1',
-                      background: '#F8FAFC',
-                      color: 'var(--ink)'
-                    }}
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
+            {/* Privacy & Action Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ fontSize: '12px', color: 'var(--muted, #64748B)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <ShieldCheck size={14} color="#16A34A" />
-                <span>অর্ডার আইডি ও মোবাইল নম্বর দুটোই দিলে পূর্ণাঙ্গ তথ্য ও রাইডারের ফোন নম্বর দেখা যাবে।</span>
-              </div>
+              {!user ? (
+                <div style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Lock size={14} color="#64748B" />
+                  <span>
+                    ব্যক্তিগত তথ্যের সুরক্ষার্থে লগইন ছাড়া পণ্যের বিস্তারিত নাম ও পূর্ণাঙ্গ নম্বর গোপন (Mask) থাকবে।{' '}
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('login')}
+                      style={{ color: 'var(--green)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                    >
+                      লগইন করুন
+                    </button>
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={handleFetchMyOrders}
+                    style={{
+                      background: '#F1F5F9',
+                      border: '1px solid #CBD5E1',
+                      color: 'var(--ink)',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <User size={14} />
+                    <span>আমার সব অর্ডার দেখুন</span>
+                  </button>
+                </div>
+              )}
 
               <motion.button
                 type="submit"
@@ -327,7 +385,8 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
                   cursor: 'pointer',
                   border: 'none',
                   background: 'var(--green, #006C4C)',
-                  color: '#ffffff'
+                  color: '#ffffff',
+                  boxShadow: 'var(--shadow-green)'
                 }}
               >
                 {loading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
@@ -361,7 +420,7 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
           </motion.div>
         )}
 
-        {/* Multiple Orders Found by Phone (List Selection) */}
+        {/* Multiple Orders Found for User */}
         {orderList.length > 0 && !order && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -376,9 +435,9 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--ink)' }}>
-                {phone} নম্বরে {toBengaliNumber(orderList.length)}টি অর্ডার পাওয়া গেছে:
+                আপনার অ্যাকাউন্টে {toBengaliNumber(orderList.length)}টি অর্ডার রয়েছে:
               </h3>
-              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>যে কোনো অর্ডারে ক্লিক করে ট্র্যাক করুন</span>
+              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>যে কোনো অর্ডারে ক্লিক করে লাইভ ট্র্যাক করুন</span>
             </div>
 
             <div style={{ display: 'grid', gap: '10px' }}>
@@ -460,6 +519,36 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
                 boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
               }}
             >
+              {/* Privacy Warning Banner if Masked */}
+              {order.is_masked && (
+                <div
+                  style={{
+                    background: '#FFFBEB',
+                    border: '1px solid #FDE68A',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '12px',
+                    color: '#92400E'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <EyeOff size={15} />
+                    <span>ব্যক্তিগত গোপনীয়তা রক্ষায় নাম, ফোন নম্বর ও পণ্য তালিকা আংশিক মাস্ক করা রয়েছে।</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('login')}
+                    style={{ background: 'none', border: 'none', color: '#B45309', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    লগইন করুন →
+                  </button>
+                </div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
                 <div>
                   <div style={{ fontSize: '11.5px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>
@@ -553,9 +642,6 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
                           </div>
                           <div style={{ fontSize: '12.5px', fontWeight: isCurrent ? 800 : (isDone ? 700 : 500), color: isDone ? 'var(--ink)' : 'var(--muted)', lineHeight: 1.25 }}>
                             {step.title}
-                          </div>
-                          <div style={{ fontSize: '10.5px', color: 'var(--muted)', marginTop: '2px', display: 'none' }}>
-                            {step.desc}
                           </div>
                         </div>
                       );
@@ -675,12 +761,14 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
             >
               <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: 700, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <ReceiptText size={16} color="var(--green)" />
-                <span>অর্ডারের পণ্য তালিকা ({toBengaliNumber(parsedItems.length)}টি আইটেম)</span>
+                <span>
+                  অর্ডারের পণ্য তালিকা ({toBengaliNumber(parsedItems.length || order.items_count || 0)}টি আইটেম)
+                </span>
               </h4>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {parsedItems.map((item: any, idx: number) => {
-                  const itemName = item.product_name || item.brand || item.name || 'পণ্য';
+                  const itemName = item.product_name || item.brand || item.name || `পণ্য #${idx + 1}`;
                   const itemPrice = item.final_price || item.price || 0;
                   const itemQty = item.qty || item.quantity || 1;
                   const itemUnit = item.unit || '';
@@ -758,30 +846,32 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
                   <span>পুনরায় অর্ডার (1-Click Reorder)</span>
                 </motion.button>
 
-                <motion.button
-                  type="button"
-                  onClick={() => setShowInvoice(true)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  style={{
-                    flex: '1 1 180px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '10px 16px',
-                    fontSize: '13.5px',
-                    borderRadius: '8px',
-                    background: '#F1F5F9',
-                    color: 'var(--ink, #1F2937)',
-                    border: '1px solid #CBD5E1',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Printer size={16} />
-                  <span>ক্যাশ মেমো / ইনভয়েস</span>
-                </motion.button>
+                {!order.is_masked && (
+                  <motion.button
+                    type="button"
+                    onClick={() => setShowInvoice(true)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{
+                      flex: '1 1 180px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      padding: '10px 16px',
+                      fontSize: '13.5px',
+                      borderRadius: '8px',
+                      background: '#F1F5F9',
+                      color: 'var(--ink, #1F2937)',
+                      border: '1px solid #CBD5E1',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Printer size={16} />
+                    <span>ক্যাশ মেমো / ইনভয়েস</span>
+                  </motion.button>
+                )}
               </div>
             </div>
           </motion.div>
@@ -790,7 +880,7 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
 
       {/* Customer Invoice Modal */}
       <AnimatePresence>
-        {showInvoice && order && (
+        {showInvoice && order && !order.is_masked && (
           <CustomerInvoiceModal
             order={order}
             settings={settings}

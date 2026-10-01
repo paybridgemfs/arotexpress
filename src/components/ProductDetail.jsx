@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Minus, Plus, Package } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
-import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
 import CategoryIcon from './CategoryIcon.jsx';
 
 function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
@@ -53,7 +52,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
       )}
 
       <span className={`stock-badge-tag ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
-        {isOutOfStock ? 'স্টক শেষ' : ""}
+        {isOutOfStock ? 'স্টক শেষ' : ``}
       </span>
     </div>
   );
