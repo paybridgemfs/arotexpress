@@ -352,9 +352,9 @@ export default function CheckoutView({
                 fontWeight: 700,
                 borderRadius: 'var(--radius-pill)',
                 cursor: 'pointer',
-                border: none,
-                background: var(--green),
-                color: var(--surface)
+                border: 'none',
+                background: 'var(--green)',
+                color: 'var(--surface)'
               }}
             >
               <ShoppingCart size={18} />
