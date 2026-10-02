@@ -1212,7 +1212,7 @@ header, .main-app-header {
   height: 110px;
   position: relative;
   overflow: hidden;
-  background: #F8FAFC;
+  background: #FFF;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1298,8 +1298,8 @@ header, .main-app-header {
 
 .cat-card .in-cart-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -2px;
+  right: -2px;
   background: var(--chili);
   color: #FFFFFF;
   border-radius: var(--radius-pill);
