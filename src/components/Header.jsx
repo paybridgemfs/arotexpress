@@ -179,7 +179,7 @@ export default function Header({
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <Truck size={16} />
-              <span className="user-btn-name">ট্র্যাক</span>
+              <span className="user-btn-name">অর্ডার ট্র্যাক</span>
             </motion.button>
 
             {mounted && user ? (
@@ -188,11 +188,12 @@ export default function Header({
                 whileTap={{ scale: 0.97 }}
                 className="user-btn"
                 onClick={onNavigateProfile}
-                title="প্রোফাইল ও অর্ডার দেখুন"
+                title={`${user.name || 'ব্যবহারকারী'} — প্রোফাইল ও অর্ডার দেখুন`}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <User size={16} />
-                <span className="user-btn-name">{user.name ? user.name.split(' ')[0] : 'প্রোফাইল'}</span>
+                <span className="user-btn-name user-desktop-name">{user.name || 'প্রোফাইল'}</span>
+                <span className="user-btn-name user-mobile-name">{user.name ? user.name.split(' ')[0] : 'প্রোফাইল'}</span>
               </motion.button>
             ) : (
               <motion.button

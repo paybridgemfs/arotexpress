@@ -737,29 +737,84 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
                 </div>
                 {order.is_masked && (
                   <span style={{ fontSize: '11.5px', background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <Lock size={12} /> সুরক্ষিত (আংশিক গোপন)
+                    <Lock size={12} /> সুরক্ষিত (তথ্য লুকানো)
                   </span>
                 )}
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '13px' }}>
-                <div>
-                  <span style={{ color: 'var(--muted)' }}>গ্রাহকের নাম:</span>{' '}
-                  <strong style={{ color: 'var(--ink)' }}>{order.customer_name}</strong>
+
+              {order.is_masked ? (
+                /* Blurred Privacy Container - Real data NEVER exists here or in response */
+                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px', padding: '14px', background: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
+                  {/* Dummy placeholder blurred text (Zero actual user info) */}
+                  <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.5 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '13px' }}>
+                      <div><span style={{ color: 'var(--muted)' }}>গ্রাহকের নাম:</span> <strong>মুহাম্মদ আবদুল্লাহ</strong></div>
+                      <div><span style={{ color: 'var(--muted)' }}>মোবাইল নম্বর:</span> <strong className="mono">০১৭xxxxxxxx</strong></div>
+                      <div style={{ gridColumn: '1 / -1' }}><span style={{ color: 'var(--muted)' }}>পূর্ণ ঠিকানা:</span> <strong>রোড ১২, সেক্টর ৪, উত্তরা, ঢাকা</strong></div>
+                    </div>
+                  </div>
+
+                  {/* Overlay Lock Badge */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255, 255, 255, 0.82)',
+                    backdropFilter: 'blur(2px)',
+                    padding: '10px',
+                    textAlign: 'center',
+                    gap: '6px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#92400E', fontWeight: 700, fontSize: '13px' }}>
+                      <Lock size={15} />
+                      <span>ব্যক্তিগত গোপনীয়তার স্বার্থে গ্রাহকের নাম ও ঠিকানা সুরক্ষিত রাখা হয়েছে</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('login')}
+                      style={{
+                        background: 'var(--green, #006C4C)',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '5px 14px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <LogIn size={13} />
+                      <span>তথ্য দেখতে অ্যাকাউন্টে লগইন করুন</span>
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--muted)' }}>মোবাইল নম্বর:</span>{' '}
-                  <strong className="mono" style={{ color: 'var(--ink)' }}>{order.customer_phone}</strong>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '13px' }}>
+                  <div>
+                    <span style={{ color: 'var(--muted)' }}>গ্রাহকের নাম:</span>{' '}
+                    <strong style={{ color: 'var(--ink)' }}>{order.customer_name}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--muted)' }}>মোবাইল নম্বর:</span>{' '}
+                    <strong className="mono" style={{ color: 'var(--ink)' }}>{order.customer_phone}</strong>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <span style={{ color: 'var(--muted)' }}>পূর্ণ ঠিকানা:</span>{' '}
+                    <strong style={{ color: 'var(--ink)' }}>{order.delivery_address}</strong>{' '}
+                    {order.delivery_area && (
+                      <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>
+                        {order.delivery_area}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <span style={{ color: 'var(--muted)' }}>পূর্ণ ঠিকানা:</span>{' '}
-                  <strong style={{ color: 'var(--ink)' }}>{order.delivery_address}</strong>{' '}
-                  {order.delivery_area && (
-                    <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>
-                      {order.delivery_area}
-                    </span>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Itemized Order Memo List */}
@@ -772,61 +827,123 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
                 marginBottom: '24px'
               }}
             >
-              <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: 700, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <ReceiptText size={16} color="var(--green)" />
-                <span>
-                  অর্ডারের পণ্য তালিকা ({toBengaliNumber(parsedItems.length || order.items_count || 0)}টি আইটেম)
-                </span>
+              <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: 700, color: 'var(--ink)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ReceiptText size={16} color="var(--green)" />
+                  <span>
+                    অর্ডারের পণ্য তালিকা ({toBengaliNumber(order.items_count || parsedItems.length || 0)}টি আইটেম)
+                  </span>
+                </div>
+                {order.is_masked && (
+                  <span style={{ fontSize: '11px', color: '#92400E', fontWeight: 600 }}>
+                    মেমো সুরক্ষিত
+                  </span>
+                )}
               </h4>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {parsedItems.map((item: any, idx: number) => {
-                  const itemName = item.product_name || item.brand || item.name || `পণ্য #${idx + 1}`;
-                  const itemPrice = item.final_price || item.price || 0;
-                  const itemQty = item.qty || item.quantity || 1;
-                  const itemUnit = item.unit || '';
+              {order.is_masked ? (
+                /* Blurred Items Container - Real product data NEVER sent from server */
+                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px', padding: '14px', background: '#F8FAFC', border: '1px dashed #CBD5E1', marginBottom: '14px' }}>
+                  <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.5, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#FFFFFF', borderRadius: '6px', fontSize: '13px' }}>
+                      <div style={{ fontWeight: 700 }}>মিনিকেট চাল প্রিমিয়াম × ২</div>
+                      <div className="mono font-bold">৳১৫০</div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#FFFFFF', borderRadius: '6px', fontSize: '13px' }}>
+                      <div style={{ fontWeight: 700 }}>ফ্রেশ সয়াবিন তেল ১ লিটার × ১</div>
+                      <div className="mono font-bold">৳১৮৫</div>
+                    </div>
+                  </div>
 
-                  return (
-                    <div
-                      key={idx}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255, 255, 255, 0.82)',
+                    backdropFilter: 'blur(2px)',
+                    padding: '10px',
+                    textAlign: 'center',
+                    gap: '6px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#92400E', fontWeight: 700, fontSize: '13px' }}>
+                      <ShieldCheck size={16} />
+                      <span>ব্যক্তিগত গোপনীয়তার স্বার্থে পণ্যের মেমো ও নাম লুকানো রয়েছে</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('login')}
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
+                        background: 'var(--green, #006C4C)',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '5px 12px',
+                        borderRadius: '20px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        padding: '8px 10px',
-                        background: '#F8FAFC',
-                        borderRadius: '6px',
-                        fontSize: '13px'
+                        gap: '4px'
                       }}
                     >
-                      <div>
-                        <div style={{ fontWeight: 700, color: 'var(--ink)' }}>
-                          {itemName} ×{toBengaliNumber(itemQty)}
-                        </div>
-                        {itemUnit && (
-                          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>একক: {itemUnit}</div>
-                        )}
-                      </div>
-                      <div className="mono" style={{ fontWeight: 800, color: 'var(--ink)' }}>
-                        ৳{toBengaliNumber(itemPrice * itemQty)}
-                      </div>
-                    </div>
-                  );
-                })}
+                      <LogIn size={13} />
+                      <span>মেমো দেখতে লগইন করুন</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {parsedItems.map((item: any, idx: number) => {
+                    const itemName = item.product_name || item.brand || item.name || `পণ্য #${idx + 1}`;
+                    const itemPrice = item.final_price || item.price || 0;
+                    const itemQty = item.qty || item.quantity || 1;
+                    const itemUnit = item.unit || '';
 
-                <div style={{ marginTop: '8px', paddingTop: '10px', borderTop: '1px dashed #E2E8F0', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
-                    <span>পণ্য উপমোট (Subtotal)</span>
-                    <span className="mono">৳{toBengaliNumber(order.subtotal || order.total_amount)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
-                    <span>ডেলিভারি চার্জ</span>
-                    <span className="mono">৳{toBengaliNumber(order.delivery_fee || 0)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '15px', color: 'var(--green)', paddingTop: '4px' }}>
-                    <span>সর্বমোট বিল</span>
-                    <span className="mono">৳{toBengaliNumber(order.total_amount || 0)}</span>
-                  </div>
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '8px 10px',
+                          background: '#F8FAFC',
+                          borderRadius: '6px',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--ink)' }}>
+                            {itemName} ×{toBengaliNumber(itemQty)}
+                          </div>
+                          {itemUnit && (
+                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>একক: {itemUnit}</div>
+                          )}
+                        </div>
+                        <div className="mono" style={{ fontWeight: 800, color: 'var(--ink)' }}>
+                          ৳{toBengaliNumber(itemPrice * itemQty)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div style={{ marginTop: '8px', paddingTop: '10px', borderTop: '1px dashed #E2E8F0', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
+                  <span>পণ্য উপমোট (Subtotal)</span>
+                  <span className="mono">৳{toBengaliNumber(order.subtotal || order.total_amount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
+                  <span>ডেলিভারি চার্জ</span>
+                  <span className="mono">৳{toBengaliNumber(order.delivery_fee || 0)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '15px', color: 'var(--green)', paddingTop: '4px' }}>
+                  <span>সর্বমোট বিল</span>
+                  <span className="mono">৳{toBengaliNumber(order.total_amount || 0)}</span>
                 </div>
               </div>
 

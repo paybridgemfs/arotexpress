@@ -18,7 +18,8 @@ import {
   RefreshCw,
   User,
   ShieldCheck,
-  Calendar
+  Calendar,
+  Lock
 } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
 import { usePackageBox } from '../context/PackageBoxContext.jsx';
@@ -404,14 +405,27 @@ export default function OrderTrackingModal({ initialOrderCode = '', initialOrder
                 )}
 
                 {/* Delivery Address & Customer Info */}
-                <div style={{ background: '#F8FAF9', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--rule, #e5e0d8)', marginBottom: '16px', fontSize: '12.5px' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--ink, #1f2937)', marginBottom: '3px' }}>
-                    গ্রাহক: {order.customer_name} ({order.customer_phone})
+                {order.is_masked ? (
+                  <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '8px', padding: '12px 14px', background: '#F8FAF9', border: '1px dashed #CBD5E1', marginBottom: '16px' }}>
+                    <div style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.5, fontSize: '12px' }}>
+                      <div>গ্রাহক: মুহাম্মদ আবদুল্লাহ (০১৭xxxxxxxx)</div>
+                      <div>ডেলিভারি ঠিকানা: রোড ১২, সেক্টর ৪, উত্তরা, ঢাকা</div>
+                    </div>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.85)', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
+                      <Lock size={14} />
+                      <span>গ্রাহকের নাম ও ঠিকানা সুরক্ষার্থে লুকানো রয়েছে</span>
+                    </div>
                   </div>
-                  <div style={{ color: 'var(--muted, #555)', lineHeight: 1.4 }}>
-                    <strong>ডেলিভারি ঠিকানা:</strong> {order.delivery_address} {order.delivery_area ? `(${order.delivery_area})` : ''}
+                ) : (
+                  <div style={{ background: '#F8FAF9', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--rule, #e5e0d8)', marginBottom: '16px', fontSize: '12.5px' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--ink, #1f2937)', marginBottom: '3px' }}>
+                      গ্রাহক: {order.customer_name} ({order.customer_phone})
+                    </div>
+                    <div style={{ color: 'var(--muted, #555)', lineHeight: 1.4 }}>
+                      <strong>ডেলিভারি ঠিকানা:</strong> {order.delivery_address} {order.delivery_area ? `(${order.delivery_area})` : ''}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Action Buttons: 1-Click Reorder & Cash Memo Invoice */}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px', paddingTop: '14px', borderTop: '1px dashed var(--rule, #e5e0d8)' }}>

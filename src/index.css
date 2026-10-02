@@ -327,6 +327,27 @@ header, .main-app-header {
   transform: translateY(-1px);
 }
 
+.user-btn .user-desktop-name {
+  display: inline-block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-btn .user-mobile-name {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .user-btn .user-desktop-name {
+    display: none !important;
+  }
+  .user-btn .user-mobile-name {
+    display: none !important;
+  }
+}
+
 #cart-btn {
   position: relative;
   display: flex;

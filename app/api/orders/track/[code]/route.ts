@@ -110,17 +110,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
     delivery_fee: order.delivery_fee,
     payment_method: order.payment_method,
     payment_status: order.payment_status,
-    items_json: maskItems(order.items_json),
+    items_json: [], // Never send real items to unauthenticated users
     items_count: Array.isArray(order.items_json)
       ? order.items_json.length
       : (typeof order.items_json === 'string' ? (JSON.parse(order.items_json || '[]').length) : 0),
-    customer_name: maskName(order.customer_name),
-    customer_phone: maskPhoneNumber(order.customer_phone),
-    delivery_address: maskAddress(order.delivery_address, order.delivery_area),
-    delivery_area: order.delivery_area,
-    delivery_rider_name: order.delivery_rider_name,
-    delivery_rider_phone: order.delivery_rider_phone,
-    delivery_rider_vehicle: order.delivery_rider_vehicle,
+    customer_name: null, // Never send name to unauthenticated users
+    customer_phone: null, // Never send phone to unauthenticated users
+    delivery_address: null, // Never send address to unauthenticated users
+    delivery_area: order.delivery_area || 'নির্ধারিত এলাকা',
+    delivery_rider_name: order.delivery_rider_name || null,
+    delivery_rider_phone: order.delivery_rider_phone || null,
+    delivery_rider_vehicle: order.delivery_rider_vehicle || null,
     delivery_note: null,
     is_masked: true,
     is_owner: false
