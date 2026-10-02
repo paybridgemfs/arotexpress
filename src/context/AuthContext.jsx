@@ -249,8 +249,18 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('arot_customer_token');
-    localStorage.removeItem('arot_customer_user');
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('arot_customer_token');
+        localStorage.removeItem('arot_customer_user');
+        localStorage.removeItem('arot_express_token');
+        localStorage.removeItem('arot_user');
+        localStorage.removeItem('arot_token');
+        localStorage.removeItem('token');
+      }
+    } catch (e) {
+      console.error('Error clearing tokens on logout:', e);
+    }
     setToken(null);
     setUser(null);
   };

@@ -23,6 +23,7 @@ import {
 import { useCart } from '../context/CartContext.jsx';
 import { usePackageBox } from '../context/PackageBoxContext.jsx';
 import { useStoreData } from '../context/StoreDataContext';
+import { useAuth } from '../context/AuthContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
 import CustomerInvoiceModal from './CustomerInvoiceModal.jsx';
 
@@ -60,6 +61,9 @@ export default function OrderTrackingModal({ initialOrderCode = '', initialOrder
 
   const effectiveSettings = settings || contextSettings;
 
+  const authContext = useAuth() || {};
+  const { user, token } = authContext;
+
   const [orderCode, setOrderCode] = useState(initialOrderCode || (initialOrder ? initialOrder.order_code : ''));
   const [order, setOrder] = useState(initialOrder);
   const [loading, setLoading] = useState(false);
@@ -84,14 +88,9 @@ export default function OrderTrackingModal({ initialOrderCode = '', initialOrder
     setError('');
     try {
       const headers = {};
-      const token = typeof window !== 'undefined'
-        ? (localStorage.getItem('arot_customer_token') ||
-           localStorage.getItem('arot_admin_token') ||
-           localStorage.getItem('arot_rider_token') ||
-           localStorage.getItem('arot_express_token'))
-        : null;
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      const activeToken = user && token ? token : null;
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
       }
       const res = await fetch(`/api/orders/track/${encodeURIComponent(code)}`, { headers });
       const data = await res.json().catch(() => ({}));

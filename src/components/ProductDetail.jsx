@@ -317,15 +317,15 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
         >
           <div
             style={{
-              width: '48px',
-              height: '48px',
+              width: '56px',
+              height: '56px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              minWidth: '48px'
+              minWidth: '56px'
             }}
           >
-            <CategoryIcon icon={category.icon} category={category} size={48} />
+            <CategoryIcon icon={category.icon} category={category} size={56} />
           </div>
           <div>
             <h2>{category.en}</h2>
