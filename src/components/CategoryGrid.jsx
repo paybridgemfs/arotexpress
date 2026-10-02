@@ -1,17 +1,17 @@
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { SearchX, ChevronDown, ChevronUp } from 'lucide-react';
-import { useCart } from '../context/CartContext.jsx';
-import { toBengaliNumber } from '../utils/bengali.js';
-import CategoryIcon from './CategoryIcon.jsx';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { SearchX, ChevronDown, ChevronUp } from "lucide-react";
+import { useCart } from "../context/CartContext.jsx";
+import { toBengaliNumber } from "../utils/bengali.js";
+import CategoryIcon from "./CategoryIcon.jsx";
 
 export default function CategoryGrid({
   groups = [],
   categories = [],
-  searchQuery = '',
+  searchQuery = "",
   isLoading = false,
-  onSelectCategory
+  onSelectCategory,
 }) {
   const { cart } = useCart();
   const query = searchQuery.trim().toLowerCase();
@@ -20,7 +20,7 @@ export default function CategoryGrid({
   const toggleGroupExpand = (groupKey) => {
     setExpandedGroups((prev) => ({
       ...prev,
-      [groupKey]: !prev[groupKey]
+      [groupKey]: !prev[groupKey],
     }));
   };
 
@@ -33,15 +33,18 @@ export default function CategoryGrid({
 
   // Filter groups that have matching categories
   const filteredGroups = useMemo(() => {
-    return groups.map((g) => {
-      const groupCats = categories.filter((c) => {
-        if (c.group !== g.key) return false;
-        if (!query) return true;
-        const searchHaystack = `${c.bn || ''} ${c.en || ''} ${(c.brands || []).map((b) => b.name).join(' ')}`.toLowerCase();
-        return searchHaystack.includes(query);
-      });
-      return { ...g, groupCats };
-    }).filter((g) => g.groupCats.length > 0);
+    return groups
+      .map((g) => {
+        const groupCats = categories.filter((c) => {
+          if (c.group !== g.key) return false;
+          if (!query) return true;
+          const searchHaystack =
+            `${c.bn || ""} ${c.en || ""} ${(c.brands || []).map((b) => b.name).join(" ")}`.toLowerCase();
+          return searchHaystack.includes(query);
+        });
+        return { ...g, groupCats };
+      })
+      .filter((g) => g.groupCats.length > 0);
   }, [groups, categories, query]);
 
   const displayedGroups = filteredGroups;
@@ -51,16 +54,40 @@ export default function CategoryGrid({
     return (
       <section className="section-wrap" id="groups-wrap">
         {[1, 2, 3].map((g) => (
-          <section className="group-section skel-cat-section animate-pulse" key={`sk-g-${g}`}>
+          <section
+            className="group-section skel-cat-section animate-pulse"
+            key={`sk-g-${g}`}
+          >
             <div className="section-head mb-4">
               <div className="skel-block section-head-skel"></div>
             </div>
             <div className="grid home-category-grid">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
-                <div key={`sk-c-${c}`} className="skel-cat-card">
-                  <div className="skel-circle skel-cat-icon"></div>
-                  <div className="skel-block skel-cat-text"></div>
-                  <div className="skel-block skel-cat-text-sm"></div>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
+                <div
+                  key={`sk-c-${c}`}
+                  className="cat-card-modern skel-cat-card"
+                >
+                  <div
+                    className="skel-block cat-image-wrap"
+                    style={{ height: "110px" }}
+                  ></div>
+                  <div
+                    className="cat-card-content"
+                    style={{ padding: "10px 10px 12px" }}
+                  >
+                    <div
+                      className="skel-block skel-cat-text"
+                      style={{
+                        width: "85%",
+                        height: "14px",
+                        marginBottom: "6px",
+                      }}
+                    ></div>
+                    <div
+                      className="skel-block skel-cat-text-sm"
+                      style={{ width: "55%", height: "11px" }}
+                    ></div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -72,7 +99,7 @@ export default function CategoryGrid({
 
   const totalVisibleCategories = displayedGroups.reduce(
     (sum, g) => sum + g.groupCats.length,
-    0
+    0,
   );
 
   return (
@@ -80,7 +107,10 @@ export default function CategoryGrid({
       {displayedGroups.map((g, gIdx) => {
         const groupCats = g.groupCats;
         const isExpanded = query ? true : !!expandedGroups[g.key];
-        const visibleCats = (isExpanded || groupCats.length <= 12) ? groupCats : groupCats.slice(0, 12);
+        const visibleCats =
+          isExpanded || groupCats.length <= 12
+            ? groupCats
+            : groupCats.slice(0, 12);
         const hasMore = groupCats.length > 12 && !query;
 
         return (
@@ -105,30 +135,36 @@ export default function CategoryGrid({
                 return (
                   <motion.button
                     key={cat.id}
-                    className="cat-card"
+                    className="cat-card cat-card-modern"
                     onClick={() => onSelectCategory(cat.id)}
                     aria-label={`${cat.bn} (${cat.en}) বিস্তারিত দেখুন`}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.2, delay: Math.min(cIdx * 0.015, 0.25) }}
-                    whileHover={{ y: -5, boxShadow: 'var(--shadow-md)' }}
+                    transition={{
+                      duration: 0.2,
+                      delay: Math.min(cIdx * 0.015, 0.25),
+                    }}
+                    whileHover={{
+                      y: -4,
+                      boxShadow: "0 8px 20px rgba(0, 108, 76, 0.12)",
+                    }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <div
-                      className="cat-icon-container"
-                      style={{
-                        width: '74px',
-                        height: '74px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '2px auto 8px auto'
-                      }}
-                    >
-                      <CategoryIcon icon={cat.icon} category={cat} size={66} />
+                    {/* Category Image Wrap - Styled like Product View image */}
+                    <div className="cat-image-wrap">
+                      <CategoryIcon
+                        icon={cat.icon}
+                        category={cat}
+                        fill={true}
+                      />
                     </div>
-                    <span className="en">{cat.en}</span>
-                    <span className="bn">{cat.bn}</span>
+
+                    {/* Category Card Content */}
+                    <div className="cat-card-content">
+                      <h3 className="cat-title-bn">{cat.bn}</h3>
+                      <div className="cat-subtitle-en">{cat.en}</div>
+                    </div>
+
                     <AnimatePresence>
                       {inCartCount > 0 && (
                         <motion.span
@@ -137,7 +173,11 @@ export default function CategoryGrid({
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           exit={{ scale: 0 }}
-                          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 25,
+                          }}
                         >
                           {toBengaliNumber(inCartCount)}
                         </motion.span>
@@ -149,21 +189,21 @@ export default function CategoryGrid({
             </div>
 
             {hasMore && (
-              <div style={{ textAlign: 'center', marginTop: '16px' }}>
+              <div style={{ textAlign: "center", marginTop: "16px" }}>
                 <button
                   type="button"
                   onClick={() => toggleGroupExpand(g.key)}
                   className="admin-btn secondary"
                   style={{
-                    padding: '8px 18px',
-                    borderRadius: 'var(--radius-pill)',
-                    fontSize: '13px',
+                    padding: "8px 18px",
+                    borderRadius: "var(--radius-pill)",
+                    fontSize: "13px",
                     fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: '#ffffff',
-                    border: '1px solid var(--rule)'
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "#ffffff",
+                    border: "1px solid var(--rule)",
                   }}
                 >
                   {isExpanded ? (
@@ -174,7 +214,10 @@ export default function CategoryGrid({
                   ) : (
                     <>
                       <ChevronDown size={16} />
-                      <span>আরও {toBengaliNumber(groupCats.length - 12)}টি ক্যাটাগরি দেখুন</span>
+                      <span>
+                        আরও {toBengaliNumber(groupCats.length - 12)}টি ক্যাটাগরি
+                        দেখুন
+                      </span>
                     </>
                   )}
                 </button>
@@ -191,10 +234,19 @@ export default function CategoryGrid({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="big" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', marginBottom: '12px' }}>
+          <div
+            className="big"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--muted)",
+              marginBottom: "12px",
+            }}
+          >
             <SearchX size={44} />
           </div>
-          <h3 style={{ margin: '0 0 6px' }}>কিছু পাওয়া যায়নি</h3>
+          <h3 style={{ margin: "0 0 6px" }}>কিছু পাওয়া যায়নি</h3>
           <p>অন্য বানানে বা ভিন্ন নামে খুঁজে দেখুন।</p>
         </motion.div>
       )}
