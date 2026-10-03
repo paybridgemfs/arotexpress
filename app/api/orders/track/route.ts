@@ -177,11 +177,9 @@ async function handleTrackingLookup(req: NextRequest, orderId: string, phone: st
     const isPackage = Boolean(order.is_package_order || (order.order_code && order.order_code.startsWith('PK-')));
     const orderPhoneDigits = normalizePhoneDigits(order.customer_phone);
 
-    // Determine ownership
+    // Determine ownership: strictly only the customer who owns this order
     let isOwner = false;
-    if (isAdmin) {
-      isOwner = true;
-    } else if (authUser) {
+    if (authUser && authUser.role !== 'admin') {
       const authUserPhoneDigits = normalizePhoneDigits(authUser.phone);
       if (order.user_id && authUser.id === order.user_id) {
         isOwner = true;

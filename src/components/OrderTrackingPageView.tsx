@@ -109,8 +109,8 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      // Strictly attach authorization header ONLY if an account is actively logged in
-      const activeAuthToken = user ? token : (adminToken || null);
+      // Strictly attach authorization header ONLY if a customer is actively logged in
+      const activeAuthToken = user && token ? token : null;
 
       if (activeAuthToken) {
         headers['Authorization'] = `Bearer ${activeAuthToken}`;
@@ -744,13 +744,13 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
 
               {order.is_masked ? (
                 /* Blurred Privacy Container - Real data NEVER exists here or in response */
-                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px', padding: '14px', background: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
-                  {/* Dummy placeholder blurred text (Zero actual user info) */}
-                  <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.5 }}>
+                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px', padding: '16px 14px', background: '#F8FAFC', border: '1px dashed #CBD5E1' }}>
+                  {/* Block characters blurred placeholder (Zero actual user info) */}
+                  <div style={{ filter: 'blur(7px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.35 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '13px' }}>
-                      <div><span style={{ color: 'var(--muted)' }}>গ্রাহকের নাম:</span> <strong>মুহাম্মদ আবদুল্লাহ</strong></div>
-                      <div><span style={{ color: 'var(--muted)' }}>মোবাইল নম্বর:</span> <strong className="mono">০১৭xxxxxxxx</strong></div>
-                      <div style={{ gridColumn: '1 / -1' }}><span style={{ color: 'var(--muted)' }}>পূর্ণ ঠিকানা:</span> <strong>রোড ১২, সেক্টর ৪, উত্তরা, ঢাকা</strong></div>
+                      <div><span style={{ color: 'var(--muted)' }}>গ্রাহকের নাম:</span> <strong>████████████</strong></div>
+                      <div><span style={{ color: 'var(--muted)' }}>মোবাইল নম্বর:</span> <strong className="mono">০১XXXXXXXXX</strong></div>
+                      <div style={{ gridColumn: '1 / -1' }}><span style={{ color: 'var(--muted)' }}>পূর্ণ ঠিকানা:</span> <strong>████████████████████████</strong></div>
                     </div>
                   </div>
 
@@ -843,15 +843,15 @@ export default function OrderTrackingPageView({ initialOrderCode = '' }: { initi
 
               {order.is_masked ? (
                 /* Blurred Items Container - Real product data NEVER sent from server */
-                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px', padding: '14px', background: '#F8FAFC', border: '1px dashed #CBD5E1', marginBottom: '14px' }}>
-                  <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.5, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '10px', padding: '16px 14px', background: '#F8FAFC', border: '1px dashed #CBD5E1', marginBottom: '14px' }}>
+                  <div style={{ filter: 'blur(7px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.35, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#FFFFFF', borderRadius: '6px', fontSize: '13px' }}>
-                      <div style={{ fontWeight: 700 }}>মিনিকেট চাল প্রিমিয়াম × ২</div>
-                      <div className="mono font-bold">৳১৫০</div>
+                      <div style={{ fontWeight: 700 }}>██████████████ × ২</div>
+                      <div className="mono font-bold">৳███</div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#FFFFFF', borderRadius: '6px', fontSize: '13px' }}>
-                      <div style={{ fontWeight: 700 }}>ফ্রেশ সয়াবিন তেল ১ লিটার × ১</div>
-                      <div className="mono font-bold">৳১৮৫</div>
+                      <div style={{ fontWeight: 700 }}>████████████████ × ১</div>
+                      <div className="mono font-bold">৳███</div>
                     </div>
                   </div>
 

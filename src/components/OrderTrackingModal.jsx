@@ -407,9 +407,9 @@ export default function OrderTrackingModal({ initialOrderCode = '', initialOrder
                 {/* Delivery Address & Customer Info */}
                 {order.is_masked ? (
                   <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '8px', padding: '12px 14px', background: '#F8FAF9', border: '1px dashed #CBD5E1', marginBottom: '16px' }}>
-                    <div style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.5, fontSize: '12px' }}>
-                      <div>গ্রাহক: মুহাম্মদ আবদুল্লাহ (০১৭xxxxxxxx)</div>
-                      <div>ডেলিভারি ঠিকানা: রোড ১২, সেক্টর ৪, উত্তরা, ঢাকা</div>
+                    <div style={{ filter: 'blur(7px)', userSelect: 'none', pointerEvents: 'none', opacity: 0.35, fontSize: '12px' }}>
+                      <div>গ্রাহক: ████████████ (০১XXXXXXXXX)</div>
+                      <div>ডেলিভারি ঠিকানা: ████████████████████</div>
                     </div>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.85)', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
                       <Lock size={14} />

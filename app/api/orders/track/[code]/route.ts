@@ -77,9 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   const isAdmin = user && user.role === 'admin';
   
   let isOwner = false;
-  if (isAdmin) {
-    isOwner = true;
-  } else if (user) {
+  if (user && user.role !== 'admin') {
     const userPhone = normalizePhoneDigits(user.phone);
     const orderPhone = normalizePhoneDigits(order.customer_phone);
     if (order.user_id && user.id === order.user_id) {
