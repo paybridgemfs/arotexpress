@@ -5023,11 +5023,16 @@ img.cat-logo-image {
   }
 
   .mobile-search-row {
-    display: block;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
     padding: 6px 16px 10px;
   }
 
   .mobile-searchbar {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
     background: #F1F5F3;
     border: 1px solid rgba(0, 0, 0, 0.07);
     border-radius: var(--radius-pill);
@@ -6195,10 +6200,18 @@ img.cat-logo-image {
 /* GOOGLE AUTO-TRANSLATION & LANGUAGE TOGGLE STYLES  */
 /* ================================================= */
 
-/* Hide Google Translate top banner, toolbar, and balloon popups */
+/* Hide Google Translate top banner, toolbar, balloon popups and skiptranslate containers */
+body > .skiptranslate,
 .goog-te-banner-frame.skiptranslate,
 .goog-te-banner-frame,
 iframe.goog-te-banner-frame,
+iframe[id*=":1.container"],
+iframe[id*="goog-te-banner"],
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+.VIpgJd-ZVi9od-vH1Gmf,
+.goog-te-gadget,
+.goog-te-gadget-simple,
 .goog-te-gadget-icon,
 .goog-tooltip,
 .goog-tooltip:hover,
@@ -6206,19 +6219,26 @@ iframe.goog-te-banner-frame,
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
+  height: 0px !important;
+  max-height: 0px !important;
+  width: 0px !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
-body {
+html, body {
   top: 0px !important;
   position: static !important;
+  margin-top: 0px !important;
+  padding-top: 0px !important;
 }
 
 #google_translate_element {
   display: none !important;
 }
 
-.skiptranslate {
-  display: inline;
+.notranslate {
+  translate: no !important;
 }
 
 /* Smooth hover and focus states for language toggle pill */
