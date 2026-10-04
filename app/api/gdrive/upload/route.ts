@@ -18,15 +18,23 @@ export async function POST(req: NextRequest) {
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       const file = formData.get('image') || formData.get('file');
+      const customName = formData.get('name') || formData.get('custom_name') || formData.get('fileName') || formData.get('product_name');
 
       if (!file || !(file instanceof Blob)) {
         return NextResponse.json({ error: 'কোনো ইমেজ ফাইল পাওয়া যায়নি' }, { status: 400 });
       }
 
-      fileName = (file as any).name || `img_${Date.now()}.jpg`;
+      const rawFileName = (typeof customName === 'string' && customName.trim()) ? customName.trim() : ((file as any).name || `img_${Date.now()}`);
+      fileName = rawFileName;
       mimeType = file.type || 'image/jpeg';
       const arrayBuffer = await file.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
+
+      // 1MB size limit check for profile pictures
+      const isProfilePic = formData.get('type') === 'profile' || rawFileName.startsWith('user_') || rawFileName.includes('profile');
+      if (isProfilePic && buffer.length > 1 * 1024 * 1024) {
+        return NextResponse.json({ error: 'প্রোফাইল ছবির সাইজ সর্বোচ্চ ১ মেগাবাইট (1MB) হতে পারবে।' }, { status: 400 });
+      }
     } else {
       // JSON body with base64
       const body = await req.json().catch(() => ({}));
@@ -43,10 +51,15 @@ export async function POST(req: NextRequest) {
         if (meta.includes('image/png')) mimeType = 'image/png';
         else if (meta.includes('image/webp')) mimeType = 'image/webp';
         else if (meta.includes('image/gif')) mimeType = 'image/gif';
+        else if (meta.includes('image/svg')) mimeType = 'image/svg+xml';
+        else if (meta.includes('icon') || meta.includes('ico')) mimeType = 'image/x-icon';
         else mimeType = 'image/jpeg';
       }
 
-      if (body.fileName) fileName = body.fileName;
+      const customName = body.name || body.custom_name || body.fileName || body.product_name;
+      if (customName && typeof customName === 'string') {
+        fileName = customName.trim();
+      }
       buffer = Buffer.from(base64Data, 'base64');
     }
 

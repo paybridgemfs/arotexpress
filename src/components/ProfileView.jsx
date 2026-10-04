@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -23,13 +24,17 @@ import {
   User as UserIcon,
   ChevronRight,
   ExternalLink,
-  X
+  X,
+  Camera,
+  Trash2,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { usePackageBox } from '../context/PackageBoxContext.jsx';
 import { useStoreData } from '../context/StoreDataContext';
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
+import { uploadImage, deleteImage } from '../utils/upload.js';
 import CustomerInvoiceModal from './CustomerInvoiceModal.jsx';
 import OrderTrackingModal from './OrderTrackingModal.jsx';
 
@@ -56,6 +61,11 @@ export default function ProfileView({ onBackToHome }) {
   const [newPassword, setNewPassword] = useState('');
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState({ text: '', type: '' });
+
+  // Profile Picture Upload State
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
 
   // Synchronize dynamic profile title:
   // - Orders tab: 'মোঃ সাগর মিয়া — অর্ডারসমূহ'
@@ -206,17 +216,52 @@ export default function ProfileView({ onBackToHome }) {
       return;
     }
 
+    if (avatarFile && avatarFile.size > 1024 * 1024) {
+      setUpdateMsg({ text: 'প্রোফাইল ছবির সাইজ সর্বোচ্চ ১ মেগাবাইট (1MB) হতে পারবে', type: 'error' });
+      return;
+    }
+
     setUpdating(true);
     try {
+      let finalAvatar = user?.avatar || '';
+      let finalDeleteUrl = user?.avatar_delete_url || '';
+
+      // 1. If user selected a new avatar picture
+      if (avatarFile) {
+        showToast('প্রোফাইল ছবি আপলোড হচ্ছে...');
+        const semanticFileName = `user_${(name.trim() || user?.name || 'customer')}`;
+        const uploadRes = await uploadImage(avatarFile, token, true, semanticFileName);
+        if (uploadRes && uploadRes.url) {
+          if (user?.avatar_delete_url) {
+            deleteImage(user.avatar_delete_url, token);
+          }
+          finalAvatar = uploadRes.url;
+          finalDeleteUrl = uploadRes.delete_url || '';
+        }
+      } else if (removeAvatar) {
+        // 2. If user requested to remove existing avatar
+        if (user?.avatar_delete_url) {
+          deleteImage(user.avatar_delete_url, token);
+        }
+        finalAvatar = '';
+        finalDeleteUrl = '';
+      }
+
       await updateProfile({
         name: name.trim(),
+        avatar: finalAvatar,
+        avatar_delete_url: finalDeleteUrl,
         password: oldPassword || undefined,
         new_password: newPassword || undefined
       });
+
       setUpdateMsg({ text: 'প্রোফাইল সফলভাবে আপডেট করা হয়েছে', type: 'success' });
       setOldPassword('');
       setNewPassword('');
-      showToast('প্রোফাইল তথ্য আপডেট হয়েছে');
+      setAvatarFile(null);
+      setRemoveAvatar(false);
+      setAvatarPreview(finalAvatar || null);
+      showToast('প্রোফাইল তথ্য ও ছবি সংরক্ষিত হয়েছে');
     } catch (err) {
       setUpdateMsg({ text: err.message || 'আপডেট করতে ত্রুটি হয়েছে', type: 'error' });
     } finally {
@@ -336,20 +381,37 @@ export default function ProfileView({ onBackToHome }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div
               style={{
-                width: '52px',
-                height: '52px',
+                position: 'relative',
+                width: '56px',
+                height: '56px',
                 borderRadius: '50%',
-                background: 'var(--md-primary-container)',
-                border: '2px solid #A7F3D0',
+                background: 'var(--md-primary-container, #DCFCE7)',
+                border: '2.5px solid #10B981',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--primary)',
+                color: 'var(--primary, #006C4C)',
                 fontWeight: 800,
-                fontSize: '20px'
+                fontSize: '22px',
+                overflow: 'hidden',
+                flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(0, 108, 76, 0.15)'
               }}
             >
-              {user.name ? user.name.charAt(0).toUpperCase() : <UserIcon size={24} />}
+              {user.avatar ? (
+                <Image
+                  src={user.avatar}
+                  alt={user.name || 'User Profile'}
+                  fill
+                  sizes="56px"
+                  referrerPolicy="no-referrer"
+                  style={{ objectFit: 'cover' }}
+                />
+              ) : user.name ? (
+                user.name.charAt(0).toUpperCase()
+              ) : (
+                <UserIcon size={24} />
+              )}
             </div>
             <div>
               <h2 style={{ fontSize: '21px', margin: 0, fontWeight: 800 }}>স্বাগতম, {user.name}!</h2>
@@ -1030,6 +1092,129 @@ export default function ProfileView({ onBackToHome }) {
                   {updateMsg.text}
                 </div>
               )}
+
+              {/* Profile Picture Upload Field */}
+              <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAF9', borderRadius: '12px', border: '1px solid var(--rule, #E2E8F0)' }}>
+                <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 700, color: 'var(--ink, #1F2937)', marginBottom: '10px' }}>
+                  প্রোফাইল ছবি (Profile Picture)
+                </label>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '68px',
+                      height: '68px',
+                      borderRadius: '50%',
+                      background: 'var(--md-primary-container, #DCFCE7)',
+                      border: '2.5px solid #10B981',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--primary, #006C4C)',
+                      fontWeight: 800,
+                      fontSize: '24px',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.06)'
+                    }}
+                  >
+                    {avatarPreview ? (
+                      avatarPreview.startsWith('blob:') || avatarPreview.startsWith('data:') ? (
+                        <img
+                          src={avatarPreview}
+                          alt="Profile Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <Image
+                          src={avatarPreview}
+                          alt="Profile Preview"
+                          fill
+                          sizes="68px"
+                          referrerPolicy="no-referrer"
+                          style={{ objectFit: 'cover' }}
+                        />
+                      )
+                    ) : (
+                      <span>{name ? name.charAt(0).toUpperCase() : <UserIcon size={28} />}</span>
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                      <label
+                        htmlFor="user-avatar-input"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '7px 14px',
+                          background: 'var(--green, #006C4C)',
+                          color: '#FFFFFF',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Camera size={14} />
+                        <span>{avatarPreview ? 'ছবি পরিবর্তন করুন' : 'ছবি আপলোড করুন'}</span>
+                      </label>
+                      <input
+                        id="user-avatar-input"
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp, image/gif"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 1024 * 1024) {
+                              setUpdateMsg({ text: 'প্রোফাইল ছবির সাইজ সর্বোচ্চ ১ মেগাবাইট (1MB) হতে পারবে', type: 'error' });
+                              return;
+                            }
+                            setUpdateMsg({ text: '', type: '' });
+                            setAvatarFile(file);
+                            setRemoveAvatar(false);
+                            const previewUrl = URL.createObjectURL(file);
+                            setAvatarPreview(previewUrl);
+                          }
+                        }}
+                      />
+
+                      {avatarPreview && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAvatarFile(null);
+                            setAvatarPreview(null);
+                            setRemoveAvatar(true);
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '7px 12px',
+                            background: '#FEE2E2',
+                            color: '#DC2626',
+                            border: '1px solid #FECDD3',
+                            borderRadius: '8px',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>মুছে ফেলুন</span>
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--muted, #64748B)' }}>
+                      সর্বোচ্চ সাইজ: <strong>১ মেগাবাইট (1MB)</strong> (PNG, JPG, WEBP)
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div className="field">
                 <label htmlFor="user-name-edit">আপনার নাম</label>

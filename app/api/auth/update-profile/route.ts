@@ -14,7 +14,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const DBManager = await getDB();
-    const { name, password, new_password, current_password, phone, username } = await req.json();
+    const { name, password, new_password, current_password, phone, username, avatar, avatar_delete_url } = await req.json();
     const userPayload = authResult.user as any;
 
     if (userPayload.role === 'admin') {
@@ -82,11 +82,17 @@ export async function PUT(req: NextRequest) {
       }
 
       const updated = await DBManager.updateUserProfile(userPayload.id, {
-        name,
-        password: new_password
+        name: name !== undefined ? (name ? name.trim() : currentUser.name) : undefined,
+        password: new_password || undefined,
+        avatar: avatar !== undefined ? avatar : undefined,
+        avatar_delete_url: avatar_delete_url !== undefined ? avatar_delete_url : undefined
       });
 
-      const token = jwt.sign({ id: updated!.id, phone: updated!.phone, role: 'user', name: updated!.name }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign(
+        { id: updated!.id, phone: updated!.phone, role: 'user', name: updated!.name, avatar: updated!.avatar },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
       return NextResponse.json({ user: updated, token });
     }
   } catch (err: any) {

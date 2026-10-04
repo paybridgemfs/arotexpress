@@ -14,13 +14,19 @@ export function formatBytes(bytes: number, decimals = 2): string {
 }
 
 export function getRedirectUri(req?: Request): string {
-  // If explicitly configured in env
+  // Priority 1: APP_URL (Custom standard app URL)
+  if (process.env.APP_URL) {
+    const clean = process.env.APP_URL.replace(/\/+$/, '');
+    return `${clean}/api/gdrive/callback`;
+  }
+
+  // Priority 2: NEXT_PUBLIC_APP_URL
   if (process.env.NEXT_PUBLIC_APP_URL) {
     const clean = process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '');
     return `${clean}/api/gdrive/callback`;
   }
 
-  // From incoming Request
+  // Priority 3: From incoming Request headers
   if (req) {
     const proto = req.headers.get('x-forwarded-proto') || 'https';
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
@@ -30,6 +36,32 @@ export function getRedirectUri(req?: Request): string {
   }
 
   return 'https://arotexpress.onrender.com/api/gdrive/callback';
+}
+
+export function sanitizeDriveFileName(rawName?: string, defaultPrefix = 'arot_image', mimeType = 'image/jpeg'): string {
+  let ext = '.jpg';
+  if (mimeType.includes('png')) ext = '.png';
+  else if (mimeType.includes('webp')) ext = '.webp';
+  else if (mimeType.includes('gif')) ext = '.gif';
+  else if (mimeType.includes('svg')) ext = '.svg';
+  else if (mimeType.includes('ico') || mimeType.includes('icon') || (rawName && rawName.toLowerCase().includes('favicon'))) ext = '.ico';
+
+  let clean = (rawName || '').trim();
+  // Strip existing file extension if user/caller included one
+  clean = clean.replace(/\.(jpg|jpeg|png|webp|gif|svg|ico)$/i, '').trim();
+
+  if (!clean) {
+    clean = `${defaultPrefix}_${Date.now()}`;
+  }
+
+  // Sanitize illegal filesystem characters while strictly preserving Unicode (Bangla, English, Spaces, Parentheses, etc.)
+  clean = clean.replace(/[/\\?%*:|"<>]/g, '_').trim();
+
+  if (clean.toLowerCase().endsWith(ext.toLowerCase())) {
+    return clean;
+  }
+
+  return `${clean}${ext}`;
 }
 
 export function getAuthUrl(redirectUri: string): string {
@@ -214,12 +246,14 @@ export async function uploadImageBufferToDrive(
   const session = await getValidDriveSession();
   const { accessToken, folderId } = session;
 
+  const finalDriveName = sanitizeDriveFileName(fileName, 'arot_image', mimeType);
+
   const boundary = '-------arotexpress' + Date.now().toString(16);
   const delimiter = `\r\n--${boundary}\r\n`;
   const closeDelimiter = `\r\n--${boundary}--`;
 
   const metadata = {
-    name: fileName || `arot_${Date.now()}.jpg`,
+    name: finalDriveName,
     mimeType: mimeType || 'image/jpeg',
     parents: folderId ? [folderId] : []
   };

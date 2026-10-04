@@ -495,8 +495,9 @@ export default function AdminPanel({ onNavigateHome }) {
 
     try {
       if (catImageFile) {
-        showToast('লোগো ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
-        const uploadRes = await uploadImage(catImageFile, adminToken, true);
+        showToast('ক্যাটাগরি ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
+        const catSemanticName = `category_${(newCatData.bn || newCatData.en || 'icon').trim()}`;
+        const uploadRes = await uploadImage(catImageFile, adminToken, true, catSemanticName);
         if (uploadRes && uploadRes.url) {
           if (editingCategory?.image_delete_url) {
             deleteImage(editingCategory.image_delete_url, adminToken);
@@ -581,7 +582,8 @@ export default function AdminPanel({ onNavigateHome }) {
     try {
       if (brandImageFile) {
         showToast('পণ্যের ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
-        const uploadRes = await uploadImage(brandImageFile, adminToken, true);
+        const productSemanticName = (brandForm.name || 'product').trim();
+        const uploadRes = await uploadImage(brandImageFile, adminToken, true, productSemanticName);
         if (uploadRes && uploadRes.url) {
           if (editingBrand?.image_delete_url) {
             deleteImage(editingBrand.image_delete_url, adminToken);
@@ -775,7 +777,7 @@ export default function AdminPanel({ onNavigateHome }) {
 
       if (settingsFaviconFile) {
         showToast('ফেভিকন ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
-        const uploadRes = await uploadImage(settingsFaviconFile, adminToken, true);
+        const uploadRes = await uploadImage(settingsFaviconFile, adminToken, true, 'favicon');
         if (uploadRes?.url) {
           if (settings?.favicon_delete_url) {
             deleteImage(settings.favicon_delete_url, adminToken);
@@ -787,7 +789,7 @@ export default function AdminPanel({ onNavigateHome }) {
 
       if (settingsLogoFile) {
         showToast('লোগো ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
-        const uploadRes = await uploadImage(settingsLogoFile, adminToken, true);
+        const uploadRes = await uploadImage(settingsLogoFile, adminToken, true, 'logo');
         if (uploadRes?.url) {
           if (settings?.logo_delete_url) {
             deleteImage(settings.logo_delete_url, adminToken);
@@ -799,7 +801,7 @@ export default function AdminPanel({ onNavigateHome }) {
 
       if (settingsBannerFile) {
         showToast('ব্যানার ছবি গুগল ড্রাইভে আপলোড হচ্ছে...');
-        const uploadRes = await uploadImage(settingsBannerFile, adminToken, true);
+        const uploadRes = await uploadImage(settingsBannerFile, adminToken, true, 'social_preview_banner');
         if (uploadRes?.url) {
           if (settings?.banner_delete_url) {
             deleteImage(settings.banner_delete_url, adminToken);

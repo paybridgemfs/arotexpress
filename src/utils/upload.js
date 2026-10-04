@@ -5,7 +5,7 @@
  * - If returnDetails is true: { url: string, delete_url: string | null, display_url: string, thumb_url: string | null }
  * - Otherwise: url string (for backward compatibility)
  */
-export async function uploadImage(fileOrData, optionalAdminToken = null, returnDetails = false) {
+export async function uploadImage(fileOrData, optionalAdminToken = null, returnDetails = false, customName = '') {
   if (!fileOrData) return null;
 
   // If already an online URL (http/https), return directly without re-uploading
@@ -29,19 +29,26 @@ export async function uploadImage(fileOrData, optionalAdminToken = null, returnD
     if (fileOrData instanceof File || fileOrData instanceof Blob) {
       const formData = new FormData();
       formData.append('image', fileOrData);
+      if (customName && typeof customName === 'string') {
+        formData.append('name', customName.trim());
+      }
       driveRes = await fetch('/api/gdrive/upload', {
         method: 'POST',
         headers: authHeaders,
         body: formData
       });
     } else if (typeof fileOrData === 'string') {
+      const payload = { image: fileOrData };
+      if (customName && typeof customName === 'string') {
+        payload.name = customName.trim();
+      }
       driveRes = await fetch('/api/gdrive/upload', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders
         },
-        body: JSON.stringify({ image: fileOrData })
+        body: JSON.stringify(payload)
       });
     }
   } catch (netErr) {

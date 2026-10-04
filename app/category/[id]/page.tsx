@@ -6,6 +6,16 @@ import { toBengaliNumber } from '@/src/utils/bengali';
 
 export const dynamic = 'force-dynamic';
 
+function resolveAbsoluteUrl(url: string, baseUrl: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
 export async function generateMetadata({
   params
 }: {
@@ -13,6 +23,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const resolvedParams = await params;
   const catId = parseInt(resolvedParams.id, 10);
+  const siteUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arot-express.com';
 
   try {
     const DBManager = await getDB();
@@ -21,11 +32,29 @@ export async function generateMetadata({
     const cat = categories.find((c: any) => c.id === catId || String(c.id) === String(resolvedParams.id));
 
     if (cat) {
-      const title = `${cat.bn} (${cat.en}) — ${settings.site_name || 'Arot Express'}`;
+      const siteName = (settings.site_name || 'Arot Express').trim();
+      const title = `${cat.bn} (${cat.en}) — ${siteName}`;
       const brandNames = (cat.brands || []).map((b: any) => b.name).join(', ');
       const description = brandNames
         ? `${cat.bn} এর উপলব্ধ ব্র্যান্ড ও পণ্য: ${brandNames}। আড়ত দরে অনলাইনে অর্ডার করুন।`
         : `${cat.bn} (${cat.en}) পণ্য আড়ত দরে ঘরে বসে অর্ডার করুন।`;
+
+      // Select category image (or first brand image, or store banner as fallback)
+      const rawImage = cat.icon || ((cat as any).image as string) || (cat.brands && cat.brands.length > 0 && cat.brands[0].image ? cat.brands[0].image : '') || settings.banner_url || settings.logo_image_url || '';
+      const absoluteImageUrl = rawImage ? resolveAbsoluteUrl(rawImage, siteUrl) : '';
+
+      const ogImages = absoluteImageUrl
+        ? [
+            {
+              url: absoluteImageUrl,
+              secureUrl: absoluteImageUrl,
+              width: 800,
+              height: 800,
+              alt: `${cat.bn} (${cat.en})`,
+              type: 'image/jpeg'
+            }
+          ]
+        : [];
 
       return {
         title,
@@ -33,12 +62,17 @@ export async function generateMetadata({
         openGraph: {
           title,
           description,
-          type: 'website'
+          url: `${siteUrl.replace(/\/+$/, '')}/category/${cat.id}`,
+          siteName,
+          locale: 'bn_BD',
+          type: 'website',
+          images: ogImages
         },
         twitter: {
-          card: 'summary',
+          card: absoluteImageUrl ? 'summary_large_image' : 'summary',
           title,
-          description
+          description,
+          images: absoluteImageUrl ? [absoluteImageUrl] : []
         }
       };
     }

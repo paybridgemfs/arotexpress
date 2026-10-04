@@ -84,6 +84,8 @@ export interface DBUser {
   phone: string;
   password_hash: string;
   role: string;
+  avatar?: string;
+  avatar_delete_url?: string;
   created_at: string;
 }
 
@@ -495,6 +497,8 @@ export class DBManager {
           phone VARCHAR(50) UNIQUE NOT NULL,
           password_hash VARCHAR(255) NOT NULL,
           role VARCHAR(20) DEFAULT 'user',
+          avatar TEXT DEFAULT '',
+          avatar_delete_url TEXT DEFAULT '',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -626,6 +630,8 @@ export class DBManager {
         );
 
         ALTER TABLE delivery_riders ADD COLUMN IF NOT EXISTS password_hash TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_delete_url TEXT DEFAULT '';
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_id INT;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_name VARCHAR(150);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_phone VARCHAR(50);
@@ -952,6 +958,8 @@ export class DBManager {
           phone: u.phone,
           password_hash: u.password_hash,
           role: u.role || 'user',
+          avatar: u.avatar || '',
+          avatar_delete_url: u.avatar_delete_url || '',
           created_at: u.created_at
         }));
       }
@@ -1726,15 +1734,17 @@ export class DBManager {
     return rest;
   }
 
-  static async updateUserProfile(id: number, updates: { name?: string; password?: string }) {
+  static async updateUserProfile(id: number, updates: { name?: string; password?: string; avatar?: string; avatar_delete_url?: string }) {
     const user = this.data.users.find(u => u.id === id);
     if (!user) return null;
-    if (updates.name) user.name = updates.name;
+    if (updates.name !== undefined) user.name = updates.name;
+    if (updates.avatar !== undefined) user.avatar = updates.avatar;
+    if (updates.avatar_delete_url !== undefined) user.avatar_delete_url = updates.avatar_delete_url;
     if (updates.password) user.password_hash = await bcrypt.hash(updates.password, 10);
     if (isPgConnected) {
       pool.query(
-        `UPDATE users SET name = $1, password_hash = $2 WHERE id = $3`,
-        [user.name, user.password_hash, user.id]
+        `UPDATE users SET name = $1, password_hash = $2, avatar = $3, avatar_delete_url = $4 WHERE id = $5`,
+        [user.name, user.password_hash, user.avatar || '', user.avatar_delete_url || '', user.id]
       ).catch((e) => console.warn('PG sync error (user update):', e.message));
     }
     const { password_hash, ...rest } = user;

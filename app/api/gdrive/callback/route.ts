@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get('error');
   const state = searchParams.get('state');
 
-  const originUrl = new URL(req.url).origin;
-  const adminGdriveUrl = `${originUrl}/admin/gdrive`;
+  const appBaseUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/+$/, '');
+  const adminGdriveUrl = `${appBaseUrl}/admin/gdrive`;
 
   if (error) {
     console.error('Google OAuth error from callback:', error);

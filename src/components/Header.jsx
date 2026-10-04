@@ -189,9 +189,32 @@ export default function Header({
                 className="user-btn"
                 onClick={onNavigateProfile}
                 title={`${user.name || 'ব্যবহারকারী'} — প্রোফাইল ও অর্ডার দেখুন`}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
               >
-                <User size={16} />
+                {user.avatar ? (
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: '1.5px solid var(--green, #006C4C)',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Image
+                      src={user.avatar}
+                      alt={user.name || 'User'}
+                      fill
+                      sizes="22px"
+                      referrerPolicy="no-referrer"
+                      style={{ objectFit: 'cover' }}
+                    />
+                  </div>
+                ) : (
+                  <User size={16} />
+                )}
                 <span className="user-btn-name user-desktop-name">{user.name || 'প্রোফাইল'}</span>
                 <span className="user-btn-name user-mobile-name">{user.name ? user.name.split(' ')[0] : 'প্রোফাইল'}</span>
               </motion.button>
@@ -328,10 +351,52 @@ export default function Header({
             <div className="drawer-user-card">
               {user ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>স্বাগতম,</div>
-                    <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>{user.name}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{user.phone}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {user.avatar ? (
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          border: '2px solid var(--green, #006C4C)',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Image
+                          src={user.avatar}
+                          alt={user.name || 'User'}
+                          fill
+                          sizes="38px"
+                          referrerPolicy="no-referrer"
+                          style={{ objectFit: 'cover' }}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          background: 'var(--md-primary-container, #DCFCE7)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--primary, #006C4C)',
+                          fontWeight: 800,
+                          fontSize: '15px',
+                          flexShrink: 0
+                        }}
+                      >
+                        {user.name ? user.name.charAt(0).toUpperCase() : <User size={18} />}
+                      </div>
+                    )}
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)' }}>স্বাগতম,</div>
+                      <div style={{ fontWeight: 700, fontSize: '14.5px', color: 'var(--ink)' }}>{user.name}</div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>{user.phone}</div>
+                    </div>
                   </div>
                   <button
                     className="drawer-profile-btn"
