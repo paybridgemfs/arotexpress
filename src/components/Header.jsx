@@ -7,6 +7,7 @@ import { Menu, Search, X, User, ShoppingCart, LogIn, LayoutGrid, ShieldCheck, Tr
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
+import LanguageToggle from './LanguageToggle.jsx';
 
 export default function Header({
   settings = {},
@@ -163,7 +164,11 @@ export default function Header({
           </div>
 
           {/* Header Action Buttons */}
-          <div className="header-actions">
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="desktop-only" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <LanguageToggle />
+            </div>
+
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -246,9 +251,9 @@ export default function Header({
           </div>
         </div>
 
-        {/* Mobile Dedicated Search Bar (Visible on tablets & mobile viewports) */}
-        <div className="mobile-search-row">
-          <div className="searchbar mobile-searchbar">
+        {/* Mobile Dedicated Search Bar & Language Switcher */}
+        <div className="mobile-search-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="searchbar mobile-searchbar" style={{ flex: 1, minWidth: 0, margin: 0 }}>
             <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--muted)' }}>
               <Search size={16} />
             </span>
@@ -273,6 +278,7 @@ export default function Header({
               </motion.button>
             )}
           </div>
+          <LanguageToggle />
         </div>
 
         {/* Horizontal Category Scroll Navigation */}
@@ -338,13 +344,16 @@ export default function Header({
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setMobileNavOpen(false)}
-                aria-label="মেনু বন্ধ করুন"
-                className="close-drawer-btn"
-              >
-                <X size={20} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <LanguageToggle />
+                <button
+                  onClick={() => setMobileNavOpen(false)}
+                  aria-label="মেনু বন্ধ করুন"
+                  className="close-drawer-btn"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* User Greeting / Auth Status */}

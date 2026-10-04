@@ -6191,3 +6191,43 @@ img.cat-logo-image {
   }
 }
 
+/* ================================================= */
+/* GOOGLE AUTO-TRANSLATION & LANGUAGE TOGGLE STYLES  */
+/* ================================================= */
+
+/* Hide Google Translate top banner, toolbar, and balloon popups */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame,
+iframe.goog-te-banner-frame,
+.goog-te-gadget-icon,
+.goog-tooltip,
+.goog-tooltip:hover,
+.goog-text-highlight {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+#google_translate_element {
+  display: none !important;
+}
+
+.skiptranslate {
+  display: inline;
+}
+
+/* Smooth hover and focus states for language toggle pill */
+.lang-toggle-pill {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lang-toggle-pill:hover {
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
