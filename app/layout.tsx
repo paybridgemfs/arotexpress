@@ -187,41 +187,74 @@ export default async function RootLayout({
     // fallback gracefully if database initialization encounters any transient issue
   }
 
-  // Generate Schema.org JSON-LD structured data for Google, Gemini and AI web crawlers
+  // Generate Schema.org JSON-LD structured data for Google Sitelinks, Gemini and AI web crawlers
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'OnlineStore',
-    name: initialData?.settings?.site_name || 'Arot Express',
-    description: initialData?.settings?.header_subtitle || 'মুদি বাজারের পুরো লিস্ট, এক জায়গায়। তাজা পাইকারি ও খুচরা মুদি বাজার।',
-    url: siteUrl,
-    currenciesAccepted: 'BDT',
-    paymentAccepted: 'Cash on Delivery, bKash, Nagad, Rocket',
-    priceRange: '৳৳',
-    hasOfferCatalog: {
-      '@type': 'OfferCatalog',
-      name: 'মুদি পণ্যের তালিকা (Grocery Catalog)',
-      itemListElement: (initialData?.categories || []).map((cat: any) => ({
-        '@type': 'OfferCatalog',
-        name: `${cat.bn} (${cat.en})`,
-        itemListOrder: 'https://schema.org/ItemListOrderAscending',
-        numberOfItems: (cat.brands || []).length,
-        itemListElement: (cat.brands || []).map((b: any) => ({
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Product',
-            name: b.name,
-            category: cat.bn,
-            offers: {
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        url: siteUrl,
+        name: initialData?.settings?.site_name || 'Arot Express',
+        description: initialData?.settings?.header_subtitle || 'মুদি বাজারের পুরো লিস্ট, এক জায়গায়। তাজা পাইকারি ও খুচরা মুদি বাজার।',
+        inLanguage: 'bn-BD',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${siteUrl}/?search={search_term_string}`,
+          'query-input': 'required name=search_term_string'
+        }
+      },
+      {
+        '@type': 'OnlineStore',
+        '@id': `${siteUrl}/#store`,
+        name: initialData?.settings?.site_name || 'Arot Express',
+        description: initialData?.settings?.header_subtitle || 'মুদি বাজারের পুরো লিস্ট, এক জায়গায়।',
+        url: siteUrl,
+        logo: ogImageUrl || faviconUrl,
+        image: ogImageUrl,
+        currenciesAccepted: 'BDT',
+        paymentAccepted: 'Cash on Delivery, bKash, Nagad, Rocket',
+        priceRange: '৳৳',
+        hasOfferCatalog: {
+          '@type': 'OfferCatalog',
+          name: 'মুদি পণ্যের তালিকা (Grocery Catalog)',
+          itemListElement: (initialData?.categories || []).map((cat: any) => ({
+            '@type': 'OfferCatalog',
+            name: `${cat.bn} (${cat.en})`,
+            url: `${siteUrl}/category/${cat.id}`,
+            itemListOrder: 'https://schema.org/ItemListOrderAscending',
+            numberOfItems: (cat.brands || []).length,
+            itemListElement: (cat.brands || []).map((b: any) => ({
               '@type': 'Offer',
-              price: b.price,
-              priceCurrency: 'BDT',
-              availability: (b.stock === undefined || b.stock > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-              unitText: b.unit
-            }
-          }
+              itemOffered: {
+                '@type': 'Product',
+                name: b.name,
+                category: cat.bn,
+                offers: {
+                  '@type': 'Offer',
+                  price: b.price,
+                  priceCurrency: 'BDT',
+                  availability: (b.stock === undefined || b.stock > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                  unitText: b.unit
+                }
+              }
+            }))
+          }))
+        }
+      },
+      {
+        '@type': 'ItemList',
+        '@id': `${siteUrl}/#sitelinks-navigation`,
+        name: 'প্রধান ক্যাটাগরি ও নেভিগেশন (Site Navigation)',
+        itemListElement: (initialData?.categories || []).map((cat: any, index: number) => ({
+          '@type': 'SiteNavigationElement',
+          position: index + 1,
+          name: `${cat.bn} (${cat.en})`,
+          description: `${cat.bn} এর সব ব্র্যান্ড ও পাইকারি মুদি পণ্য`,
+          url: `${siteUrl}/category/${cat.id}`
         }))
-      }))
-    }
+      }
+    ]
   };
 
   return (
