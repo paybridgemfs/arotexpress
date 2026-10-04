@@ -289,8 +289,16 @@ header, .main-app-header {
   color: var(--ink);
 }
 
+.desktop-only {
+  display: inline-flex !important;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
 .mobile-search-row {
-  display: none;
+  display: none !important;
   padding: 0 clamp(12px, 3vw, 20px) 10px;
 }
 
@@ -5013,6 +5021,14 @@ img.cat-logo-image {
     justify-content: space-between;
   }
 
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex !important;
+  }
+
   .desktop-searchbar {
     display: none !important;
   }
@@ -5027,6 +5043,7 @@ img.cat-logo-image {
     align-items: center;
     gap: 8px;
     padding: 6px 16px 10px;
+    width: 100%;
   }
 
   .mobile-searchbar {
