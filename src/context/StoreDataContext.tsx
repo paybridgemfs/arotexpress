@@ -160,6 +160,13 @@ export function StoreDataProvider({
   const [packageProducts, setPackageProducts] = useState<any[]>(() => initialData?.packageProducts || initialCache?.packageProducts || []);
   const [defaultDeliveryFee, setDefaultDeliveryFee] = useState<number>(() => initialData?.defaultDeliveryFee ?? initialCache?.defaultDeliveryFee ?? 60);
 
+  // Sync settings immediately if SSR initialData has maintenance mode or new settings
+  useEffect(() => {
+    if (initialData?.settings) {
+      setSettings(initialData.settings);
+    }
+  }, [initialData?.settings]);
+
   // If we already have categories from SSR or cache, loading is immediately false
   const [loading, setLoading] = useState<boolean>(() => {
     if (initialData?.categories && initialData.categories.length > 0) return false;

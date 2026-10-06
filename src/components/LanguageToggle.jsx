@@ -1,6 +1,43 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 
+// Helper to load Google Translate script on demand
+const loadGoogleTranslateScript = (callback) => {
+  if (typeof window === 'undefined') return;
+
+  if (window.google?.translate?.TranslateElement) {
+    if (callback) callback();
+    return;
+  }
+
+  window.googleTranslateElementInit = () => {
+    try {
+      if (window.google?.translate?.TranslateElement) {
+        new window.google.translate.TranslateElement(
+          {
+            pageLanguage: 'bn',
+            includedLanguages: 'en,bn',
+            autoDisplay: false
+          },
+          'google_translate_element'
+        );
+        if (callback) callback();
+      }
+    } catch (err) {
+      console.warn('Google Translate Init error:', err);
+    }
+  };
+
+  if (!document.getElementById('google-translate-script')) {
+    const script = document.createElement('script');
+    script.id = 'google-translate-script';
+    script.type = 'text/javascript';
+    script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    script.async = true;
+    document.body.appendChild(script);
+  }
+};
+
 export default function LanguageToggle({ className = '', style = {} }) {
   const [currentLang, setCurrentLang] = useState('bn');
   const [mounted, setMounted] = useState(false);
@@ -16,6 +53,8 @@ export default function LanguageToggle({ className = '', style = {} }) {
 
       if (cookieVal?.includes('/en') || savedPref === 'en') {
         setCurrentLang('en');
+        // If saved language is EN, load the translation script
+        loadGoogleTranslateScript();
       } else {
         setCurrentLang('bn');
       }
@@ -105,35 +144,6 @@ export default function LanguageToggle({ className = '', style = {} }) {
     observer.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'], childList: true });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
 
-    // Load Google Translate script dynamically if not present
-    if (!window.googleTranslateElementInit) {
-      window.googleTranslateElementInit = () => {
-        try {
-          if (window.google?.translate?.TranslateElement) {
-            new window.google.translate.TranslateElement(
-              {
-                pageLanguage: 'bn',
-                includedLanguages: 'en,bn',
-                autoDisplay: false
-              },
-              'google_translate_element'
-            );
-          }
-        } catch (err) {
-          console.warn('Google Translate Init error:', err);
-        }
-      };
-
-      if (!document.getElementById('google-translate-script')) {
-        const script = document.createElement('script');
-        script.id = 'google-translate-script';
-        script.type = 'text/javascript';
-        script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    }
-
     return () => {
       clearInterval(interval);
       observer.disconnect();
@@ -162,14 +172,15 @@ export default function LanguageToggle({ className = '', style = {} }) {
         document.cookie = `googtrans=/bn/en; path=/; domain=.${rootDomain};`;
       }
 
-      // Trigger translate combo if already rendered in DOM
-      const selectElem = document.querySelector('.goog-te-combo');
-      if (selectElem) {
-        selectElem.value = 'en';
-        selectElem.dispatchEvent(new Event('change'));
-      } else {
-        window.location.reload();
-      }
+      loadGoogleTranslateScript(() => {
+        const selectElem = document.querySelector('.goog-te-combo');
+        if (selectElem) {
+          selectElem.value = 'en';
+          selectElem.dispatchEvent(new Event('change'));
+        } else {
+          window.location.reload();
+        }
+      });
     } else {
       // Revert back to original Bangla
       document.cookie = `googtrans=/bn/bn; path=/;`;

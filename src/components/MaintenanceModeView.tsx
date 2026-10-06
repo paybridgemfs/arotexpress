@@ -282,31 +282,6 @@ export default function MaintenanceModeView({ settings = {} }: MaintenanceModeVi
             </a>
           </div>
         </div>
-
-        {/* Admin Portal Gateway */}
-        <div style={{ borderTop: '1px dashed #E2E8F0', paddingTop: '16px' }}>
-          <button
-            type="button"
-            onClick={() => router.push('/admin')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#64748B',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              transition: 'color 0.15s ease'
-            }}
-          >
-            <Lock size={13} />
-            <span>অ্যাডমিন পোর্টাল লগইন</span>
-          </button>
-        </div>
       </motion.div>
     </div>
   );

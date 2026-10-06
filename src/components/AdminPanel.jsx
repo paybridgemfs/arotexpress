@@ -3880,133 +3880,136 @@ export default function AdminPanel({ onNavigateHome }) {
 
         {/* 7. ADMIN PROFILE TAB */}
         {adminTab === 'profile' && (
-          <div style={{ maxWidth: '440px' }}>
-            <p style={{ fontSize: '13.5px', color: 'var(--muted)', marginBottom: '14px' }}>
-              অ্যাডমিন প্যানেলে লগইন করার ইউজারনেম এবং পাসওয়ার্ড পরিবর্তন করুন:
-            </p>
+          <div style={{ width: '100%' }}>
+            {/* Credentials Form Box */}
+            <div style={{ maxWidth: '460px' }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--muted)', marginBottom: '14px' }}>
+                অ্যাডমিন প্যানেলে লগইন করার ইউজারনেম এবং পাসওয়ার্ড পরিবর্তন করুন:
+              </p>
 
-            {adminPassMsg.text && (
-              <div
-                style={{
-                  background: adminPassMsg.type === 'success' ? 'var(--md-primary-container)' : '#ffeded',
-                  color: adminPassMsg.type === 'success' ? 'var(--success)' : 'var(--danger)',
-                  border: `1px solid ${adminPassMsg.type === 'success' ? '#BBF7D0' : '#FECDD3'}`,
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '13px',
-                  marginBottom: '14px',
-                  fontWeight: 500
-                }}
-              >
-                {adminPassMsg.text}
-              </div>
-            )}
-
-            <form onSubmit={handleUpdateAdminProfile}>
-              <div className="field">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Users size={15} />
-                  <span>অ্যাডমিন নাম (Display Name)</span>
-                </label>
-                <input
-                  type="text"
-                  value={newAdminName}
-                  onChange={(e) => setNewAdminName(e.target.value)}
-                  placeholder="যেমন: সুপার অ্যাডমিন"
-                  required
-                />
-              </div>
-
-              <div className="field">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Lock size={15} />
-                  <span>অ্যাডমিন ইউজারনেম / লগইন আইডি</span>
-                </label>
-                <input
-                  type="text"
-                  value={newAdminPhone}
-                  onChange={(e) => setNewAdminPhone(e.target.value)}
-                  placeholder="যেমন: admin বা আপনার নিজস্ব আইডি"
-                  required
-                />
-                <span style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
-                  পরবর্তীতে অ্যাডমিন প্যানেলে লগইন করার সময় এই ইউজারনেমটি ব্যবহার করবেন।
-                </span>
-              </div>
-
-              <div style={{ margin: '20px 0 14px 0', borderTop: '1px dashed var(--border)', paddingTop: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <KeyRound size={15} />
-                    <span>পাসওয়ার্ড পরিবর্তন (ঐচ্ছিক)</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminPass(!showAdminPass)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--muted)',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    {showAdminPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                    <span>{showAdminPass ? 'লুকান' : 'দেখান'}</span>
-                  </button>
+              {adminPassMsg.text && (
+                <div
+                  style={{
+                    background: adminPassMsg.type === 'success' ? 'var(--md-primary-container)' : '#ffeded',
+                    color: adminPassMsg.type === 'success' ? 'var(--success)' : 'var(--danger)',
+                    border: `1px solid ${adminPassMsg.type === 'success' ? '#BBF7D0' : '#FECDD3'}`,
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '13px',
+                    marginBottom: '14px',
+                    fontWeight: 500
+                  }}
+                >
+                  {adminPassMsg.text}
                 </div>
-                <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>
-                  পাসওয়ার্ড পরিবর্তন করতে না চাইলে নিচের পাসওয়ার্ডের ঘরগুলো ফাঁকা রাখুন।
-                </span>
-              </div>
+              )}
 
-              <div className="field">
-                <label>বর্তমান পাসওয়ার্ড</label>
-                <input
-                  type={showAdminPass ? 'text' : 'password'}
-                  placeholder="বর্তমান পাসওয়ার্ড লিখুন (পাসওয়ার্ড পরিবর্তন করতে চাইলে)"
-                  value={currentAdminPass}
-                  onChange={(e) => setCurrentAdminPass(e.target.value)}
-                />
-              </div>
+              <form onSubmit={handleUpdateAdminProfile}>
+                <div className="field">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Users size={15} />
+                    <span>অ্যাডমিন নাম (Display Name)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newAdminName}
+                    onChange={(e) => setNewAdminName(e.target.value)}
+                    placeholder="যেমন: সুপার অ্যাডমিন"
+                    required
+                  />
+                </div>
 
-              <div className="field">
-                <label>নতুন পাসওয়ার্ড</label>
-                <input
-                  type={showAdminPass ? 'text' : 'password'}
-                  placeholder="নতুন পাসওয়ার্ড লিখুন (কমপক্ষে ৪ অক্ষর)"
-                  value={newAdminPass}
-                  onChange={(e) => setNewAdminPass(e.target.value)}
-                />
-              </div>
+                <div className="field">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Lock size={15} />
+                    <span>অ্যাডমিন ইউজারনেম / লগইন আইডি</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newAdminPhone}
+                    onChange={(e) => setNewAdminPhone(e.target.value)}
+                    placeholder="যেমন: admin বা আপনার নিজস্ব আইডি"
+                    required
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
+                    পরবর্তীতে অ্যাডমিন প্যানেলে লগইন করার সময় এই ইউজারনেমটি ব্যবহার করবেন।
+                  </span>
+                </div>
 
-              <div className="field">
-                <label>নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
-                <input
-                  type={showAdminPass ? 'text' : 'password'}
-                  placeholder="নতুন পাসওয়ার্ডটি পুনরায় লিখুন"
-                  value={confirmAdminPass}
-                  onChange={(e) => setConfirmAdminPass(e.target.value)}
-                />
-              </div>
+                <div style={{ margin: '20px 0 14px 0', borderTop: '1px dashed var(--border)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <KeyRound size={15} />
+                      <span>পাসওয়ার্ড পরিবর্তন (ঐচ্ছিক)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPass(!showAdminPass)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--muted)',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {showAdminPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                      <span>{showAdminPass ? 'লুকান' : 'দেখান'}</span>
+                    </button>
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>
+                    পাসওয়ার্ড পরিবর্তন করতে না চাইলে নিচের পাসওয়ার্ডের ঘরগুলো ফাঁকা রাখুন।
+                  </span>
+                </div>
 
-              <motion.button
-                type="submit"
-                className="submit-btn"
-                disabled={savingAdminProfile}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                style={{ marginTop: '8px' }}
-              >
-                {savingAdminProfile ? 'সংরক্ষণ করা হচ্ছে...' : 'ক্রেডেনশিয়াল সংরক্ষণ করুন'}
-              </motion.button>
-            </form>
+                <div className="field">
+                  <label>বর্তমান পাসওয়ার্ড</label>
+                  <input
+                    type={showAdminPass ? 'text' : 'password'}
+                    placeholder="বর্তমান পাসওয়ার্ড লিখুন (পাসওয়ার্ড পরিবর্তন করতে চাইলে)"
+                    value={currentAdminPass}
+                    onChange={(e) => setCurrentAdminPass(e.target.value)}
+                  />
+                </div>
 
-            {/* 7.1. ACTIVE ADMIN DEVICES & SESSIONS MANAGEMENT (MAX 3 DEVICES) */}
-            <div style={{ marginTop: '32px', borderTop: '1px solid var(--rule)', paddingTop: '24px' }}>
+                <div className="field">
+                  <label>নতুন পাসওয়ার্ড</label>
+                  <input
+                    type={showAdminPass ? 'text' : 'password'}
+                    placeholder="নতুন পাসওয়ার্ড লিখুন (কমপক্ষে ৪ অক্ষর)"
+                    value={newAdminPass}
+                    onChange={(e) => setNewAdminPass(e.target.value)}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
+                  <input
+                    type={showAdminPass ? 'text' : 'password'}
+                    placeholder="নতুন পাসওয়ার্ডটি পুনরায় লিখুন"
+                    value={confirmAdminPass}
+                    onChange={(e) => setConfirmAdminPass(e.target.value)}
+                  />
+                </div>
+
+                <motion.button
+                  type="submit"
+                  className="submit-btn"
+                  disabled={savingAdminProfile}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{ marginTop: '8px' }}
+                >
+                  {savingAdminProfile ? 'সংরক্ষণ করা হচ্ছে...' : 'ক্রেডেনশিয়াল সংরক্ষণ করুন'}
+                </motion.button>
+              </form>
+            </div>
+
+            {/* 7.1. ACTIVE ADMIN DEVICES & SESSIONS MANAGEMENT (80% WIDTH & MAX 3 DEVICES) */}
+            <div style={{ width: '80%', minWidth: '320px', maxWidth: '1000px', marginTop: '36px', borderTop: '1px solid var(--rule)', paddingTop: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
                 <div>
                   <h3 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)' }}>

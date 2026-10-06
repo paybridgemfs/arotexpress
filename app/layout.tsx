@@ -260,6 +260,8 @@ export default async function RootLayout({
   return (
     <html lang="bn" data-scroll-behavior="smooth">
       <head>
+        <meta name="google" content="notranslate" />
+        <meta name="googlebot" content="notranslate" />
         <link rel="preconnect" href="https://i.ibb.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://i.ibb.co" />
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
