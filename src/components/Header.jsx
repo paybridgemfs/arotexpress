@@ -252,8 +252,8 @@ export default function Header({
         </div>
 
         {/* Mobile Dedicated Search Bar & Language Switcher */}
-        <div className="mobile-search-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div className="searchbar mobile-searchbar" style={{ flex: 1, minWidth: 0, margin: 0 }}>
+        <div className="mobile-search-row">
+          <div className="searchbar mobile-searchbar">
             <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--muted)' }}>
               <Search size={16} />
             </span>

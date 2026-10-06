@@ -42,7 +42,15 @@ import {
   Loader2,
   Share2,
   PanelBottom,
-  HardDrive
+  HardDrive,
+  Laptop,
+  Smartphone,
+  Monitor,
+  Globe,
+  Wrench,
+  Clock,
+  ShieldAlert,
+  Radio
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
@@ -150,10 +158,16 @@ export default function AdminPanel({ onNavigateHome }) {
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   // Login form state (if not authenticated as admin)
-  const [adminUsername, setAdminUsername] = useState('admin');
+  const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [maxDeviceModalOpen, setMaxDeviceModalOpen] = useState(false);
+
+  // Admin Active Sessions state
+  const [adminSessions, setAdminSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionActionLoading, setSessionActionLoading] = useState(false);
 
   // Data states
   const [orders, setOrders] = useState([]);
@@ -354,14 +368,40 @@ export default function AdminPanel({ onNavigateHome }) {
     }
   };
 
+  // Fetch active admin sessions
+  const fetchAdminSessions = async () => {
+    if (!adminToken) return;
+    setLoadingSessions(true);
+    try {
+      const res = await fetch('/api/admin/sessions', {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminSessions(data.sessions || []);
+      }
+    } catch (e) {
+      console.warn('Error fetching admin sessions:', e);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
   useEffect(() => {
     if (isAdmin) {
       fetchAllData();
+      fetchAdminSessions();
     }
   }, [isAdmin, adminToken]);
 
+  useEffect(() => {
+    if (isAdmin && adminTab === 'profile') {
+      fetchAdminSessions();
+    }
+  }, [adminTab, isAdmin]);
+
   const handleAdminLogin = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoginError('');
     setLoginLoading(true);
     try {
@@ -373,9 +413,87 @@ export default function AdminPanel({ onNavigateHome }) {
         showToast('অ্যাডমিন প্যানেলে স্বাগতম');
       }
     } catch (err) {
-      setLoginError(err.message || 'ভুল ইউজারনেম বা পাসওয়ার্ড');
+      if (err.code === 'MAX_DEVICES_REACHED') {
+        setMaxDeviceModalOpen(true);
+      } else {
+        setLoginError(err.message || 'ভুল ইউজারনেম বা পাসওয়ার্ড');
+      }
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  // Force login by revoking all other sessions
+  const handleForceAdminLogin = async () => {
+    setLoginError('');
+    setLoginLoading(true);
+    try {
+      const loggedUser = await adminLogin(adminUsername, adminPassword, { force_logout_others: true });
+      setMaxDeviceModalOpen(false);
+      if (loggedUser.role !== 'admin') {
+        adminLogout();
+        setLoginError('আপনি অ্যাডমিন নন। শুধুমাত্র অ্যাডমিন লগইন করতে পারবেন।');
+      } else {
+        showToast('আগের সব ডিভাইস লগআউট করে সফলভাবে লগইন করা হয়েছে');
+      }
+    } catch (err) {
+      setLoginError(err.message || 'লগইন করতে ব্যর্থ হয়েছে');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Logout specific admin session
+  const handleLogoutSession = async (sessionToken) => {
+    if (!window.confirm('আপনি কি এই ডিভাইসটির অ্যাডমিন সেশন লগআউট করতে চান?')) return;
+    setSessionActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/sessions', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({ session_token: sessionToken })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'ডিভাইসটি লগআউট করা হয়েছে');
+        fetchAdminSessions();
+      } else {
+        showToast(data.error || 'লগআউট করতে ব্যর্থ');
+      }
+    } catch (e) {
+      showToast('লগআউট করতে ব্যর্থ');
+    } finally {
+      setSessionActionLoading(false);
+    }
+  };
+
+  // Logout all other sessions
+  const handleLogoutAllOtherSessions = async () => {
+    if (!window.confirm('আপনি কি বর্তমান ডিভাইসটি বাদে বাকি সব ডিভাইস লগআউট করতে চান?')) return;
+    setSessionActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/sessions', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({ all_others: true })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'অন্য সব ডিভাইস সফলভাবে লগআউট করা হয়েছে');
+        fetchAdminSessions();
+      } else {
+        showToast(data.error || 'লগআউট করতে ব্যর্থ');
+      }
+    } catch (e) {
+      showToast('লগআউট করতে ব্যর্থ');
+    } finally {
+      setSessionActionLoading(false);
     }
   };
 
@@ -1174,7 +1292,7 @@ export default function AdminPanel({ onNavigateHome }) {
               <label>অ্যাডমিন ইউজারনেম</label>
               <input
                 type="text"
-                placeholder="admin"
+                placeholder="আপনার ইউজারনেম লিখুন"
                 value={adminUsername}
                 onChange={(e) => setAdminUsername(e.target.value)}
                 required
@@ -1202,6 +1320,93 @@ export default function AdminPanel({ onNavigateHome }) {
           </form>
         </div>
       </motion.div>
+
+      {/* Maximum 3 Devices Reached Modal with Force Logout Option */}
+      <AnimatePresence>
+        {maxDeviceModalOpen && (
+          <div className="admin-modal-overlay" style={{ zIndex: 10000 }}>
+            <motion.div
+              className="admin-modal-card"
+              style={{ maxWidth: '440px', padding: '24px', textAlign: 'center' }}
+              initial={{ scale: 0.92, opacity: 0, y: 14 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 14 }}
+            >
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: '#FEE2E2',
+                  color: '#DC2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  border: '2px solid #FECDD3'
+                }}
+              >
+                <Smartphone size={28} />
+              </div>
+
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 10px', color: '#0F172A' }}>
+                সর্বোচ্চ ডিভাইস সীমা পূর্ণ (৩টি ডিভাইস)
+              </h3>
+
+              <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.65, margin: '0 0 20px' }}>
+                আপনার অ্যাডমিন অ্যাকাউন্টে ইতিমধ্যে ৩টি ডিভাইসে সক্রিয় লগইন রয়েছে। নিরাপত্তার স্বার্থে একসাথে ৩টির বেশি ডিভাইসে লগইন থাকা সম্ভব নয়।
+                <br /><br />
+                আপনি কি <strong>পূর্বের সব ডিভাইস থেকে লগআউট করে</strong> এই নতুন ডিভাইসে লগইন করতে চান?
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <motion.button
+                  type="button"
+                  onClick={handleForceAdminLogin}
+                  disabled={loginLoading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{
+                    background: '#DC2626',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '12px 18px',
+                    fontWeight: 700,
+                    fontSize: '13.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)'
+                  }}
+                >
+                  {loginLoading ? 'লগইন হচ্ছে...' : 'অন্য সব ডিভাইস লগআউট করে লগইন করুন'}
+                </motion.button>
+
+                <button
+                  type="button"
+                  onClick={() => setMaxDeviceModalOpen(false)}
+                  disabled={loginLoading}
+                  style={{
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '10px 18px',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  বাতিল
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -3228,6 +3433,137 @@ export default function AdminPanel({ onNavigateHome }) {
         {adminTab === 'settings' && settings && (
           <div style={{ maxWidth: '750px' }}>
             <form onSubmit={handleSaveSettings}>
+              {/* 5.0. MAINTENANCE MODE SYSTEM CARD */}
+              <div
+                style={{
+                  background: settings.is_maintenance_mode ? '#FFFBEB' : '#FFFFFF',
+                  border: `1.5px solid ${settings.is_maintenance_mode ? '#F59E0B' : 'var(--rule)'}`,
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: settings.is_maintenance_mode ? '0 4px 16px rgba(245, 158, 11, 0.15)' : 'var(--shadow-sm)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: settings.is_maintenance_mode ? '14px' : '0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: settings.is_maintenance_mode ? '#FEF3C7' : '#F1F5F9',
+                        color: settings.is_maintenance_mode ? '#B45309' : '#475569',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Wrench size={20} />
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: 'var(--ink)' }}>
+                        ওয়েবসাইট সাময়িক রক্ষণাবেক্ষণে (Maintenance Mode) রাখুন
+                      </h4>
+                      <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: 'var(--muted)' }}>
+                        এটি অন থাকলে সাধারণ গ্রাহকদের জন্য সাইট সাময়িকভাবে বন্ধ থাকবে এবং মেইনটেন্যান্স পেজ প্রদর্শিত হবে।
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Toggle Switch */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+                    <span
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: settings.is_maintenance_mode ? '#B45309' : '#64748B'
+                      }}
+                    >
+                      {settings.is_maintenance_mode ? 'মেইনটেন্যান্স চালু (অন)' : 'বন্ধ (স্বাভাবিক লাইভ)'}
+                    </span>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '26px',
+                        borderRadius: '9999px',
+                        background: settings.is_maintenance_mode ? '#D97706' : '#CBD5E1',
+                        position: 'relative',
+                        transition: 'background 0.2s ease',
+                        flexShrink: 0
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: '#FFFFFF',
+                          position: 'absolute',
+                          top: '3px',
+                          left: settings.is_maintenance_mode ? '25px' : '3px',
+                          transition: 'left 0.2s ease',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                        }}
+                      />
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={!!settings.is_maintenance_mode}
+                      onChange={(e) => setSettings({ ...settings, is_maintenance_mode: e.target.checked })}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
+                {/* Custom Messages when Maintenance is ON */}
+                {settings.is_maintenance_mode && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    style={{
+                      borderTop: '1px solid #FDE68A',
+                      paddingTop: '16px',
+                      marginTop: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    <div className="field" style={{ margin: 0 }}>
+                      <label>মেইনটেন্যান্স পেজের শিরোনাম</label>
+                      <input
+                        type="text"
+                        value={settings.maintenance_title || ''}
+                        onChange={(e) => setSettings({ ...settings, maintenance_title: e.target.value })}
+                        placeholder="যেমন: আড়ৎ এক্সপ্রেস সাময়িকভাবে রক্ষণাবেক্ষণে রয়েছে"
+                      />
+                    </div>
+
+                    <div className="field" style={{ margin: 0 }}>
+                      <label>গ্রাহকদের জন্য নোটিশ বা বার্তা</label>
+                      <textarea
+                        rows={3}
+                        value={settings.maintenance_message || ''}
+                        onChange={(e) => setSettings({ ...settings, maintenance_message: e.target.value })}
+                        placeholder="রক্ষণাবেক্ষণের বিস্তারিত কারণ ও বার্তা লিখুন..."
+                      />
+                    </div>
+
+                    <div className="field" style={{ margin: 0 }}>
+                      <label>প্রত্যাশিত লাইভ সময় (ETA)</label>
+                      <input
+                        type="text"
+                        value={settings.maintenance_estimated_time || ''}
+                        onChange={(e) => setSettings({ ...settings, maintenance_estimated_time: e.target.value })}
+                        placeholder="যেমন: আজ রাত ৯টা অথবা শীঘ্রই ফিরছি"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
               <div style={{ background: '#FFFFFF', border: '1px solid var(--rule)', borderRadius: 'var(--radius-xl)', padding: '20px', marginBottom: '20px', boxShadow: 'var(--shadow-sm)' }}>
                 <h4 style={{ fontSize: '15px', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Building2 size={17} />
@@ -3668,6 +4004,206 @@ export default function AdminPanel({ onNavigateHome }) {
                 {savingAdminProfile ? 'সংরক্ষণ করা হচ্ছে...' : 'ক্রেডেনশিয়াল সংরক্ষণ করুন'}
               </motion.button>
             </form>
+
+            {/* 7.1. ACTIVE ADMIN DEVICES & SESSIONS MANAGEMENT (MAX 3 DEVICES) */}
+            <div style={{ marginTop: '32px', borderTop: '1px solid var(--rule)', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)' }}>
+                    <Smartphone size={18} />
+                    <span>লগইনকৃত ডিভাইসের তালিকা ও নিরাপত্তা</span>
+                  </h3>
+                  <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0 }}>
+                    আপনার অ্যাকাউন্টে একসাথে সর্বোচ্চ ৩টি ডিভাইস লগইন থাকতে পারবে।
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      background: adminSessions.length >= 3 ? '#FEE2E2' : '#DCFCE7',
+                      color: adminSessions.length >= 3 ? '#DC2626' : '#166534',
+                      padding: '4px 10px',
+                      borderRadius: '9999px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Radio size={12} />
+                    {toBengaliNumber(adminSessions.length)}/৩টি ডিভাইস সক্রিয়
+                  </span>
+
+                  {adminSessions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleLogoutAllOtherSessions}
+                      disabled={sessionActionLoading}
+                      style={{
+                        background: '#FFF1F2',
+                        color: '#E11D48',
+                        border: '1px solid #FECDD3',
+                        borderRadius: 'var(--radius-pill)',
+                        padding: '5px 12px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <LogOut size={12} />
+                      <span>অন্য সব ডিভাইস লগআউট করুন</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>ডিভাইস ও ব্রাউজার</th>
+                      <th>আইপি অ্যাড্রেস</th>
+                      <th>লগইনের সময়</th>
+                      <th>স্ট্যাটাস</th>
+                      <th>অ্যাকশন</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingSessions ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
+                          সেশন লোড হচ্ছে...
+                        </td>
+                      </tr>
+                    ) : adminSessions.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
+                          কোনো সক্রিয় সেশন পাওয়া যায়নি।
+                        </td>
+                      </tr>
+                    ) : (
+                      adminSessions.map((session, index) => {
+                        const isCurrent = session.is_current || session.session_token === adminUser?.session_token;
+                        const isMobile = /iphone|ipad|android/i.test(session.os || '');
+                        const isMacOrWin = /mac|windows/i.test(session.os || '');
+
+                        return (
+                          <tr key={session.id || session.session_token || index} style={{ background: isCurrent ? 'rgba(0, 108, 76, 0.03)' : 'transparent' }}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '8px',
+                                    background: isCurrent ? 'var(--md-primary-container)' : '#F1F5F9',
+                                    color: isCurrent ? 'var(--green)' : '#475569',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  {isMobile ? <Smartphone size={16} /> : isMacOrWin ? <Laptop size={16} /> : <Monitor size={16} />}
+                                </div>
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: '12.5px', color: 'var(--ink)' }}>
+                                    {session.device_name || `${session.browser} on ${session.os}`}
+                                  </div>
+                                  <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                                    {session.os} • {session.browser}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="mono" style={{ fontSize: '12px' }}>
+                              {session.ip_address || '127.0.0.1'}
+                            </td>
+
+                            <td style={{ fontSize: '11.5px', color: 'var(--ink)' }}>
+                              <div>{session.created_at ? new Date(session.created_at).toLocaleDateString('bn-BD') : '—'}</div>
+                              <div style={{ fontSize: '10.5px', color: 'var(--muted)' }}>
+                                {session.created_at ? new Date(session.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </div>
+                            </td>
+
+                            <td>
+                              {isCurrent ? (
+                                <span
+                                  style={{
+                                    background: '#DCFCE7',
+                                    color: '#15803D',
+                                    border: '1px solid #BBF7D0',
+                                    borderRadius: '9999px',
+                                    padding: '2px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <CheckCircle2 size={11} /> বর্তমান ডিভাইস
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    background: '#F1F5F9',
+                                    color: '#475569',
+                                    borderRadius: '9999px',
+                                    padding: '2px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: 600
+                                  }}
+                                >
+                                  অন্যান্য
+                                </span>
+                              )}
+                            </td>
+
+                            <td>
+                              {isCurrent ? (
+                                <span style={{ fontSize: '11.5px', color: 'var(--muted)', fontStyle: 'italic' }}>
+                                  (বর্তমান)
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleLogoutSession(session.session_token)}
+                                  disabled={sessionActionLoading}
+                                  style={{
+                                    background: '#FEE2E2',
+                                    color: '#DC2626',
+                                    border: '1px solid #FECDD3',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <LogOut size={11} />
+                                  <span>লগআউট</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

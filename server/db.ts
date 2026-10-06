@@ -97,6 +97,18 @@ export interface DBAdmin {
   created_at: string;
 }
 
+export interface AdminSession {
+  id?: number;
+  admin_id: number;
+  session_token: string;
+  device_name: string;
+  browser: string;
+  os: string;
+  ip_address: string;
+  last_active?: string;
+  created_at?: string;
+}
+
 export interface DBGroup {
   id?: number;
   key: string;
@@ -285,8 +297,13 @@ export const initialData = {
     logo_image_url: '',
     logo_text_bn: 'আড়ৎ এক্সপ্রেস',
     logo_text_en: 'Arot Express',
-    package_min_items: 1
+    package_min_items: 1,
+    is_maintenance_mode: false,
+    maintenance_title: 'আড়ৎ এক্সপ্রেস সাময়িকভাবে রক্ষণাবেক্ষণে রয়েছে',
+    maintenance_message: 'আমাদের ওয়েবসাইটটি আরও উন্নত করতে এবং প্রয়োজনীয় রক্ষণাবেক্ষণের জন্য সাময়িকভাবে সাধারণ ভিজিটরদের জন্য বন্ধ রাখা হয়েছে। শীঘ্রই আমরা আবার তাজা পণ্য নিয়ে লাইভ হব।',
+    maintenance_estimated_time: 'শীঘ্রই ফিরছি'
   },
+  admin_sessions: [] as AdminSession[],
   footer_settings: defaultFooterSettings,
   newsletter_subscribers: [] as any[],
   delivery_areas: [
@@ -708,6 +725,21 @@ export class DBManager {
         CREATE INDEX IF NOT EXISTS idx_package_orders_status ON package_orders(status);
         CREATE INDEX IF NOT EXISTS idx_package_orders_trx_id ON package_orders(trx_id);
         CREATE INDEX IF NOT EXISTS idx_package_orders_created_at ON package_orders(created_at DESC);
+
+        -- Admin Multi-Device Sessions Table (Enforces max 3 devices and remote revocation)
+        CREATE TABLE IF NOT EXISTS admin_sessions (
+          id SERIAL PRIMARY KEY,
+          admin_id INT REFERENCES admins(id) ON DELETE CASCADE,
+          session_token VARCHAR(255) UNIQUE NOT NULL,
+          device_name VARCHAR(255) NOT NULL,
+          browser VARCHAR(100) NOT NULL,
+          os VARCHAR(100) NOT NULL,
+          ip_address VARCHAR(100) NOT NULL,
+          last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
+        CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(session_token);
       `);
 
       // Ensure default super admin exists in admins table only if no admin exists
@@ -730,6 +762,7 @@ export class DBManager {
       const newsRes = await client.query(`SELECT * FROM newsletter_subscribers ORDER BY created_at DESC`);
       const usersRes = await client.query(`SELECT * FROM users WHERE role != 'admin' AND phone != 'admin' ORDER BY id ASC`);
       const adminsRes = await client.query(`SELECT * FROM admins ORDER BY id ASC`);
+      const adminSessionsRes = await client.query(`SELECT * FROM admin_sessions ORDER BY last_active DESC`);
       const ordersRes = await client.query(`SELECT * FROM orders ORDER BY id DESC`);
       const groupRes = await client.query(`SELECT * FROM groups ORDER BY sort_order ASC, id ASC`);
       const ridersRes = await client.query(`SELECT * FROM delivery_riders ORDER BY id ASC`);
@@ -973,6 +1006,23 @@ export class DBManager {
           password_hash: a.password_hash,
           created_at: a.created_at
         }));
+      }
+
+      // Hydrate active admin sessions
+      if (adminSessionsRes && adminSessionsRes.rows.length > 0) {
+        DBManager.data.admin_sessions = adminSessionsRes.rows.map((s) => ({
+          id: s.id,
+          admin_id: s.admin_id,
+          session_token: s.session_token,
+          device_name: s.device_name || 'Unknown Device',
+          browser: s.browser || 'Web Browser',
+          os: s.os || 'Unknown OS',
+          ip_address: s.ip_address || '127.0.0.1',
+          last_active: s.last_active,
+          created_at: s.created_at
+        }));
+      } else {
+        DBManager.data.admin_sessions = [];
       }
 
       // Hydrate delivery riders
@@ -3105,6 +3155,136 @@ export class DBManager {
       }
     }
     return false;
+  }
+
+  // ==========================================
+  // ADMIN MULTI-DEVICE SESSION MANAGEMENT
+  // Enforces max 3 devices limit & remote revocation
+  // ==========================================
+  static getAdminSessions(adminId?: number): AdminSession[] {
+    if (!this.data.admin_sessions) this.data.admin_sessions = [];
+    if (adminId) {
+      return this.data.admin_sessions.filter((s) => s.admin_id === adminId);
+    }
+    return this.data.admin_sessions;
+  }
+
+  static async addAdminSession(
+    adminId: number,
+    sessionToken: string,
+    info: { device_name: string; browser: string; os: string; ip_address: string }
+  ): Promise<AdminSession> {
+    if (!this.data.admin_sessions) this.data.admin_sessions = [];
+
+    const newSession: AdminSession = {
+      admin_id: adminId,
+      session_token: sessionToken,
+      device_name: info.device_name || 'Web Browser',
+      browser: info.browser || 'Unknown',
+      os: info.os || 'Unknown OS',
+      ip_address: info.ip_address || '127.0.0.1',
+      last_active: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
+
+    this.data.admin_sessions.unshift(newSession);
+
+    if (isPgConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO admin_sessions (admin_id, session_token, device_name, browser, os, ip_address, last_active, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+           RETURNING *`,
+          [
+            newSession.admin_id,
+            newSession.session_token,
+            newSession.device_name,
+            newSession.browser,
+            newSession.os,
+            newSession.ip_address
+          ]
+        );
+        if (res.rows && res.rows[0]) {
+          newSession.id = res.rows[0].id;
+        }
+      } catch (e: any) {
+        console.warn('PG error adding admin_session:', e.message);
+      }
+    }
+
+    return newSession;
+  }
+
+  static async removeAdminSession(sessionToken: string): Promise<boolean> {
+    if (!this.data.admin_sessions) this.data.admin_sessions = [];
+    const index = this.data.admin_sessions.findIndex((s) => s.session_token === sessionToken);
+    if (index !== -1) {
+      this.data.admin_sessions.splice(index, 1);
+    }
+
+    if (isPgConnected) {
+      try {
+        await pool.query(`DELETE FROM admin_sessions WHERE session_token = $1`, [sessionToken]);
+        return true;
+      } catch (e: any) {
+        console.warn('PG error deleting admin_session:', e.message);
+      }
+    }
+    return true;
+  }
+
+  static async removeAllAdminSessions(adminId: number): Promise<boolean> {
+    if (!this.data.admin_sessions) this.data.admin_sessions = [];
+    this.data.admin_sessions = this.data.admin_sessions.filter((s) => s.admin_id !== adminId);
+
+    if (isPgConnected) {
+      try {
+        await pool.query(`DELETE FROM admin_sessions WHERE admin_id = $1`, [adminId]);
+        return true;
+      } catch (e: any) {
+        console.warn('PG error deleting all admin_sessions:', e.message);
+      }
+    }
+    return true;
+  }
+
+  static async removeAllAdminSessionsExcept(adminId: number, keepSessionToken: string): Promise<boolean> {
+    if (!this.data.admin_sessions) this.data.admin_sessions = [];
+    this.data.admin_sessions = this.data.admin_sessions.filter(
+      (s) => s.admin_id !== adminId || s.session_token === keepSessionToken
+    );
+
+    if (isPgConnected) {
+      try {
+        await pool.query(`DELETE FROM admin_sessions WHERE admin_id = $1 AND session_token != $2`, [
+          adminId,
+          keepSessionToken
+        ]);
+        return true;
+      } catch (e: any) {
+        console.warn('PG error deleting other admin_sessions:', e.message);
+      }
+    }
+    return true;
+  }
+
+  static validateAdminSession(sessionToken: string): boolean {
+    if (!sessionToken) return false;
+    if (!this.data.admin_sessions) return false;
+    return this.data.admin_sessions.some((s) => s.session_token === sessionToken);
+  }
+
+  static updateAdminSessionActivity(sessionToken: string) {
+    if (!sessionToken || !this.data.admin_sessions) return;
+    const session = this.data.admin_sessions.find((s) => s.session_token === sessionToken);
+    if (session) {
+      session.last_active = new Date().toISOString();
+      if (isPgConnected) {
+        pool
+          .query(`UPDATE admin_sessions SET last_active = NOW() WHERE session_token = $1`, [sessionToken])
+          .catch(() => {});
+      }
+    }
   }
 }
 

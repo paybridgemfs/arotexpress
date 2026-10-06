@@ -162,15 +162,22 @@ export function AuthProvider({ children }) {
   };
 
   // Dedicated Admin Login (Never logs into customer frontend)
-  const adminLogin = async (username, password) => {
+  const adminLogin = async (username, password, options = {}) => {
     const res = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({
+        username,
+        password,
+        force_logout_others: Boolean(options?.force_logout_others)
+      })
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || 'অ্যাডমিন লগইন ব্যর্থ হয়েছে');
+      const error = new Error(data.error || 'অ্যাডমিন লগইন ব্যর্থ হয়েছে');
+      error.code = data.code;
+      error.active_devices_count = data.active_devices_count;
+      throw error;
     }
     localStorage.setItem('arot_admin_token', data.token);
     localStorage.setItem('arot_admin_user', JSON.stringify(data.user));

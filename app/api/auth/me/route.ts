@@ -12,10 +12,24 @@ export async function GET(req: NextRequest) {
   const user = authResult.user as any;
 
   if (user.role === 'admin') {
+    // If admin token has session_token, verify session is not revoked
+    if (user.session_token && !DBManager.validateAdminSession(user.session_token)) {
+      return NextResponse.json(
+        { error: 'আপনার এই সেশনটি দূর থেকে লগআউট করে দেওয়া হয়েছে।' },
+        { status: 401 }
+      );
+    }
+
+    if (user.session_token) {
+      DBManager.updateAdminSessionActivity(user.session_token);
+    }
+
     const admin = DBManager.findAdminById(user.id) as any;
     if (admin) {
       const { password_hash, ...safeAdmin } = admin;
-      return NextResponse.json({ user: { ...safeAdmin, phone: safeAdmin.username, role: 'admin' } });
+      return NextResponse.json({
+        user: { ...safeAdmin, phone: safeAdmin.username, role: 'admin', session_token: user.session_token }
+      });
     }
   } else if (user.role === 'rider') {
     const rider = DBManager.findRiderById(user.id) as any;
