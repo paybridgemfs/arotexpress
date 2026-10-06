@@ -37,7 +37,7 @@ function parseDeviceInfo(userAgent: string, ipAddress: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Rate limiting: Max 5 attempts per minute
+    // 1. Rate limiting: Max 6 attempts per minute
     const rateCheck = checkRateLimit(req, 'admin_login', 6, 60 * 1000);
     if (!rateCheck.allowed) {
       return NextResponse.json(
@@ -63,32 +63,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ভুল অ্যাডমিন পাসওয়ার্ড' }, { status: 401 });
     }
 
-    // 3. Multi-Device Admin Session Management (Max 3 Devices Enforced)
-    const activeSessions = DBManager.getAdminSessions(admin.id);
-    const MAX_ALLOWED_DEVICES = 3;
-
-    if (activeSessions.length >= MAX_ALLOWED_DEVICES && force_logout_others !== true) {
-      return NextResponse.json(
-        {
-          error: `সর্বোচ্চ ${MAX_ALLOWED_DEVICES}টি ডিভাইসে ইতিমধ্যে অ্যাডমিন লগইন করা আছে।`,
-          code: 'MAX_DEVICES_REACHED',
-          active_devices_count: activeSessions.length,
-          max_allowed: MAX_ALLOWED_DEVICES
-        },
-        { status: 403 }
-      );
-    }
-
-    // If force logout others requested, purge old sessions
-    if (force_logout_others === true) {
-      await DBManager.removeAllAdminSessions(admin.id);
-    }
-
-    // Capture device details
+    // 3. Capture current device & IP details
     const ua = req.headers.get('user-agent') || '';
     const forwardedFor = req.headers.get('x-forwarded-for') || '';
     const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : (req.headers.get('x-real-ip') || '127.0.0.1');
     const { deviceName, browser, os, ipAddress } = parseDeviceInfo(ua, clientIp);
+
+    // 4. Multi-Device Admin Session Management (Max 3 Devices Enforced)
+    const MAX_ALLOWED_DEVICES = 3;
+
+    // Check if same device (same IP & same device/browser/OS) already has an active session
+    const activeSessions = DBManager.getAdminSessions(admin.id);
+    const existingSameDeviceSession = activeSessions.find(
+      (s) => s.admin_id === admin.id && s.ip_address === ipAddress && (s.device_name === deviceName || (s.browser === browser && s.os === os))
+    );
+
+    // If same device already logged in previously, automatically replace old session with new one (prevent duplicate rows)
+    if (existingSameDeviceSession) {
+      await DBManager.removeAdminSession(existingSameDeviceSession.session_token);
+    }
+
+    // If force logout others requested, purge all previous sessions for this admin
+    if (force_logout_others === true) {
+      await DBManager.removeAllAdminSessions(admin.id);
+    } else {
+      // Check remaining active sessions count for distinct devices
+      const remainingSessions = DBManager.getAdminSessions(admin.id);
+      if (remainingSessions.length >= MAX_ALLOWED_DEVICES) {
+        return NextResponse.json(
+          {
+            error: `সর্বোচ্চ ${MAX_ALLOWED_DEVICES}টি ডিভাইসে ইতিমধ্যে অ্যাডমিন লগইন করা আছে।`,
+            code: 'MAX_DEVICES_REACHED',
+            active_devices_count: remainingSessions.length,
+            max_allowed: MAX_ALLOWED_DEVICES
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     // Create secure unique session token
     const sessionToken = crypto.randomUUID();

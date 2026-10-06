@@ -58,6 +58,9 @@ const getInitialCache = (): CachedStoreData | null => {
       if (rawSession) {
         const parsed = JSON.parse(rawSession);
         if (parsed && Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+          if (parsed.settings) {
+            delete parsed.settings.is_maintenance_mode;
+          }
           const sanitized = sanitizeItemImages(parsed);
           memoryCache = sanitized;
           return sanitized;
@@ -68,6 +71,9 @@ const getInitialCache = (): CachedStoreData | null => {
       if (rawLocal) {
         const parsed = JSON.parse(rawLocal);
         if (parsed && Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+          if (parsed.settings) {
+            delete parsed.settings.is_maintenance_mode;
+          }
           const sanitized = sanitizeItemImages(parsed);
           memoryCache = sanitized;
           return sanitized;
