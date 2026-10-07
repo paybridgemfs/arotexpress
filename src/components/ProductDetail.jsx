@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Minus, Plus, Package } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
@@ -62,6 +63,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
 }
 
 export default function ProductDetail({ categoryId, category, isLoading, onBack }) {
+  const router = useRouter();
   const { cart, changeQty } = useCart();
   const [headerHeight, setHeaderHeight] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -364,18 +366,30 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                 whileHover={!isOutOfStock ? { y: -4, boxShadow: 'var(--shadow-md)' } : {}}
                 style={{ opacity: isOutOfStock ? 0.7 : 1 }}
               >
-                <ProductItemImage
-                  image={b.image}
-                  category={category}
-                  alt={b.name}
-                  isOutOfStock={isOutOfStock}
-                  stock={stock}
-                  unit={b.unit}
-                />
+                <div
+                  onClick={() => router.push(`/category/${category.id}/product/${b.id || encodeURIComponent(b.name)}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <ProductItemImage
+                    image={b.image}
+                    category={category}
+                    alt={b.name}
+                    isOutOfStock={isOutOfStock}
+                    stock={stock}
+                    unit={b.unit}
+                  />
+                </div>
 
                 <div className="product-card-content">
                   <div className="product-unit-text">{b.unit}</div>
-                  <h3 className="product-name-title">{b.name}</h3>
+                  <h3
+                    className="product-name-title"
+                    onClick={() => router.push(`/category/${category.id}/product/${b.id || encodeURIComponent(b.name)}`)}
+                    style={{ cursor: 'pointer' }}
+                    title="বিস্তারিত দেখতে ক্লিক করুন"
+                  >
+                    {b.name}
+                  </h3>
 
                   <div className="product-card-bottom">
                     <div className="product-price-display">৳{toBengaliNumber(b.price)}</div>
