@@ -290,7 +290,7 @@ export default function ProductDetailViewClient({
                 ৳ {toBengaliNumber(product.price)}
               </span>
               <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
-                ({product.unit} প্রতি)
+                ({product.unit})
               </span>
             </div>
 
