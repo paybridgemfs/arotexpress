@@ -122,10 +122,10 @@ export async function POST(req: NextRequest) {
     // 4. Multi-Device Admin Session Management (Max 3 Devices Enforced)
     const MAX_ALLOWED_DEVICES = 3;
 
-    // Check if same device (same IP & same browser/OS) already has an active session
+    // Check if same browser session (same IP, same browser, and same OS) already has an active session
     const activeSessions = DBManager.getAdminSessions(admin.id);
     const existingSameDeviceSession = activeSessions.find(
-      (s) => s.admin_id === admin.id && s.ip_address === ipAddress && (s.device_name === deviceName || (s.browser === browser && s.os === os))
+      (s) => s.admin_id === admin.id && s.ip_address === ipAddress && s.browser === browser && s.os === os
     );
 
     // If same device already logged in previously, automatically replace old session with new one (prevent duplicate slots)
