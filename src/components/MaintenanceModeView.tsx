@@ -1,9 +1,8 @@
 "use client";
 import React, { useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { Wrench, Clock, Phone, MessageCircle, ShieldAlert, Lock } from 'lucide-react';
+import { Wrench, Clock, Phone, MessageCircle, ShieldAlert, Sparkles, RefreshCcw } from 'lucide-react';
 import { toBengaliNumber } from '../utils/bengali.js';
 
 interface MaintenanceModeViewProps {
@@ -11,18 +10,17 @@ interface MaintenanceModeViewProps {
 }
 
 export default function MaintenanceModeView({ settings = {} }: MaintenanceModeViewProps) {
-  const router = useRouter();
   const siteName = settings?.site_name || 'আড়ৎ এক্সপ্রেস';
-  const siteTagline = settings?.site_tagline || 'আপনার আড়ৎ, এক ক্লিকে';
+  const siteTagline = settings?.site_tagline || 'তাজা পাইকারি ও খুচরা মুদি বাজার';
   const helpline = settings?.site_helpline || '০১৭১২-৩৪৫৬৭৮';
-  const maintenanceTitle = settings?.maintenance_title || `${siteName} সাময়িকভাবে রক্ষণাবেক্ষণে রয়েছে`;
+  const maintenanceTitle = settings?.maintenance_title || 'সিস্টেম আপডেট ও রক্ষণাবেক্ষণের কাজ চলছে';
   const maintenanceMessage =
     settings?.maintenance_message ||
-    'আমাদের ওয়েবসাইটটি আরও উন্নত করতে এবং প্রয়োজনীয় সিস্টেম আপগ্রেডের জন্য সাময়িকভাবে সাধারণ ভিজিটরদের জন্য বন্ধ রাখা হয়েছে। শীঘ্রই আমরা আরও উন্নত সেবা নিয়ে ফিরে আসছি।';
+    'আমাদের পাইকারি ও খুচরা মুদি বাজার প্ল্যাটফর্মটিকে আরও দ্রুত, নিরাপদ এবং উন্নত করতে রুটিন মেইনটেন্যান্স ও ডাটাবেজ অপ্টিমাইজেশনের কাজ চলছে। খুব শীঘ্রই আমরা নতুন ফিচারে লাইভ হব।';
   const estimatedTime = settings?.maintenance_estimated_time || 'শীঘ্রই ফিরছি';
   const logoImageUrl = settings?.logo_image_url || '';
 
-  // Auto-check if maintenance mode has been turned off by admin every 15 seconds
+  // Auto-check if maintenance mode has been turned off by admin every 12 seconds
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -34,13 +32,13 @@ export default function MaintenanceModeView({ settings = {} }: MaintenanceModeVi
           }
         }
       } catch (e) {}
-    }, 15000);
+    }, 12000);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div
+    <main
       style={{
         minHeight: '100vh',
         width: '100%',
@@ -48,194 +46,155 @@ export default function MaintenanceModeView({ settings = {} }: MaintenanceModeVi
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px 16px',
-        background: 'linear-gradient(145deg, #F8FAF8 0%, #EEF5F1 100%)',
+        backgroundColor: '#F8FAFC',
+        backgroundImage: 'radial-gradient(#CBD5E1 0.75px, transparent 0.75px)',
+        backgroundSize: '24px 24px',
         fontFamily: 'var(--font-main, sans-serif)',
-        color: 'var(--ink, #191C1B)',
-        position: 'relative',
-        overflow: 'hidden'
+        color: '#0F172A'
       }}
     >
-      {/* Subtle Background Decorative Blur Glows */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '-10%',
-          left: '-10%',
-          width: '45vw',
-          height: '45vw',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0, 108, 76, 0.08) 0%, rgba(0, 108, 76, 0) 70%)',
-          pointerEvents: 'none'
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '-10%',
-          right: '-10%',
-          width: '50vw',
-          height: '50vw',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(217, 119, 6, 0.07) 0%, rgba(217, 119, 6, 0) 70%)',
-          pointerEvents: 'none'
-        }}
-      />
-
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         style={{
-          maxWidth: '560px',
+          maxWidth: '520px',
           width: '100%',
-          background: '#FFFFFF',
-          borderRadius: '24px',
+          backgroundColor: '#FFFFFF',
+          borderRadius: '20px',
           border: '1px solid #E2E8F0',
-          boxShadow: '0 20px 45px rgba(0, 40, 25, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03)',
-          padding: 'clamp(28px, 5vw, 44px)',
-          textAlign: 'center',
-          position: 'relative',
-          zIndex: 10
+          boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02)',
+          padding: 'clamp(32px, 5vw, 48px)',
+          textAlign: 'left',
+          position: 'relative'
         }}
       >
-        {/* Brand Header */}
-        <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {logoImageUrl ? (
-            <div style={{ position: 'relative', width: '160px', height: '48px', marginBottom: '8px' }}>
-              <Image
-                src={logoImageUrl}
-                alt={siteName}
-                fill
-                sizes="160px"
-                referrerPolicy="no-referrer"
-                style={{ objectFit: 'contain' }}
-              />
-            </div>
-          ) : (
-            <div
-              style={{
-                fontSize: '24px',
-                fontWeight: 800,
-                color: 'var(--green, #006C4C)',
-                letterSpacing: '-0.5px',
-                marginBottom: '4px'
-              }}
-            >
-              {siteName}
-            </div>
-          )}
-          <div style={{ fontSize: '13px', color: 'var(--muted, #64748B)', fontWeight: 600 }}>{siteTagline}</div>
-        </div>
+        {/* Top Status & Brand Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', gap: '16px' }}>
+          <div>
+            {logoImageUrl ? (
+              <div style={{ position: 'relative', width: '140px', height: '40px' }}>
+                <Image
+                  src={logoImageUrl}
+                  alt={siteName}
+                  fill
+                  sizes="140px"
+                  referrerPolicy="no-referrer"
+                  style={{ objectFit: 'contain', objectPosition: 'left' }}
+                />
+              </div>
+            ) : (
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#006C4C', letterSpacing: '-0.5px' }}>
+                {siteName}
+              </div>
+            )}
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600, marginTop: '2px' }}>{siteTagline}</div>
+          </div>
 
-        {/* Animated Maintenance Icon Card */}
-        <div style={{ position: 'relative', display: 'inline-flex', marginBottom: '24px' }}>
-          <motion.div
-            animate={{ rotate: [0, 15, -15, 0] }}
-            transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+          <div
             style={{
-              width: '84px',
-              height: '84px',
-              borderRadius: '24px',
-              background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
-              border: '2px solid #F59E0B',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              backgroundColor: '#FEF3C7',
               color: '#B45309',
-              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.25)'
-            }}
-          >
-            <Wrench size={38} strokeWidth={2.3} />
-          </motion.div>
-          <span
-            style={{
-              position: 'absolute',
-              bottom: '-4px',
-              right: '-6px',
-              background: '#DC2626',
-              color: '#FFFFFF',
+              border: '1px solid #FDE68A',
+              padding: '6px 12px',
               borderRadius: '9999px',
-              padding: '2px 8px',
-              fontSize: '11px',
-              fontWeight: 800,
-              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.4)',
-              display: 'flex',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px'
+              gap: '6px',
+              flexShrink: 0
             }}
           >
-            <ShieldAlert size={12} /> Maintenance
-          </span>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#D97706', display: 'inline-block' }}></span>
+            রক্ষণাবেক্ষণ চলছে
+          </div>
         </div>
 
-        {/* Main Title & Notice */}
+        {/* Title */}
         <h1
           style={{
             fontSize: 'clamp(20px, 4vw, 24px)',
             fontWeight: 800,
             color: '#0F172A',
+            letterSpacing: '-0.3px',
             margin: '0 0 12px',
-            lineHeight: 1.3
+            lineHeight: 1.35
           }}
         >
           {maintenanceTitle}
         </h1>
 
+        {/* Description */}
         <p
           style={{
-            fontSize: '14.5px',
-            lineHeight: 1.65,
+            fontSize: '14px',
+            lineHeight: 1.7,
             color: '#475569',
-            margin: '0 0 24px',
-            padding: '0 10px'
+            margin: '0 0 28px'
           }}
         >
           {maintenanceMessage}
         </p>
 
-        {/* Expected ETA Pill */}
+        {/* Estimated Time Box */}
         {estimatedTime && (
           <div
             style={{
-              display: 'inline-flex',
+              backgroundColor: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '14px',
+              padding: '14px 18px',
+              display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
-              borderRadius: '9999px',
-              padding: '6px 16px',
-              fontSize: '13px',
-              fontWeight: 700,
-              color: '#334155',
-              marginBottom: '28px'
+              gap: '12px',
+              marginBottom: '24px'
             }}
           >
-            <Clock size={15} color="#006C4C" />
-            <span>প্রত্যাশিত লাইভ সময়: <strong style={{ color: '#006C4C' }}>{estimatedTime}</strong></span>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                backgroundColor: '#DCFCE7',
+                color: '#166534',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Clock size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                আনুমানিক সময়সীমা
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginTop: '1px' }}>
+                {estimatedTime}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Contact Helpline Strip */}
+        {/* Contact Helpline Section */}
         <div
           style={{
-            background: 'var(--md-surface-container-low, #F8FAF9)',
-            border: '1px solid #E2E8F0',
-            borderRadius: '16px',
-            padding: '16px',
-            marginBottom: '20px',
-            textAlign: 'left',
+            borderTop: '1px solid #E2E8F0',
+            paddingTop: '20px',
+            marginTop: '20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '12px'
+            gap: '14px'
           }}
         >
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
-              জরুরি অর্ডার ও কাস্টমার সাপোর্ট
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748B' }}>
+              জরুরি প্রয়োজনে যোগাযোগ:
             </div>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--green, #006C4C)', marginTop: '2px' }}>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: '#006C4C', marginTop: '2px' }}>
               {helpline}
             </div>
           </div>
@@ -247,18 +206,19 @@ export default function MaintenanceModeView({ settings = {} }: MaintenanceModeVi
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: '#FFFFFF',
+                backgroundColor: '#FFFFFF',
                 border: '1px solid #CBD5E1',
-                borderRadius: '9999px',
+                borderRadius: '10px',
                 padding: '8px 14px',
-                fontSize: '13px',
+                fontSize: '12.5px',
                 fontWeight: 700,
                 color: '#1E293B',
                 textDecoration: 'none',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                transition: 'all 0.15s ease'
               }}
             >
-              <Phone size={14} color="#006C4C" /> কল দিন
+              <Phone size={13} color="#006C4C" /> কল করুন
             </a>
             <a
               href={`https://wa.me/88${helpline.replace(/[^0-9]/g, '')}`}
@@ -268,21 +228,40 @@ export default function MaintenanceModeView({ settings = {} }: MaintenanceModeVi
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: '#25D366',
-                borderRadius: '9999px',
+                backgroundColor: '#16A34A',
+                border: '1px solid #15803D',
+                borderRadius: '10px',
                 padding: '8px 14px',
-                fontSize: '13px',
+                fontSize: '12.5px',
                 fontWeight: 700,
                 color: '#FFFFFF',
                 textDecoration: 'none',
-                boxShadow: '0 2px 6px rgba(37, 211, 102, 0.3)'
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 0.15s ease'
               }}
             >
-              <MessageCircle size={14} /> হোয়াটসঅ্যাপ
+              <MessageCircle size={13} /> হোয়াটসঅ্যাপ
             </a>
           </div>
         </div>
+
+        {/* Live sync auto footer note */}
+        <div
+          style={{
+            marginTop: '24px',
+            textAlign: 'center',
+            fontSize: '11.5px',
+            color: '#94A3B8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '5px'
+          }}
+        >
+          <RefreshCcw size={11} className="spin" />
+          <span>সাইট লাইভ হওয়া মাত্র এই পেজটি স্বয়ংক্রিয়ভাবে রিফ্রেশ হবে</span>
+        </div>
       </motion.div>
-    </div>
+    </main>
   );
 }
