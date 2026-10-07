@@ -23,6 +23,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const {
     settings,
+    loading,
     activeGroups,
     activeGroupTab,
     searchQuery,
@@ -40,8 +41,18 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  const isMaintenance = settings?.is_maintenance_mode === true;
   const isSuperAdmin = isAuthHydrated && !!adminUser && adminUser.role === 'admin' && !!adminToken;
+  const isMaintenance = settings?.is_maintenance_mode === true;
+
+  // While loading initial data, display FrontendLoadingScreen to prevent any flash of wrong content (maintenance vs website)
+  if (loading && !isSuperAdmin) {
+    return (
+      <>
+        <FrontendLoadingScreen />
+        <div style={{ minHeight: '100vh', background: '#F8FAF8' }} />
+      </>
+    );
+  }
 
   // STRICT MAINTENANCE BLOCKING:
   // If maintenance is ON and the visitor is NOT an authenticated admin, render ONLY MaintenanceModeView.
