@@ -179,11 +179,8 @@ export function StoreDataProvider({
     }
   }, [initialData?.settings]);
 
-  // If we already have categories from SSR or cache, loading is immediately false
-  const [loading, setLoading] = useState<boolean>(() => {
-    if (initialData?.categories && initialData.categories.length > 0) return false;
-    return !initialCache || !initialCache.categories?.length;
-  });
+  // Always start loading as true on initial mount to ensure fresh settings (like maintenance mode) are verified before render
+  const [loading, setLoading] = useState<boolean>(true);
   const [isRevalidating, setIsRevalidating] = useState<boolean>(false);
   const [activeGroupTab, setActiveGroupTab] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
