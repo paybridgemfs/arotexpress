@@ -102,9 +102,11 @@ export interface AdminSession {
   admin_id: number;
   session_token: string;
   device_name: string;
+  device_type?: 'desktop' | 'mobile' | 'tablet';
   browser: string;
   os: string;
   ip_address: string;
+  location?: string;
   last_active?: string;
   created_at?: string;
 }
@@ -732,12 +734,16 @@ export class DBManager {
           admin_id INT REFERENCES admins(id) ON DELETE CASCADE,
           session_token VARCHAR(255) UNIQUE NOT NULL,
           device_name VARCHAR(255) NOT NULL,
+          device_type VARCHAR(50) DEFAULT 'desktop',
           browser VARCHAR(100) NOT NULL,
           os VARCHAR(100) NOT NULL,
           ip_address VARCHAR(100) NOT NULL,
+          location VARCHAR(100) DEFAULT 'Dhaka, Bangladesh',
           last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE admin_sessions ADD COLUMN IF NOT EXISTS device_type VARCHAR(50) DEFAULT 'desktop';
+        ALTER TABLE admin_sessions ADD COLUMN IF NOT EXISTS location VARCHAR(100) DEFAULT 'Dhaka, Bangladesh';
         CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
         CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(session_token);
       `);
@@ -1015,9 +1021,11 @@ export class DBManager {
           admin_id: s.admin_id,
           session_token: s.session_token,
           device_name: s.device_name || 'Unknown Device',
+          device_type: s.device_type || 'desktop',
           browser: s.browser || 'Web Browser',
           os: s.os || 'Unknown OS',
           ip_address: s.ip_address || '127.0.0.1',
+          location: s.location || 'Dhaka, Bangladesh',
           last_active: s.last_active,
           created_at: s.created_at
         }));
@@ -3172,7 +3180,14 @@ export class DBManager {
   static async addAdminSession(
     adminId: number,
     sessionToken: string,
-    info: { device_name: string; browser: string; os: string; ip_address: string }
+    info: {
+      device_name: string;
+      device_type?: 'desktop' | 'mobile' | 'tablet';
+      browser: string;
+      os: string;
+      ip_address: string;
+      location?: string;
+    }
   ): Promise<AdminSession> {
     if (!this.data.admin_sessions) this.data.admin_sessions = [];
 
@@ -3180,9 +3195,11 @@ export class DBManager {
       admin_id: adminId,
       session_token: sessionToken,
       device_name: info.device_name || 'Web Browser',
+      device_type: info.device_type || 'desktop',
       browser: info.browser || 'Unknown',
       os: info.os || 'Unknown OS',
       ip_address: info.ip_address || '127.0.0.1',
+      location: info.location || 'Dhaka, Bangladesh',
       last_active: new Date().toISOString(),
       created_at: new Date().toISOString()
     };
@@ -3192,16 +3209,18 @@ export class DBManager {
     if (isPgConnected) {
       try {
         const res = await pool.query(
-          `INSERT INTO admin_sessions (admin_id, session_token, device_name, browser, os, ip_address, last_active, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+          `INSERT INTO admin_sessions (admin_id, session_token, device_name, device_type, browser, os, ip_address, location, last_active, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
            RETURNING *`,
           [
             newSession.admin_id,
             newSession.session_token,
             newSession.device_name,
+            newSession.device_type,
             newSession.browser,
             newSession.os,
-            newSession.ip_address
+            newSession.ip_address,
+            newSession.location
           ]
         );
         if (res.rows && res.rows[0]) {

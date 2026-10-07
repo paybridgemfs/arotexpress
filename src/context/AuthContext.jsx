@@ -213,6 +213,7 @@ export function AuthProvider({ children }) {
       const error = new Error(data.error || 'অ্যাডমিন লগইন ব্যর্থ হয়েছে');
       error.code = data.code;
       error.active_devices_count = data.active_devices_count;
+      error.active_sessions = data.active_sessions || [];
       throw error;
     }
     localStorage.setItem('arot_admin_token', data.token);

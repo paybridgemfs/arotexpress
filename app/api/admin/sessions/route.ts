@@ -33,9 +33,11 @@ export async function GET(req: NextRequest) {
       id: s.id,
       session_token: s.session_token,
       device_name: s.device_name,
+      device_type: s.device_type || 'desktop',
       browser: s.browser,
       os: s.os,
       ip_address: s.ip_address,
+      location: s.location || 'Dhaka, Bangladesh',
       last_active: s.last_active,
       created_at: s.created_at,
       is_current: s.session_token === currentSessionToken

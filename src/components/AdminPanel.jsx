@@ -45,6 +45,7 @@ import {
   HardDrive,
   Laptop,
   Smartphone,
+  Tablet,
   Monitor,
   Globe,
   Wrench,
@@ -163,6 +164,7 @@ export default function AdminPanel({ onNavigateHome }) {
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [maxDeviceModalOpen, setMaxDeviceModalOpen] = useState(false);
+  const [conflictSessions, setConflictSessions] = useState([]);
 
   // Admin Active Sessions state
   const [adminSessions, setAdminSessions] = useState([]);
@@ -414,6 +416,7 @@ export default function AdminPanel({ onNavigateHome }) {
       }
     } catch (err) {
       if (err.code === 'MAX_DEVICES_REACHED') {
+        setConflictSessions(err.active_sessions || []);
         setMaxDeviceModalOpen(true);
       } else {
         setLoginError(err.message || 'ভুল ইউজারনেম বা পাসওয়ার্ড');
@@ -1327,15 +1330,15 @@ export default function AdminPanel({ onNavigateHome }) {
           <div className="admin-modal-overlay" style={{ zIndex: 10000 }}>
             <motion.div
               className="admin-modal-card"
-              style={{ maxWidth: '440px', padding: '24px', textAlign: 'center' }}
+              style={{ maxWidth: '500px', width: '92%', padding: '28px 24px', textAlign: 'center' }}
               initial={{ scale: 0.92, opacity: 0, y: 14 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 14 }}
             >
               <div
                 style={{
-                  width: '56px',
-                  height: '56px',
+                  width: '60px',
+                  height: '60px',
                   borderRadius: '50%',
                   background: '#FEE2E2',
                   color: '#DC2626',
@@ -1346,17 +1349,40 @@ export default function AdminPanel({ onNavigateHome }) {
                   border: '2px solid #FECDD3'
                 }}
               >
-                <Smartphone size={28} />
+                <ShieldAlert size={30} />
               </div>
 
-              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 10px', color: '#0F172A' }}>
+              <h3 style={{ fontSize: '19px', fontWeight: 800, margin: '0 0 8px', color: '#0F172A' }}>
                 সর্বোচ্চ ডিভাইস সীমা পূর্ণ (৩টি ডিভাইস)
               </h3>
 
-              <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.65, margin: '0 0 20px' }}>
-                আপনার অ্যাডমিন অ্যাকাউন্টে ইতিমধ্যে ৩টি ডিভাইসে সক্রিয় লগইন রয়েছে। নিরাপত্তার স্বার্থে একসাথে ৩টির বেশি ডিভাইসে লগইন থাকা সম্ভব নয়।
-                <br /><br />
-                আপনি কি <strong>পূর্বের সব ডিভাইস থেকে লগআউট করে</strong> এই নতুন ডিভাইসে লগইন করতে চান?
+              <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.6, margin: '0 0 16px' }}>
+                নিরাপত্তার স্বার্থে আপনার অ্যাডমিন অ্যাকাউন্টে একসাথে সর্বোচ্চ ৩টি ডিভাইসে লগইন করা সম্ভব। বর্তমানে ৩টি ডিভাইস সক্রিয় রয়েছে:
+              </p>
+
+              {/* Active conflict sessions preview */}
+              {conflictSessions.length > 0 && (
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '10px', marginBottom: '20px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {conflictSessions.map((cs, idx) => (
+                    <div key={cs.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {cs.device_type === 'mobile' ? <Smartphone size={16} /> : cs.device_type === 'tablet' ? <Tablet size={16} /> : <Laptop size={16} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#1E293B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {cs.device_name || `${cs.browser} on ${cs.os}`}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>
+                          IP: {cs.ip_address} • {cs.location || 'Dhaka, BD'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p style={{ fontSize: '13.5px', color: '#334155', fontWeight: 600, margin: '0 0 20px' }}>
+                আপনি কি পূর্বের সব ডিভাইস থেকে লগআউট করে এই ডিভাইসে লগইন করতে চান?
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1364,7 +1390,7 @@ export default function AdminPanel({ onNavigateHome }) {
                   type="button"
                   onClick={handleForceAdminLogin}
                   disabled={loginLoading}
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                   style={{
                     background: '#DC2626',
@@ -1379,10 +1405,11 @@ export default function AdminPanel({ onNavigateHome }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)'
+                    boxShadow: '0 2px 10px rgba(220, 38, 38, 0.3)'
                   }}
                 >
-                  {loginLoading ? 'লগইন হচ্ছে...' : 'অন্য সব ডিভাইস লগআউট করে লগইন করুন'}
+                  <LogOut size={16} />
+                  <span>{loginLoading ? 'লগইন হচ্ছে...' : 'সব ডিভাইস থেকে লগআউট করে এখানে লগইন করুন'}</span>
                 </motion.button>
 
                 <button
@@ -4009,35 +4036,74 @@ export default function AdminPanel({ onNavigateHome }) {
             </div>
 
             {/* 7.1. ACTIVE ADMIN DEVICES & SESSIONS MANAGEMENT (80% WIDTH & MAX 3 DEVICES) */}
-            <div style={{ width: '80%', minWidth: '320px', maxWidth: '1000px', marginTop: '36px', borderTop: '1px solid var(--rule)', paddingTop: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ width: '80%', minWidth: '320px', maxWidth: '1000px', margin: '36px auto 0', borderTop: '1px solid var(--rule)', paddingTop: '28px' }}>
+              
+              {/* Security Header Card */}
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '18px',
+                  padding: '18px 20px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '14px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                }}
+              >
                 <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)' }}>
-                    <Smartphone size={18} />
-                    <span>লগইনকৃত ডিভাইসের তালিকা ও নিরাপত্তা</span>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px', color: '#0F172A' }}>
+                    <ShieldCheck size={20} color="var(--green, #006C4C)" />
+                    <span>লগইনকৃত ডিভাইস ও নিরাপত্তা (Active Sessions)</span>
                   </h3>
-                  <p style={{ fontSize: '12.5px', color: 'var(--muted)', margin: 0 }}>
-                    আপনার অ্যাকাউন্টে একসাথে সর্বোচ্চ ৩টি ডিভাইস লগইন থাকতে পারবে।
+                  <p style={{ fontSize: '12.5px', color: '#64748B', margin: 0, lineHeight: 1.5 }}>
+                    আপনার অ্যাডমিন অ্যাকাউন্টে বর্তমানে সক্রিয় ডিভাইসসমূহ। নিরাপত্তা নিশ্চিত করতে সর্বোচ্চ ৩টি ডিভাইস অনুমোদিত।
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                   <span
                     style={{
                       background: adminSessions.length >= 3 ? '#FEE2E2' : '#DCFCE7',
-                      color: adminSessions.length >= 3 ? '#DC2626' : '#166534',
-                      padding: '4px 10px',
+                      color: adminSessions.length >= 3 ? '#B91C1C' : '#15803D',
+                      border: `1px solid ${adminSessions.length >= 3 ? '#FECDD3' : '#BBF7D0'}`,
+                      padding: '5px 12px',
                       borderRadius: '9999px',
-                      fontSize: '11.5px',
-                      fontWeight: 700,
+                      fontSize: '12px',
+                      fontWeight: 800,
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '5px'
                     }}
                   >
-                    <Radio size={12} />
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: adminSessions.length >= 3 ? '#DC2626' : '#16A34A', display: 'inline-block' }}></span>
                     {toBengaliNumber(adminSessions.length)}/৩টি ডিভাইস সক্রিয়
                   </span>
+
+                  <button
+                    type="button"
+                    onClick={fetchAdminSessions}
+                    disabled={loadingSessions}
+                    style={{
+                      background: '#FFFFFF',
+                      color: '#475569',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '9999px',
+                      padding: '5px 12px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <RefreshCw size={12} className={loadingSessions ? 'spin' : ''} />
+                    <span>রিফ্রেশ</span>
+                  </button>
 
                   {adminSessions.length > 1 && (
                     <button
@@ -4048,163 +4114,226 @@ export default function AdminPanel({ onNavigateHome }) {
                         background: '#FFF1F2',
                         color: '#E11D48',
                         border: '1px solid #FECDD3',
-                        borderRadius: 'var(--radius-pill)',
-                        padding: '5px 12px',
-                        fontSize: '11.5px',
-                        fontWeight: 700,
+                        borderRadius: '9999px',
+                        padding: '5px 14px',
+                        fontSize: '12px',
+                        fontWeight: 800,
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '6px',
+                        boxShadow: '0 1px 4px rgba(225, 29, 72, 0.1)'
                       }}
                     >
-                      <LogOut size={12} />
+                      <LogOut size={13} />
                       <span>অন্য সব ডিভাইস লগআউট করুন</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              <div className="admin-table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>ডিভাইস ও ব্রাউজার</th>
-                      <th>আইপি অ্যাড্রেস</th>
-                      <th>লগইনের সময়</th>
-                      <th>স্ট্যাটাস</th>
-                      <th>অ্যাকশন</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingSessions ? (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
-                          সেশন লোড হচ্ছে...
-                        </td>
-                      </tr>
-                    ) : adminSessions.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
-                          কোনো সক্রিয় সেশন পাওয়া যায়নি।
-                        </td>
-                      </tr>
-                    ) : (
-                      adminSessions.map((session, index) => {
-                        const isCurrent = session.is_current || session.session_token === adminUser?.session_token;
-                        const isMobile = /iphone|ipad|android/i.test(session.os || '');
-                        const isMacOrWin = /mac|windows/i.test(session.os || '');
+              {/* Security Hint Banner */}
+              <div
+                style={{
+                  background: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  fontSize: '12px',
+                  color: '#1E40AF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}
+              >
+                <AlertTriangle size={15} color="#2563EB" style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>পরামর্শ:</strong> আপনি যদি তালিকায় কোনো অপরিচিত ডিভাইস বা আইপি অ্যাড্রেস দেখতে পান, তবে সাথে সাথে ওই ডিভাইসটি লগআউট করুন এবং আপনার অ্যাডমিন পাসওয়ার্ড পরিবর্তন করুন।
+                </span>
+              </div>
 
-                        return (
-                          <tr key={session.id || session.session_token || index} style={{ background: isCurrent ? 'rgba(0, 108, 76, 0.03)' : 'transparent' }}>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div
-                                  style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '8px',
-                                    background: isCurrent ? 'var(--md-primary-container)' : '#F1F5F9',
-                                    color: isCurrent ? 'var(--green)' : '#475569',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    flexShrink: 0
-                                  }}
-                                >
-                                  {isMobile ? <Smartphone size={16} /> : isMacOrWin ? <Laptop size={16} /> : <Monitor size={16} />}
-                                </div>
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: '12.5px', color: 'var(--ink)' }}>
-                                    {session.device_name || `${session.browser} on ${session.os}`}
-                                  </div>
-                                  <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                                    {session.os} • {session.browser}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
+              {/* Device Cards List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {loadingSessions ? (
+                  <div style={{ textAlign: 'center', padding: '36px', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', color: '#64748B' }}>
+                    <RefreshCw size={24} className="spin" style={{ margin: '0 auto 8px', color: 'var(--green, #006C4C)' }} />
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>সক্রিয় সেশন তথ্য লোড হচ্ছে...</div>
+                  </div>
+                ) : adminSessions.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '36px', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', color: '#64748B' }}>
+                    <ShieldCheck size={32} style={{ margin: '0 auto 8px', color: '#94A3B8' }} />
+                    <div style={{ fontSize: '13.5px', fontWeight: 600 }}>কোনো সক্রিয় ডিভাইস সেশন পাওয়া যায়নি।</div>
+                  </div>
+                ) : (
+                  adminSessions.map((session, index) => {
+                    const isCurrent = session.is_current || session.session_token === adminUser?.session_token;
+                    const isMobile = session.device_type === 'mobile' || /iphone|ipad|android/i.test(session.os || '');
+                    const isTablet = session.device_type === 'tablet' || /ipad|tablet/i.test(session.os || '');
+                    const isMacOrWin = /mac|windows/i.test(session.os || '');
 
-                            <td className="mono" style={{ fontSize: '12px' }}>
-                              {session.ip_address || '127.0.0.1'}
-                            </td>
+                    return (
+                      <div
+                        key={session.id || session.session_token || index}
+                        style={{
+                          background: isCurrent ? '#F0FDF4' : '#FFFFFF',
+                          border: `1.5px solid ${isCurrent ? '#86EFAC' : '#E2E8F0'}`,
+                          borderRadius: '16px',
+                          padding: '16px 18px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '14px',
+                          boxShadow: isCurrent ? '0 4px 14px rgba(22, 163, 74, 0.08)' : '0 2px 6px rgba(0, 0, 0, 0.02)',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {/* Left: Device Icon & Information */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '260px', flex: 1 }}>
+                          <div
+                            style={{
+                              width: '46px',
+                              height: '46px',
+                              borderRadius: '13px',
+                              background: isCurrent ? '#DCFCE7' : '#F1F5F9',
+                              color: isCurrent ? '#15803D' : '#475569',
+                              border: `1px solid ${isCurrent ? '#BBF7D0' : '#E2E8F0'}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            {isTablet ? (
+                              <Tablet size={22} />
+                            ) : isMobile ? (
+                              <Smartphone size={22} />
+                            ) : isMacOrWin ? (
+                              <Laptop size={22} />
+                            ) : (
+                              <Monitor size={22} />
+                            )}
+                          </div>
 
-                            <td style={{ fontSize: '11.5px', color: 'var(--ink)' }}>
-                              <div>{session.created_at ? new Date(session.created_at).toLocaleDateString('bn-BD') : '—'}</div>
-                              <div style={{ fontSize: '10.5px', color: 'var(--muted)' }}>
-                                {session.created_at ? new Date(session.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </div>
-                            </td>
+                          <div style={{ flex: 1 }}>
+                            {/* Device Name & Current Badge */}
+                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+                              <span style={{ fontWeight: 800, fontSize: '14px', color: '#0F172A' }}>
+                                {session.device_name || `${session.browser} on ${session.os}`}
+                              </span>
 
-                            <td>
                               {isCurrent ? (
                                 <span
                                   style={{
                                     background: '#DCFCE7',
                                     color: '#15803D',
-                                    border: '1px solid #BBF7D0',
+                                    border: '1px solid #86EFAC',
                                     borderRadius: '9999px',
-                                    padding: '2px 8px',
+                                    padding: '2px 9px',
                                     fontSize: '11px',
-                                    fontWeight: 700,
+                                    fontWeight: 800,
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '4px'
                                   }}
                                 >
-                                  <CheckCircle2 size={11} /> বর্তমান ডিভাইস
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A', display: 'inline-block' }}></span>
+                                  বর্তমান ডিভাইস (This Device)
                                 </span>
                               ) : (
                                 <span
                                   style={{
                                     background: '#F1F5F9',
                                     color: '#475569',
+                                    border: '1px solid #E2E8F0',
                                     borderRadius: '9999px',
                                     padding: '2px 8px',
                                     fontSize: '11px',
                                     fontWeight: 600
                                   }}
                                 >
-                                  অন্যান্য
+                                  অন্যান্য ডিভাইস
                                 </span>
                               )}
-                            </td>
+                            </div>
 
-                            <td>
-                              {isCurrent ? (
-                                <span style={{ fontSize: '11.5px', color: 'var(--muted)', fontStyle: 'italic' }}>
-                                  (বর্তমান)
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleLogoutSession(session.session_token)}
-                                  disabled={sessionActionLoading}
-                                  style={{
-                                    background: '#FEE2E2',
-                                    color: '#DC2626',
-                                    border: '1px solid #FECDD3',
-                                    borderRadius: '6px',
-                                    padding: '4px 8px',
-                                    fontSize: '11.5px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                  }}
-                                >
-                                  <LogOut size={11} />
-                                  <span>লগআউট</span>
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                            {/* Meta Grid */}
+                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '14px', fontSize: '12px', color: '#64748B' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <Globe size={13} color="#0284C7" />
+                                <strong style={{ color: '#1E293B' }}>IP:</strong> {session.ip_address || '127.0.0.1'}
+                              </span>
+
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <MapPin size={13} color="#EA580C" />
+                                {session.location || 'Dhaka, Bangladesh'}
+                              </span>
+
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <Clock size={13} color="#6366F1" />
+                                লগইন: {session.created_at ? new Date(session.created_at).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + new Date(session.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', hour12: true }) : '—'}
+                              </span>
+
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: isCurrent ? '#166534' : '#64748B', fontWeight: isCurrent ? 700 : 500 }}>
+                                <Radio size={13} color={isCurrent ? '#16A34A' : '#94A3B8'} />
+                                সক্রিয়: {isCurrent ? 'এইমাত্র (Active Now)' : (session.last_active ? new Date(session.last_active).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'অজ্ঞাত')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Actions */}
+                        <div>
+                          {isCurrent ? (
+                            <div
+                              style={{
+                                background: '#DCFCE7',
+                                color: '#15803D',
+                                border: '1px solid #BBF7D0',
+                                borderRadius: '9999px',
+                                padding: '6px 14px',
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <CheckCircle2 size={14} />
+                              <span>সক্রিয় আছেন</span>
+                            </div>
+                          ) : (
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              type="button"
+                              onClick={() => handleLogoutSession(session.session_token)}
+                              disabled={sessionActionLoading}
+                              style={{
+                                background: '#FFF1F2',
+                                color: '#E11D48',
+                                border: '1.5px solid #FECDD3',
+                                borderRadius: '10px',
+                                padding: '7px 15px',
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: '0 1px 4px rgba(225, 29, 72, 0.08)'
+                              }}
+                            >
+                              <LogOut size={13} />
+                              <span>লগআউট করুন</span>
+                            </motion.button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
