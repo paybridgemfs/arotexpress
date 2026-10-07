@@ -87,10 +87,16 @@ const getInitialCache = (): CachedStoreData | null => {
 };
 
 const saveCache = (data: CachedStoreData) => {
-  memoryCache = data;
+  // Strip is_maintenance_mode from offline/persistent caches so stale maintenance states never flash
+  const cleanSettings = data.settings ? { ...data.settings } : data.settings;
+  if (cleanSettings && 'is_maintenance_mode' in cleanSettings) {
+    delete cleanSettings.is_maintenance_mode;
+  }
+  const cleanData = { ...data, settings: cleanSettings };
+  memoryCache = cleanData;
   if (typeof window !== 'undefined') {
     try {
-      const serialized = JSON.stringify(data);
+      const serialized = JSON.stringify(cleanData);
       sessionStorage.setItem(CACHE_STORAGE_KEY, serialized);
       localStorage.setItem(CACHE_STORAGE_KEY, serialized);
     } catch (e) {

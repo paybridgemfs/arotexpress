@@ -3,6 +3,9 @@ import '../src/index.css';
 import Providers from './providers';
 import { getDB } from './lib/db';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function resolveAbsoluteUrl(url: string, baseUrl: string): string {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
