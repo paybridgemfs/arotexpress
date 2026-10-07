@@ -402,6 +402,29 @@ export default function AdminPanel({ onNavigateHome }) {
     }
   }, [adminTab, isAdmin]);
 
+  // Real-time Session Revocation Heartbeat Watcher (checks every 6 seconds if session was revoked)
+  useEffect(() => {
+    if (!isAdmin || !adminToken) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${adminToken}` }
+        });
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            adminLogout();
+            showToast('আপনার এই সেশনটি অন্য ডিভাইস থেকে লগআউট করে দেওয়া হয়েছে।');
+          }
+        }
+      } catch (e) {
+        // Ignore network glitches
+      }
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [isAdmin, adminToken, adminLogout]);
+
   const handleAdminLogin = async (e) => {
     if (e) e.preventDefault();
     setLoginError('');
