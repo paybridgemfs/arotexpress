@@ -462,7 +462,6 @@ export default function ProductDetailViewClient({
                   onClick={handleAddToCart}
                   disabled={isOutOfStock}
                   style={{
-                    flex: 1,
                     backgroundColor: isOutOfStock ? 'var(--rule)' : 'var(--green)',
                     color: isOutOfStock ? 'var(--muted)' : '#FFFFFF',
                     border: 'none',
@@ -490,7 +489,6 @@ export default function ProductDetailViewClient({
                     borderRadius: 'var(--radius)',
                     padding: '8px 16px',
                     gap: '16px',
-                    flex: 1,
                     justifyContent: 'space-between'
                   }}
                 >
