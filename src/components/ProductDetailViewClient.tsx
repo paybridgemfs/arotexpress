@@ -487,7 +487,7 @@ export default function ProductDetailViewClient({
                     boxShadow: isOutOfStock ? 'none' : 'var(--shadow-green)'
                   }}
                 >
-                  <ShoppingBag size={18} /> যোগ করুন ({product.unit})
+                  <ShoppingBag size={18} /> যোগ করুন
                 </motion.button>
               ) : (
                 <div
@@ -522,9 +522,8 @@ export default function ProductDetailViewClient({
 
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--green)' }}>
-                      {toBengaliNumber(qty)} {product.unit}
+                      {toBengaliNumber(qty)}
                     </div>
-                    <div style={{ fontSize: '10.5px', color: 'var(--green-dark)', fontWeight: 700 }}>কার্টে যুক্ত আছে</div>
                   </div>
 
                   <button
