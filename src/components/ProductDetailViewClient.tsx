@@ -81,6 +81,26 @@ export default function ProductDetailViewClient({
   const { categories } = useStoreData();
   const { cart, changeQty } = useCart();
   const { user } = useAuth();
+  const [headerHeight, setHeaderHeight] = React.useState(0);
+
+  React.useEffect(() => {
+    const updateHeight = () => {
+      const headerEl = document.querySelector('.main-app-header');
+      if (headerEl) {
+        const h = headerEl.getBoundingClientRect().height;
+        if (h > 0) {
+          setHeaderHeight(h);
+        }
+      }
+    };
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    const t = setTimeout(updateHeight, 100);
+    return () => {
+      window.removeEventListener('resize', updateHeight);
+      clearTimeout(t);
+    };
+  }, []);
 
   // Hover zoom state
   const [isZoomed, setIsZoomed] = React.useState(false);
@@ -226,57 +246,78 @@ export default function ProductDetailViewClient({
 
   return (
     <div style={{ minHeight: '85vh', backgroundColor: 'var(--surface)', paddingBottom: '80px' }}>
+      {/* Sticky Header Section - Exact same as ProductDetail (ProductView) */}
+      <div
+        style={{
+          position: 'sticky',
+          top: headerHeight > 0 ? `${headerHeight}px` : 'var(--app-header-height, 0px)',
+          zIndex: 10,
+          backgroundColor: 'var(--paper)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          padding: '16px',
+          borderBottom: '1px solid var(--rule)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}
+      >
+        <div className="section-wrap" style={{ padding: 0, width: '100%', maxWidth: '1480px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          
+          {/* Breadcrumb Navigation */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => router.push('/')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
+            >
+              হোম
+            </button>
+            <span>/</span>
+            <button
+              onClick={() => router.push(`/category/${category.id || categoryId}`)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
+            >
+              {category.bn || 'ক্যাটাগরি'}
+            </button>
+            <span>/</span>
+            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>{product.name}</span>
+          </div>
+
+          {/* Back Button */}
+          <div>
+            <motion.button
+              onClick={() => {
+                if (window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push(`/category/${category.id || categoryId}`);
+                }
+              }}
+              whileHover={{ x: -2 }}
+              whileTap={{ scale: 0.96 }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'var(--surface-bright, #FFFFFF)',
+                border: '1px solid var(--rule)',
+                borderRadius: 'var(--radius-pill)',
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: 'var(--ink-secondary)',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            >
+              <ArrowLeft size={16} /> পেছনে ফিরে যান
+            </motion.button>
+          </div>
+        </div>
+      </div>
+
       <div className="section-wrap" style={{ paddingTop: '24px', maxWidth: '1480px', margin: '0 auto' }}>
         
-        {/* Breadcrumb Navigation */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => router.push('/')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
-          >
-            হোম
-          </button>
-          <span>/</span>
-          <button
-            onClick={() => router.push(`/category/${category.id || categoryId}`)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
-          >
-            {category.bn || 'ক্যাটাগরি'}
-          </button>
-          <span>/</span>
-          <span style={{ color: 'var(--ink)', fontWeight: 700 }}>{product.name}</span>
-        </div>
-
-        {/* Back Button */}
-        <motion.button
-          onClick={() => {
-            if (window.history.length > 1) {
-              router.back();
-            } else {
-              router.push(`/category/${category.id || categoryId}`);
-            }
-          }}
-          whileHover={{ x: -2 }}
-          whileTap={{ scale: 0.96 }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: 'var(--surface-bright, #FFFFFF)',
-            border: '1px solid var(--rule)',
-            borderRadius: 'var(--radius-pill)',
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: 700,
-            color: 'var(--ink-secondary)',
-            cursor: 'pointer',
-            marginBottom: '24px',
-            boxShadow: 'var(--shadow-sm)'
-          }}
-        >
-          <ArrowLeft size={16} /> পেছনে ফিরে যান
-        </motion.button>
-
         {/* Main Product Detail Card (Matches Site M3 Card Design) */}
         <div
           style={{
@@ -303,7 +344,7 @@ export default function ProductDetailViewClient({
                 maxWidth: '320px',
                 aspectRatio: '1 / 1',
                 borderRadius: 'var(--radius-lg)',
-                backgroundColor: 'var(--paper)',
+                backgroundColor: 'var(--surface)',
                 border: '1px solid var(--rule)',
                 display: 'flex',
                 alignItems: 'center',
@@ -330,33 +371,11 @@ export default function ProductDetailViewClient({
                     referrerPolicy="no-referrer"
                     style={{
                       objectFit: 'contain',
-                      padding: '20px',
                       transform: isZoomed ? 'scale(2.5)' : 'scale(1)',
                       transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
                       transition: isZoomed ? 'transform 0.1s ease-out' : 'transform 0.3s ease-in-out'
                     }}
                   />
-                  {!isZoomed && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: '10px',
-                        right: '10px',
-                        background: 'rgba(0, 0, 0, 0.6)',
-                        color: '#FFFFFF',
-                        fontSize: '11px',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        pointerEvents: 'none',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                    হোভার করে জুম করুন
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div style={{ transform: 'scale(2.2)' }}>
@@ -422,7 +441,7 @@ export default function ProductDetailViewClient({
                 ৳ {toBengaliNumber(product.price)}
               </span>
               <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
-                {product.unit}
+                ({product.unit} প্রতি)
               </span>
             </div>
 
