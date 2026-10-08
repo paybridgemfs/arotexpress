@@ -319,7 +319,7 @@ export default function ProductDetailViewClient({
         </div>
       </div>
 
-      <div className="section-wrap" style={{ paddingTop: '24px', maxWidth: '1480px', margin: '0 auto' }}>
+      <div className="section-wrap" style={{ maxWidth: '1480px', margin: '0 auto' }}>
         
         {/* Main Product Detail Card (Matches Site M3 Card Design) */}
         <div
@@ -329,7 +329,7 @@ export default function ProductDetailViewClient({
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: 'clamp(24px, 4vw, 40px)',
-            padding: 'clamp(20px, 4vw, 36px)',
+            padding: '36px 0',
             alignItems: 'start',
           }}
         >
