@@ -105,6 +105,8 @@ export default function ProductDetailViewClient({
   // Hover zoom state
   const [isZoomed, setIsZoomed] = React.useState(false);
   const [mousePos, setMousePos] = React.useState({ x: 50, y: 50 });
+  const [imageError, setImageError] = React.useState(false);
+  const [imageLoaded, setImageLoaded] = React.useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -351,7 +353,7 @@ export default function ProductDetailViewClient({
                 cursor: product.image ? 'zoom-in' : 'default'
               }}
             >
-              {product.image && !product.image.includes('pngimg.com') ? (
+              {product.image && !product.image.includes('pngimg.com') && !imageError ? (
                 <div
                   style={{
                     width: '100%',
@@ -360,18 +362,25 @@ export default function ProductDetailViewClient({
                     overflow: 'hidden'
                   }}
                 >
+                  {!imageLoaded && (
+                    <div className="product-image-skeleton skeleton-shimmer" style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+                  )}
                   <Image
                     src={product.image}
                     alt={product.name}
                     fill
-                    sizes="(max-width: 768px) 100vw, 320px"
+                    sizes="(max-width: 768px) 100vw, 420px"
                     referrerPolicy="no-referrer"
+                    priority={true}
                     style={{
                       objectFit: 'contain',
                       transform: isZoomed ? 'scale(2.5)' : 'scale(1)',
                       transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
-                      transition: isZoomed ? 'transform 0.1s ease-out' : 'transform 0.3s ease-in-out'
+                      transition: isZoomed ? 'transform 0.1s ease-out' : 'transform 0.3s ease-in-out',
+                      opacity: imageLoaded ? 1 : 0
                     }}
+                    onLoad={() => setImageLoaded(true)}
+                    onError={() => setImageError(true)}
                   />
                 </div>
               ) : (
