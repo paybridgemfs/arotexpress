@@ -323,14 +323,11 @@ export default function ProductDetailViewClient({
           style={{
             backgroundColor: 'var(--surface-bright, #FFFFFF)',
             borderRadius: 'var(--radius-xl)',
-            border: '1px solid var(--rule)',
-            boxShadow: 'var(--shadow-md)',
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: 'clamp(24px, 4vw, 40px)',
             padding: 'clamp(20px, 4vw, 36px)',
-            alignItems: 'center',
-            marginBottom: '40px'
+            alignItems: 'start',
           }}
         >
           {/* Left Column: Product Image with Hover Zoom */}
@@ -341,7 +338,7 @@ export default function ProductDetailViewClient({
               onMouseMove={handleMouseMove}
               style={{
                 width: '100%',
-                maxWidth: '320px',
+                maxWidth: '420px',
                 aspectRatio: '1 / 1',
                 borderRadius: 'var(--radius-lg)',
                 backgroundColor: 'var(--surface)',
