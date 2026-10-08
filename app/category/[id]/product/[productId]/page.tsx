@@ -93,13 +93,16 @@ export default async function ProductDetailPage({
   const categoryId = resolvedParams.id;
   const productId = resolvedParams.productId;
   const numCatId = parseInt(categoryId, 10);
+  const siteUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arot-express.com';
 
   let category: any = null;
   let product: any = null;
+  let settings: any = {};
 
   try {
     const DBManager = await getDB();
     const categories = DBManager.getCategories() || [];
+    settings = DBManager.getSettings() || {};
     category = categories.find((c: any) => c.id === numCatId || String(c.id) === String(categoryId)) || null;
 
     if (category && category.brands) {
@@ -107,12 +110,50 @@ export default async function ProductDetailPage({
     }
   } catch (err) {}
 
+  const siteName = (settings.site_name || 'Arot Express').trim();
+  const rawImage = product?.image || category?.icon || settings.banner_url || settings.logo_image_url || '';
+  const absoluteImageUrl = rawImage ? resolveAbsoluteUrl(rawImage, siteUrl) : '';
+
+  const jsonLd = product ? {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: `${product.name} (${product.unit})`,
+    image: absoluteImageUrl ? [absoluteImageUrl] : [],
+    description: `${product.name} (${product.unit}) আড়ত মূল্যে কিনুন ৳${product.price} টাকায়। ${category?.bn || ''} ক্যাটাগরির তাজা পণ্য।`,
+    sku: product.id ? String(product.id) : undefined,
+    brand: {
+      '@type': 'Brand',
+      name: siteName
+    },
+    offers: {
+      '@type': 'Offer',
+      url: `${siteUrl.replace(/\/+$/, '')}/category/${category?.id || categoryId}/product/${product.id || product.name}`,
+      priceCurrency: 'BDT',
+      price: product.price,
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      itemCondition: 'https://schema.org/NewCondition',
+      availability: product.force_stock_out || product.stock === 0 ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+      seller: {
+        '@type': 'Organization',
+        name: siteName
+      }
+    }
+  } : null;
+
   return (
-    <ProductDetailViewClient
-      categoryId={categoryId}
-      productId={productId}
-      initialCategory={category ? JSON.parse(JSON.stringify(category)) : null}
-      initialProduct={product ? JSON.parse(JSON.stringify(product)) : null}
-    />
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      <ProductDetailViewClient
+        categoryId={categoryId}
+        productId={productId}
+        initialCategory={category ? JSON.parse(JSON.stringify(category)) : null}
+        initialProduct={product ? JSON.parse(JSON.stringify(product)) : null}
+      />
+    </>
   );
 }

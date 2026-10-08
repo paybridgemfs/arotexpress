@@ -3,7 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { ArrowLeft, ShoppingBag, Minus, Plus, CheckCircle2, ShieldCheck, Truck, Layers } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, Minus, Plus, CheckCircle2, ShieldCheck, Truck, Layers, Sparkles } from 'lucide-react';
 import { useCart } from '@/src/context/CartContext.jsx';
 import { useStoreData } from '@/src/context/StoreDataContext';
 import { toBengaliNumber } from '@/src/utils/bengali.js';
@@ -80,7 +80,88 @@ export default function ProductDetailViewClient({
   const { categories } = useStoreData();
   const { cart, changeQty } = useCart();
 
-  // Find category and product
+  // Hover zoom state
+  const [isZoomed, setIsZoomed] = React.useState(false);
+  const [mousePos, setMousePos] = React.useState({ x: 50, y: 50 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - left) / width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - top) / height) * 100));
+    setMousePos({ x, y });
+  };
+
+  // Reviews state
+  const [reviews, setReviews] = React.useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = React.useState(true);
+  const [reviewerName, setReviewerName] = React.useState('');
+  const [ratingVal, setRatingVal] = React.useState(5);
+  const [commentText, setCommentText] = React.useState('');
+  const [submittingReview, setSubmittingReview] = React.useState(false);
+  const [reviewError, setReviewError] = React.useState('');
+  const [reviewSuccess, setReviewSuccess] = React.useState('');
+
+  const catIdStr = String(initialCategory?.id || categoryId);
+  const prodIdStr = String(initialProduct?.id || productId);
+
+  React.useEffect(() => {
+    async function fetchReviews() {
+      try {
+        const res = await fetch(`/api/products/reviews?product_id=${encodeURIComponent(prodIdStr)}&category_id=${encodeURIComponent(catIdStr)}`);
+        const data = await res.json();
+        if (data.reviews) {
+          setReviews(data.reviews);
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        setLoadingReviews(false);
+      }
+    }
+    fetchReviews();
+  }, [prodIdStr, catIdStr]);
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewError('');
+    setReviewSuccess('');
+
+    if (!reviewerName.trim() || !commentText.trim()) {
+      setReviewError('দয়া করে আপনার নাম এবং মতামত লিখুন।');
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const res = await fetch('/api/products/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: prodIdStr,
+          category_id: catIdStr,
+          user_name: reviewerName,
+          rating: ratingVal,
+          comment: commentText
+        })
+      });
+      const data = await res.json();
+      if (data.error) {
+        setReviewError(data.error);
+      } else if (data.review) {
+        setReviews([data.review, ...reviews]);
+        setReviewerName('');
+        setCommentText('');
+        setRatingVal(5);
+        setReviewSuccess('আপনার মূল্যবান রিভিউটি সফলভাবে যোগ করা হয়েছে!');
+      }
+    } catch (err: any) {
+      setReviewError('রিভিউ জমা দিতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const avgRating = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '৫.০';
   const category =
     initialCategory ||
     categories.find((c: any) => String(c.id) === String(categoryId) || c.en?.toLowerCase() === categoryId.toLowerCase()) ||
@@ -200,9 +281,12 @@ export default function ProductDetailViewClient({
             marginBottom: '40px'
           }}
         >
-          {/* Left Column: Product Image (Balanced, Professional Size) */}
+          {/* Left Column: Product Image with Hover Zoom */}
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <div
+              onMouseEnter={() => setIsZoomed(true)}
+              onMouseLeave={() => setIsZoomed(false)}
+              onMouseMove={handleMouseMove}
               style={{
                 width: '100%',
                 maxWidth: '320px',
@@ -214,18 +298,55 @@ export default function ProductDetailViewClient({
                 alignItems: 'center',
                 justifyContent: 'center',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                cursor: product.image ? 'zoom-in' : 'default'
               }}
             >
               {product.image && !product.image.includes('pngimg.com') ? (
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 320px"
-                  referrerPolicy="no-referrer"
-                  style={{ objectFit: 'contain', padding: '20px' }}
-                />
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 320px"
+                    referrerPolicy="no-referrer"
+                    style={{
+                      objectFit: 'contain',
+                      padding: '20px',
+                      transform: isZoomed ? 'scale(2)' : 'scale(1)',
+                      transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
+                      transition: isZoomed ? 'transform 0.1s ease-out' : 'transform 0.3s ease-in-out'
+                    }}
+                  />
+                  {!isZoomed && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        right: '10px',
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        color: '#FFFFFF',
+                        fontSize: '11px',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        pointerEvents: 'none',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      🔍 হোভার করে জুম করুন
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div style={{ transform: 'scale(2.2)' }}>
                   <CategoryIcon icon={category.icon} category={category} size={60} />
@@ -408,11 +529,210 @@ export default function ProductDetailViewClient({
           </div>
         </div>
 
+        {/* Customer Reviews & Ratings Section */}
+        <div
+          style={{
+            backgroundColor: 'var(--surface-bright, #FFFFFF)',
+            borderRadius: 'var(--radius-xl)',
+            border: '1px solid var(--rule)',
+            padding: 'clamp(20px, 3vw, 32px)',
+            marginBottom: '40px',
+            boxShadow: 'var(--shadow-sm)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--rule)', paddingBottom: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink)', margin: '0 0 4px' }}>
+                গ্রাহকদের রিভিউ ও রেটিং
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0 }}>
+                এই পণ্যটি সম্পর্কে আপনার অভিজ্ঞতা জানান এবং রেটিং দিন।
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--md-primary-container)', padding: '6px 14px', borderRadius: 'var(--radius-pill)', border: '1px solid #BBF7D0' }}>
+              <span style={{ color: '#EAB308', fontSize: '18px' }}>★</span>
+              <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--green-dark)' }}>{toBengaliNumber(avgRating)} / ৫.০</span>
+              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>({toBengaliNumber(reviews.length)} টি রিভিউ)</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
+            {/* Left: Add Review Form */}
+            <div style={{ backgroundColor: 'var(--paper)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--rule)' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink)', margin: '0 0 16px' }}>
+                আপনার রিভিউ লিখুন
+              </h3>
+
+              {reviewSuccess && (
+                <div style={{ backgroundColor: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, marginBottom: '16px' }}>
+                  {reviewSuccess}
+                </div>
+              )}
+
+              {reviewError && (
+                <div style={{ backgroundColor: '#FEE2E2', color: '#991B1B', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, marginBottom: '16px' }}>
+                  {reviewError}
+                </div>
+              )}
+
+              <form onSubmit={handleReviewSubmit}>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-secondary)', marginBottom: '6px' }}>
+                    আপনার নাম *
+                  </label>
+                  <input
+                    type="text"
+                    value={reviewerName}
+                    onChange={(e) => setReviewerName(e.target.value)}
+                    placeholder="যেমন: মো. রহিম উদ্দিন"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--rule)',
+                      backgroundColor: '#FFFFFF',
+                      fontSize: '14px',
+                      outline: 'none',
+                      color: 'var(--ink)'
+                    }}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-secondary)', marginBottom: '6px' }}>
+                    রেটিং নির্বাচন করুন *
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        type="button"
+                        key={star}
+                        onClick={() => setRatingVal(star)}
+                        style={{
+                          background: star <= ratingVal ? '#FEF08A' : 'var(--surface-bright)',
+                          border: '1px solid ' + (star <= ratingVal ? '#EAB308' : 'var(--rule)'),
+                          borderRadius: '6px',
+                          width: '38px',
+                          height: '38px',
+                          fontSize: '16px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: star <= ratingVal ? '#CA8A04' : '#9CA3AF',
+                          fontWeight: 700
+                        }}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-secondary)', marginBottom: '6px' }}>
+                    আপনার মতামত বা মন্তব্য *
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="পণ্যটি কেমন ছিল বিস্তারিত লিখুন..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--rule)',
+                      backgroundColor: '#FFFFFF',
+                      fontSize: '14px',
+                      outline: 'none',
+                      color: 'var(--ink)',
+                      resize: 'vertical'
+                    }}
+                    required
+                  />
+                </div>
+
+                <motion.button
+                  type="submit"
+                  disabled={submittingReview}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'var(--green)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: 800,
+                    cursor: submittingReview ? 'not-allowed' : 'pointer',
+                    opacity: submittingReview ? 0.7 : 1,
+                    boxShadow: 'var(--shadow-green)'
+                  }}
+                >
+                  {submittingReview ? 'জমা দেওয়া হচ্ছে...' : 'রিভিউ সাবমিট করুন'}
+                </motion.button>
+              </form>
+            </div>
+
+            {/* Right: Reviews List */}
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink)', margin: '0 0 16px' }}>
+                সকল গ্রাহক রিভিউ ({toBengaliNumber(reviews.length)})
+              </h3>
+
+              {loadingReviews ? (
+                <div style={{ color: 'var(--muted)', fontSize: '13px' }}>রিভিউ লোড হচ্ছে...</div>
+              ) : reviews.length === 0 ? (
+                <div style={{ backgroundColor: 'var(--paper)', padding: '24px', borderRadius: 'var(--radius-lg)', textAlign: 'center', border: '1px dashed var(--rule)' }}>
+                  <p style={{ color: 'var(--muted)', fontSize: '13.5px', margin: 0 }}>
+                    এই পণ্যটিতে এখনো কোনো রিভিউ করা হয়নি। প্রথম রিভিউকারী হোন!
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {reviews.map((r: any) => (
+                    <div
+                      key={r.id}
+                      style={{
+                        backgroundColor: 'var(--paper)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '16px',
+                        border: '1px solid var(--rule)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink)' }}>
+                          {r.user_name}
+                        </div>
+                        <div style={{ display: 'flex', gap: '2px', color: '#EAB308', fontSize: '14px' }}>
+                          {Array.from({ length: r.rating }).map((_, i) => (
+                            <span key={i}>★</span>
+                          ))}
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '13.5px', color: 'var(--ink-secondary)', margin: '0 0 8px', lineHeight: 1.5 }}>
+                        {r.comment}
+                      </p>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                        {new Date(r.created_at).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Related Products in Category (Uses exact same product-card-modern & products-grid-view component structure as main website) */}
         {brands.length > 1 && (
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {category.bn} ক্যাটাগরির অন্যান্য পণ্য
+              <Sparkles size={18} color="var(--green)" /> {category.bn} ক্যাটাগরির অন্যান্য পণ্য
             </h2>
 
             <div className="products-grid-view">

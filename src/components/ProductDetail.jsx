@@ -283,30 +283,47 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
           padding: '16px',
           borderBottom: '1px solid var(--rule)',
           display: 'flex',
-          alignItems: 'center'
+          flexDirection: 'column',
+          gap: '10px'
         }}
       >
-        <div className="section-wrap" style={{ padding: 0, width: '100%', display: 'flex' }}>
-          <motion.button
-            className="breadcrumb"
-            onClick={onBack}
-            whileHover={{ x: -4 }}
-            whileTap={{ scale: 0.96 }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              margin: 0,
-              padding: '8px 12px',
-              background: 'var(--md-surface-container)',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 600
-            }}
-          >
-            <ArrowLeft size={18} /> <span>সব ক্যাটাগরিতে ফিরে যান</span>
-          </motion.button>
+        <div className="section-wrap" style={{ padding: 0, width: '100%', maxWidth: '1480px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* Consistent Breadcrumb */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => router.push('/')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
+            >
+              হোম
+            </button>
+            <span>/</span>
+            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>{category.bn || 'ক্যাটাগরি'}</span>
+          </div>
+
+          {/* Consistent Back Button */}
+          <div>
+            <motion.button
+              onClick={onBack}
+              whileHover={{ x: -2 }}
+              whileTap={{ scale: 0.96 }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'var(--surface-bright, #FFFFFF)',
+                border: '1px solid var(--rule)',
+                borderRadius: 'var(--radius-pill)',
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: 'var(--ink-secondary)',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            >
+              <ArrowLeft size={16} /> পেছনে ফিরে যান
+            </motion.button>
+          </div>
         </div>
       </div>
 

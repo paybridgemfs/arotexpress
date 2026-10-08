@@ -306,6 +306,7 @@ export const initialData = {
     maintenance_estimated_time: 'শীঘ্রই ফিরছি'
   },
   admin_sessions: [] as AdminSession[],
+  product_reviews: [] as any[],
   footer_settings: defaultFooterSettings,
   newsletter_subscribers: [] as any[],
   delivery_areas: [
@@ -746,6 +747,18 @@ export class DBManager {
         ALTER TABLE admin_sessions ADD COLUMN IF NOT EXISTS location VARCHAR(100) DEFAULT 'Dhaka, Bangladesh';
         CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
         CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(session_token);
+
+        -- Product Reviews Table
+        CREATE TABLE IF NOT EXISTS product_reviews (
+          id SERIAL PRIMARY KEY,
+          product_id VARCHAR(150) NOT NULL,
+          category_id VARCHAR(150) NOT NULL,
+          user_name VARCHAR(150) NOT NULL,
+          rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+          comment TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_product_reviews_prod ON product_reviews(product_id, category_id);
       `);
 
       // Ensure default super admin exists in admins table only if no admin exists
@@ -3304,6 +3317,89 @@ export class DBManager {
           .catch(() => {});
       }
     }
+  }
+
+  // ==========================================
+  // PRODUCT REVIEWS & RATINGS
+  // ==========================================
+  static async getProductReviews(productId: string, categoryId: string) {
+    if (!this.data.product_reviews) {
+      this.data.product_reviews = [];
+    }
+    let reviews = this.data.product_reviews.filter(
+      (r: any) => String(r.product_id) === String(productId) && String(r.category_id) === String(categoryId)
+    );
+
+    if (isPgConnected && reviews.length === 0) {
+      try {
+        const res = await pool.query(
+          `SELECT * FROM product_reviews WHERE product_id = $1 AND category_id = $2 ORDER BY created_at DESC`,
+          [String(productId), String(categoryId)]
+        );
+        if (res.rows && res.rows.length > 0) {
+          reviews = res.rows.map((r: any) => ({
+            id: r.id,
+            product_id: r.product_id,
+            category_id: r.category_id,
+            user_name: r.user_name,
+            rating: r.rating,
+            comment: r.comment,
+            created_at: r.created_at
+          }));
+          // cache in memory
+          this.data.product_reviews.push(...reviews);
+        }
+      } catch (e: any) {
+        console.warn('PG error getting product_reviews:', e.message);
+      }
+    }
+
+    return reviews.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  static async addProductReview(data: { product_id: string; category_id: string; user_name: string; rating: number; comment: string }) {
+    if (!data.product_id || !data.category_id || !data.user_name || !data.rating || !data.comment) {
+      return { error: 'সকল তথ্য সঠিকভাবে পূরণ করুন।' };
+    }
+    const ratingNum = parseInt(String(data.rating), 10);
+    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return { error: 'রেটিং ১ থেকে ৫ এর মধ্যে হতে হবে।' };
+    }
+
+    if (!this.data.product_reviews) {
+      this.data.product_reviews = [];
+    }
+
+    const newReview = {
+      id: Date.now(),
+      product_id: String(data.product_id),
+      category_id: String(data.category_id),
+      user_name: data.user_name.trim(),
+      rating: ratingNum,
+      comment: data.comment.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    this.data.product_reviews.unshift(newReview);
+
+    if (isPgConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO product_reviews (product_id, category_id, user_name, rating, comment, created_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           RETURNING id, created_at`,
+          [newReview.product_id, newReview.category_id, newReview.user_name, newReview.rating, newReview.comment]
+        );
+        if (res.rows && res.rows[0]) {
+          newReview.id = res.rows[0].id;
+          newReview.created_at = res.rows[0].created_at;
+        }
+      } catch (e: any) {
+        console.warn('PG error inserting product_review:', e.message);
+      }
+    }
+
+    return { success: true, review: newReview };
   }
 }
 
