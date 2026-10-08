@@ -3306,6 +3306,28 @@ export class DBManager {
     return this.data.admin_sessions.some((s) => s.session_token === sessionToken);
   }
 
+  static async ensureAdminSession(adminId: number, sessionToken?: string): Promise<string> {
+    if (!this.data.admin_sessions) this.data.admin_sessions = [];
+    const token = sessionToken || `legacy_admin_${adminId}_${Date.now()}`;
+    const adminSessions = this.data.admin_sessions.filter((s) => s.admin_id === adminId);
+
+    if (adminSessions.length === 0 || !this.data.admin_sessions.some((s) => s.session_token === token)) {
+      if (adminSessions.length >= 3) {
+        const oldest = adminSessions.reduce((prev, curr) => (new Date(prev.last_active) < new Date(curr.last_active) ? prev : curr));
+        await this.removeAdminSession(oldest.session_token);
+      }
+      await this.addAdminSession(adminId, token, {
+        device_name: 'ওয়েব ব্রাউজার (সংরক্ষিত সেশন)',
+        device_type: 'desktop',
+        browser: 'Standard Browser',
+        os: 'Web OS',
+        ip_address: '127.0.0.1',
+        location: 'ঢাকা, বাংলাদেশ'
+      });
+    }
+    return token;
+  }
+
   static updateAdminSessionActivity(sessionToken: string) {
     if (!sessionToken || !this.data.admin_sessions) return;
     const session = this.data.admin_sessions.find((s) => s.session_token === sessionToken);

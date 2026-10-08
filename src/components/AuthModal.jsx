@@ -19,6 +19,7 @@ export default function AuthModal() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,7 +40,7 @@ export default function AuthModal() {
     setLoading(true);
     try {
       if (authModalTab === 'login') {
-        await login(phone, password);
+        await login(phone, password, rememberMe);
         showToast('সফলভাবে লগইন হয়েছে');
       } else {
         await register(name, phone, password);
@@ -48,6 +49,7 @@ export default function AuthModal() {
       setName('');
       setPhone('');
       setPassword('');
+      setRememberMe(true);
     } catch (err) {
       setError(err.message || 'একটি ত্রুটি ঘটেছে');
     } finally {
@@ -182,6 +184,21 @@ export default function AuthModal() {
                     required
                   />
                 </div>
+
+                {authModalTab === 'login' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                    <input
+                      type="checkbox"
+                      id="remember-me"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--green)', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="remember-me" style={{ fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                      আমাকে মনে রাখুন
+                    </label>
+                  </div>
+                )}
 
                 <motion.button
                   type="submit"

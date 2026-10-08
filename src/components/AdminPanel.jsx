@@ -161,6 +161,7 @@ export default function AdminPanel({ onNavigateHome }) {
   // Login form state (if not authenticated as admin)
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [adminRememberMe, setAdminRememberMe] = useState(true);
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [maxDeviceModalOpen, setMaxDeviceModalOpen] = useState(false);
@@ -430,7 +431,7 @@ export default function AdminPanel({ onNavigateHome }) {
     setLoginError('');
     setLoginLoading(true);
     try {
-      const loggedUser = await adminLogin(adminUsername, adminPassword);
+      const loggedUser = await adminLogin(adminUsername, adminPassword, { rememberMe: adminRememberMe });
       if (loggedUser.role !== 'admin') {
         adminLogout();
         setLoginError('আপনি অ্যাডমিন নন। শুধুমাত্র অ্যাডমিন লগইন করতে পারবেন।');
@@ -454,7 +455,7 @@ export default function AdminPanel({ onNavigateHome }) {
     setLoginError('');
     setLoginLoading(true);
     try {
-      const loggedUser = await adminLogin(adminUsername, adminPassword, { force_logout_others: true });
+      const loggedUser = await adminLogin(adminUsername, adminPassword, { force_logout_others: true, rememberMe: adminRememberMe });
       setMaxDeviceModalOpen(false);
       if (loggedUser.role !== 'admin') {
         adminLogout();
@@ -1333,6 +1334,18 @@ export default function AdminPanel({ onNavigateHome }) {
                 onChange={(e) => setAdminPassword(e.target.value)}
                 required
               />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '12px 0 16px' }}>
+              <input
+                type="checkbox"
+                id="admin-remember-me"
+                checked={adminRememberMe}
+                onChange={(e) => setAdminRememberMe(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--green)', cursor: 'pointer' }}
+              />
+              <label htmlFor="admin-remember-me" style={{ fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                আমাকে মনে রাখুন
+              </label>
             </div>
             <motion.button
               type="submit"

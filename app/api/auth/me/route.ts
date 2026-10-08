@@ -12,20 +12,16 @@ export async function GET(req: NextRequest) {
   const user = authResult.user as any;
 
   if (user.role === 'admin') {
-    // If admin token has session_token, verify session is not revoked
-    if (user.session_token && !DBManager.validateAdminSession(user.session_token)) {
+    if (!user.session_token || !DBManager.validateAdminSession(user.session_token)) {
       return NextResponse.json(
-        { error: 'আপনার এই সেশনটি দূর থেকে লগআউট করে দেওয়া হয়েছে।' },
+        { error: 'পূর্বের সেশন মেয়াদোত্তীর্ণ হয়েছে। অনুগ্রহ করে পুনরায় লগইন করুন।' },
         { status: 401 }
       );
     }
-
-    if (user.session_token) {
-      DBManager.updateAdminSessionActivity(user.session_token);
-    }
-
     const admin = DBManager.findAdminById(user.id) as any;
     if (admin) {
+      DBManager.updateAdminSessionActivity(user.session_token);
+
       const { password_hash, ...safeAdmin } = admin;
       return NextResponse.json({
         user: { ...safeAdmin, phone: safeAdmin.username, role: 'admin', session_token: user.session_token }

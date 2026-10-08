@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { phone, password } = await req.json();
+    const { phone, password, rememberMe } = await req.json();
     if (!phone || !password) {
       return NextResponse.json({ error: 'মোবাইল নম্বর ও পাসওয়ার্ড দিন' }, { status: 400 });
     }
@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { password_hash, ...safeUser } = user;
-    const token = jwt.sign({ id: safeUser.id, phone: safeUser.phone, role: 'user', name: safeUser.name }, JWT_SECRET, { expiresIn: '7d' });
+    const tokenExpiry = rememberMe ? '30d' : '7d';
+    const token = jwt.sign({ id: safeUser.id, phone: safeUser.phone, role: 'user', name: safeUser.name }, JWT_SECRET, { expiresIn: tokenExpiry });
     return NextResponse.json({ user: safeUser, token });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

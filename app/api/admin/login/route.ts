@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { username, password, force_logout_others } = await req.json();
+    const { username, password, force_logout_others, rememberMe } = await req.json();
     if (!username || !password) {
       return NextResponse.json({ error: 'অ্যাডমিন ইউজারনেম এবং পাসওয়ার্ড দিন' }, { status: 400 });
     }
@@ -175,6 +175,7 @@ export async function POST(req: NextRequest) {
     });
 
     const { password_hash, ...safeAdmin } = admin;
+    const tokenExpiry = rememberMe ? '30d' : '7d';
     const token = jwt.sign(
       {
         id: safeAdmin.id,
@@ -184,7 +185,7 @@ export async function POST(req: NextRequest) {
         session_token: sessionToken
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: tokenExpiry }
     );
 
     return NextResponse.json({

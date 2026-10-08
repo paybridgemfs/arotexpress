@@ -175,11 +175,11 @@ export function AuthProvider({ children }) {
   }, [adminToken]);
 
   // Customer Login (Never logs into admin panel)
-  const login = async (phone, password) => {
+  const login = async (phone, password, rememberMe = false) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password })
+      body: JSON.stringify({ phone, password, rememberMe })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -205,7 +205,8 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({
         username,
         password,
-        force_logout_others: Boolean(options?.force_logout_others)
+        force_logout_others: Boolean(options?.force_logout_others),
+        rememberMe: Boolean(options?.rememberMe)
       })
     });
     const data = await res.json();

@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
     }
 
     const DBManager = await getDB();
+    await DBManager.ensureAdminSession(admin.id, admin.session_token);
     const sessions = DBManager.getAdminSessions(admin.id);
 
     // Mark current session
