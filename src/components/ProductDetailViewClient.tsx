@@ -331,7 +331,7 @@ export default function ProductDetailViewClient({
                     style={{
                       objectFit: 'contain',
                       padding: '20px',
-                      transform: isZoomed ? 'scale(2)' : 'scale(1)',
+                      transform: isZoomed ? 'scale(2.5)' : 'scale(1)',
                       transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
                       transition: isZoomed ? 'transform 0.1s ease-out' : 'transform 0.3s ease-in-out'
                     }}
@@ -354,7 +354,7 @@ export default function ProductDetailViewClient({
                         gap: '4px'
                       }}
                     >
-                      🔍 হোভার করে জুম করুন
+                    হোভার করে জুম করুন
                     </div>
                   )}
                 </div>
@@ -422,7 +422,7 @@ export default function ProductDetailViewClient({
                 ৳ {toBengaliNumber(product.price)}
               </span>
               <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
-                ({product.unit} প্রতি)
+                {product.unit}
               </span>
             </div>
 
@@ -539,139 +539,6 @@ export default function ProductDetailViewClient({
             </div>
           </div>
         </div>
-
-        {/* Related Products in Category (Uses exact same product-card-modern & products-grid-view component structure as main website) */}
-        {brands.length > 1 && (
-          <div style={{ marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {category.bn} ক্যাটাগরির অন্যান্য পণ্য
-            </h2>
-
-            <div className="products-grid-view">
-              {brands
-                .filter((b: any) => String(b.id || b.name) !== String(product.id || product.name))
-                .slice(0, 12)
-                .map((b: any, idx: number) => {
-                  const bKey = b.id ? `p-${b.id}` : `${category.id || categoryId}-${b.name}`;
-                  const bCartItem = cart[bKey];
-                  const bQty = bCartItem ? bCartItem.qty : 0;
-                  const bStock = b.stock ?? 100;
-                  const bOutOfStock = b.force_stock_out || bStock === 0;
-
-                  const bItemMeta = {
-                    catId: category.id || categoryId,
-                    catEn: category.en || 'General',
-                    catBn: category.bn || 'সাধারণ',
-                    productId: b.id || null,
-                    brandId: b.id || null,
-                    brand: b.name,
-                    unit: b.unit,
-                    price: b.price,
-                    image: b.image || '',
-                    stock: bStock
-                  };
-
-                  return (
-                    <motion.div
-                      className="product-card-modern"
-                      key={b.id || b.name}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.2) }}
-                      whileHover={!bOutOfStock ? { y: -3, boxShadow: 'var(--shadow-md)' } : {}}
-                      style={{ opacity: bOutOfStock ? 0.75 : 1 }}
-                    >
-                      <div
-                        onClick={() => router.push(`/category/${category.id || categoryId}/product/${b.id || encodeURIComponent(b.name)}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <ProductItemImage
-                          image={b.image}
-                          category={category}
-                          alt={b.name}
-                          isOutOfStock={bOutOfStock}
-                        />
-                      </div>
-
-                      <div className="product-card-content">
-                        <div className="product-unit-text">{b.unit}</div>
-                        <h3
-                          className="product-name-title"
-                          onClick={() => router.push(`/category/${category.id || categoryId}/product/${b.id || encodeURIComponent(b.name)}`)}
-                          style={{ cursor: 'pointer' }}
-                          title="বিস্তারিত দেখতে ক্লিক করুন"
-                        >
-                          {b.name}
-                        </h3>
-
-                        <div className="product-card-bottom">
-                          <div className="product-price-display">৳{toBengaliNumber(b.price)}</div>
-
-                          <div className="product-action-container">
-                            {bQty > 0 ? (
-                              <div className="qty-stepper">
-                                <motion.button
-                                  aria-label="কমান"
-                                  whileTap={{ scale: 0.82 }}
-                                  onClick={() => changeQty(bKey, -1, bItemMeta)}
-                                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                  <Minus size={13} />
-                                </motion.button>
-                                <span>{toBengaliNumber(bQty)}</span>
-                                <motion.button
-                                  aria-label="বাড়ান"
-                                  whileTap={bQty < bStock ? { scale: 0.82 } : {}}
-                                  onClick={() => {
-                                    if (bQty < bStock) {
-                                      changeQty(bKey, 1, bItemMeta);
-                                    }
-                                  }}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    opacity: bQty >= bStock ? 0.3 : 1,
-                                    cursor: bQty >= bStock ? 'not-allowed' : 'pointer'
-                                  }}
-                                  disabled={bQty >= bStock}
-                                >
-                                  <Plus size={13} />
-                                </motion.button>
-                              </div>
-                            ) : (
-                              <motion.button
-                                className="add-btn"
-                                whileHover={!bOutOfStock ? { scale: 1.04 } : {}}
-                                whileTap={!bOutOfStock ? { scale: 0.94 } : {}}
-                                onClick={() => {
-                                  if (!bOutOfStock) {
-                                    changeQty(bKey, 1, bItemMeta);
-                                  }
-                                }}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  opacity: bOutOfStock ? 0.5 : 1,
-                                  cursor: bOutOfStock ? 'not-allowed' : 'pointer',
-                                  background: bOutOfStock ? 'var(--muted)' : undefined,
-                                  borderColor: bOutOfStock ? 'var(--muted)' : undefined
-                                }}
-                                disabled={bOutOfStock}
-                              >
-                                <Plus size={14} /> <span>{bOutOfStock ? 'স্টক নেই' : 'যোগ করুন'}</span>
-                              </motion.button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
 
         {/* Customer Reviews & Ratings Section */}
         <div
@@ -870,6 +737,138 @@ export default function ProductDetailViewClient({
             </div>
           </div>
         </div>
+        {/* Related Products in Category (Uses exact same product-card-modern & products-grid-view component structure as main website) */}
+        {brands.length > 1 && (
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {category.bn} ক্যাটাগরির অন্যান্য পণ্য
+            </h2>
+
+            <div className="products-grid-view">
+              {brands
+                .filter((b: any) => String(b.id || b.name) !== String(product.id || product.name))
+                .slice(0, 12)
+                .map((b: any, idx: number) => {
+                  const bKey = b.id ? `p-${b.id}` : `${category.id || categoryId}-${b.name}`;
+                  const bCartItem = cart[bKey];
+                  const bQty = bCartItem ? bCartItem.qty : 0;
+                  const bStock = b.stock ?? 100;
+                  const bOutOfStock = b.force_stock_out || bStock === 0;
+
+                  const bItemMeta = {
+                    catId: category.id || categoryId,
+                    catEn: category.en || 'General',
+                    catBn: category.bn || 'সাধারণ',
+                    productId: b.id || null,
+                    brandId: b.id || null,
+                    brand: b.name,
+                    unit: b.unit,
+                    price: b.price,
+                    image: b.image || '',
+                    stock: bStock
+                  };
+
+                  return (
+                    <motion.div
+                      className="product-card-modern"
+                      key={b.id || b.name}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.2) }}
+                      whileHover={!bOutOfStock ? { y: -3, boxShadow: 'var(--shadow-md)' } : {}}
+                      style={{ opacity: bOutOfStock ? 0.75 : 1 }}
+                    >
+                      <div
+                        onClick={() => router.push(`/category/${category.id || categoryId}/product/${b.id || encodeURIComponent(b.name)}`)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <ProductItemImage
+                          image={b.image}
+                          category={category}
+                          alt={b.name}
+                          isOutOfStock={bOutOfStock}
+                        />
+                      </div>
+
+                      <div className="product-card-content">
+                        <div className="product-unit-text">{b.unit}</div>
+                        <h3
+                          className="product-name-title"
+                          onClick={() => router.push(`/category/${category.id || categoryId}/product/${b.id || encodeURIComponent(b.name)}`)}
+                          style={{ cursor: 'pointer' }}
+                          title="বিস্তারিত দেখতে ক্লিক করুন"
+                        >
+                          {b.name}
+                        </h3>
+
+                        <div className="product-card-bottom">
+                          <div className="product-price-display">৳{toBengaliNumber(b.price)}</div>
+
+                          <div className="product-action-container">
+                            {bQty > 0 ? (
+                              <div className="qty-stepper">
+                                <motion.button
+                                  aria-label="কমান"
+                                  whileTap={{ scale: 0.82 }}
+                                  onClick={() => changeQty(bKey, -1, bItemMeta)}
+                                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Minus size={13} />
+                                </motion.button>
+                                <span>{toBengaliNumber(bQty)}</span>
+                                <motion.button
+                                  aria-label="বাড়ান"
+                                  whileTap={bQty < bStock ? { scale: 0.82 } : {}}
+                                  onClick={() => {
+                                    if (bQty < bStock) {
+                                      changeQty(bKey, 1, bItemMeta);
+                                    }
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    opacity: bQty >= bStock ? 0.3 : 1,
+                                    cursor: bQty >= bStock ? 'not-allowed' : 'pointer'
+                                  }}
+                                  disabled={bQty >= bStock}
+                                >
+                                  <Plus size={13} />
+                                </motion.button>
+                              </div>
+                            ) : (
+                              <motion.button
+                                className="add-btn"
+                                whileHover={!bOutOfStock ? { scale: 1.04 } : {}}
+                                whileTap={!bOutOfStock ? { scale: 0.94 } : {}}
+                                onClick={() => {
+                                  if (!bOutOfStock) {
+                                    changeQty(bKey, 1, bItemMeta);
+                                  }
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  opacity: bOutOfStock ? 0.5 : 1,
+                                  cursor: bOutOfStock ? 'not-allowed' : 'pointer',
+                                  background: bOutOfStock ? 'var(--muted)' : undefined,
+                                  borderColor: bOutOfStock ? 'var(--muted)' : undefined
+                                }}
+                                disabled={bOutOfStock}
+                              >
+                                <Plus size={14} /> <span>{bOutOfStock ? 'স্টক নেই' : 'যোগ করুন'}</span>
+                              </motion.button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
