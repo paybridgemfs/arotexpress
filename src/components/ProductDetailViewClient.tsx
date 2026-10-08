@@ -3,7 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { ArrowLeft, ShoppingBag, Minus, Plus, CheckCircle2, ShieldCheck, Truck, Layers, Sparkles } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, Minus, Plus, CheckCircle2, ShieldCheck, Truck, Layers } from 'lucide-react';
 import { useCart } from '@/src/context/CartContext.jsx';
 import { useStoreData } from '@/src/context/StoreDataContext';
 import { toBengaliNumber } from '@/src/utils/bengali.js';
@@ -136,7 +136,7 @@ export default function ProductDetailViewClient({
 
   return (
     <div style={{ minHeight: '85vh', backgroundColor: 'var(--surface)', paddingBottom: '80px' }}>
-      <div className="section-wrap" style={{ paddingTop: '24px', maxWidth: '1140px', margin: '0 auto' }}>
+      <div className="section-wrap" style={{ paddingTop: '24px', maxWidth: '1480px', margin: '0 auto' }}>
         
         {/* Breadcrumb Navigation */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', marginBottom: '16px', flexWrap: 'wrap' }}>
@@ -290,7 +290,7 @@ export default function ProductDetailViewClient({
                 ৳ {toBengaliNumber(product.price)}
               </span>
               <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
-                ({product.unit})
+                ({product.unit} প্রতি)
               </span>
             </div>
 
@@ -330,7 +330,7 @@ export default function ProductDetailViewClient({
                     boxShadow: isOutOfStock ? 'none' : 'var(--shadow-green)'
                   }}
                 >
-                  <ShoppingBag size={18} /> কার্টে যোগ করুন ({product.unit})
+                  <ShoppingBag size={18} /> যোগ করুন ({product.unit})
                 </motion.button>
               ) : (
                 <div
@@ -412,7 +412,7 @@ export default function ProductDetailViewClient({
         {brands.length > 1 && (
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={18} color="var(--green)" /> {category.bn} ক্যাটাগরির অন্যান্য পণ্য
+              {category.bn} ক্যাটাগরির অন্যান্য পণ্য
             </h2>
 
             <div className="products-grid-view">
@@ -528,7 +528,7 @@ export default function ProductDetailViewClient({
                                 }}
                                 disabled={bOutOfStock}
                               >
-                                <Plus size={14} /> <span>{bOutOfStock ? 'স্টক নেই' : 'যোগ'}</span>
+                                <Plus size={14} /> <span>{bOutOfStock ? 'স্টক নেই' : 'যোগ করুন'}</span>
                               </motion.button>
                             )}
                           </div>
