@@ -280,7 +280,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
           backgroundColor: 'var(--paper)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
-          padding: '16px',
+          padding: '10px 16px',
           borderBottom: '1px solid var(--rule)',
           display: 'flex',
           flexDirection: 'column',
@@ -302,7 +302,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                 backgroundColor: 'var(--surface-bright, #FFFFFF)',
                 border: '1px solid var(--rule)',
                 borderRadius: 'var(--radius-pill)',
-                padding: '8px 16px',
+                padding: '5px',
                 fontSize: '13px',
                 fontWeight: 700,
                 color: 'var(--ink-secondary)',
@@ -310,7 +310,7 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
                 boxShadow: 'var(--shadow-sm)'
               }}
             >
-              <ArrowLeft size={16} /> পেছনে ফিরে যান
+              <ArrowLeft size={16} />
             </motion.button>
           </div>
           
