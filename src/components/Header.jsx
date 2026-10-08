@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, Search, X, User, ShoppingCart, LogIn, LayoutGrid, ShieldCheck, Truck } from 'lucide-react';
+import { Menu, Search, X, User, ShoppingCart, LogIn, LayoutGrid, ShieldCheck, Truck, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
@@ -23,8 +23,9 @@ export default function Header({
 }) {
   const router = useRouter();
   const navigate = (path) => router.push(path);
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, adminUser, adminToken, isAuthHydrated } = useAuth();
   const headerRef = useRef(null);
+  const [isBannerVisible, setIsBannerVisible] = useState(true);
 
   const { totalCount, setIsCartOpen, cartCountBump } = useCart();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -69,9 +70,80 @@ export default function Header({
   const siteTagline = settings?.site_tagline || 'আপনার আড়ৎ, এখন এক ক্লিকে';
   const logoImageUrl = settings?.logo_image_url || '';
 
+  const isSuperAdmin = isAuthHydrated && !!adminUser && adminUser.role === 'admin' && !!adminToken;
+  const isMaintenance = settings?.is_maintenance_mode === true;
+
   return (
     <>
       <header ref={headerRef} className="main-app-header">
+        {/* Admin Maintenance Mode Warning Banner */}
+        {isMaintenance && isSuperAdmin && isBannerVisible && (
+          <div
+            style={{
+              background: 'linear-gradient(90deg, #9A3412 0%, #C2410C 50%, #B45309 100%)',
+              color: '#FFFFFF',
+              padding: '8px 16px',
+              fontSize: '12px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
+              <AlertTriangle size={16} color="#FDE68A" />
+              <span>
+                ⚠️ <strong>সতর্কতা:</strong> ওয়েবসাইটে বর্তমানে মেইনটেন্যান্স মোড চালু আছে! সাধারণ ভিজিটরদের কাছে সাইট বন্ধ দেখাচ্ছে।
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/settings')}
+                style={{
+                  background: '#FFFFFF',
+                  color: '#9A3412',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  padding: '3px 12px',
+                  fontWeight: 800,
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                সেটিংস <ArrowRight size={12} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBannerVisible(false);
+                  setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+                }}
+                style={{
+                  background: 'rgba(0,0,0,0.2)',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '22px',
+                  height: '22px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+                aria-label="বন্ধ করুন"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+        )}
         <div className="header-top">
           {/* Mobile Hamburger Drawer Trigger */}
           <motion.button

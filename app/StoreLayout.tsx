@@ -2,7 +2,7 @@
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingCart, AlertTriangle, ArrowRight } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import Header from '@/src/components/Header.jsx';
 import Footer from '@/src/components/Footer.jsx';
 import CartDrawer from '@/src/components/CartDrawer.jsx';
@@ -65,56 +65,6 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
     <div className={`store-root-layout ${isCartOpen ? 'cart-drawer-active' : ''}`}>
       <FrontendLoadingScreen />
       <ScrollManager />
-
-      {/* Admin Maintenance Mode Warning Banner (Visible ONLY to Logged-in Admin during maintenance) */}
-      {isMaintenance && isSuperAdmin && (
-        <div
-          style={{
-            background: 'linear-gradient(90deg, #9A3412 0%, #C2410C 50%, #B45309 100%)',
-            color: '#FFFFFF',
-            padding: '10px 16px',
-            fontSize: '13px',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-            gap: '12px',
-            position: 'sticky',
-            top: 0,
-            zIndex: 99999,
-            boxShadow: '0 2px 10px rgba(154, 52, 18, 0.4)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertTriangle size={18} color="#FDE68A" />
-            <span>
-              ⚠️ <strong>সতর্কতা:</strong> ওয়েবসাইটে বর্তমানে মেইনটেন্যান্স মোড (Maintenance Mode) চালু আছে! সাধারণ ভিজিটরদের কাছে সাইট বন্ধ দেখাচ্ছে।
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push('/admin/settings')}
-            style={{
-              background: '#FFFFFF',
-              color: '#9A3412',
-              border: 'none',
-              borderRadius: '9999px',
-              padding: '4px 14px',
-              fontWeight: 800,
-              fontSize: '12px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
-            }}
-          >
-            সেটিংস থেকে বন্ধ করুন <ArrowRight size={13} />
-          </button>
-        </div>
-      )}
 
       <Header
         settings={settings}

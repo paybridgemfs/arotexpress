@@ -103,10 +103,11 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
     const updateHeight = () => {
       const headerEl = document.querySelector('.main-app-header');
       if (headerEl) {
-        const h = headerEl.getBoundingClientRect().height;
-        if (h > 0) {
-          setHeaderHeight(h);
-          document.documentElement.style.setProperty('--app-header-height', `${h}px`);
+        const rect = headerEl.getBoundingClientRect();
+        const bottom = rect.bottom;
+        if (bottom > 0) {
+          setHeaderHeight(bottom);
+          document.documentElement.style.setProperty('--app-header-height', `${bottom}px`);
         }
       }
     };

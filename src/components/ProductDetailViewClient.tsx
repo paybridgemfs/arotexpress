@@ -87,9 +87,10 @@ export default function ProductDetailViewClient({
     const updateHeight = () => {
       const headerEl = document.querySelector('.main-app-header');
       if (headerEl) {
-        const h = headerEl.getBoundingClientRect().height;
-        if (h > 0) {
-          setHeaderHeight(h);
+        const rect = headerEl.getBoundingClientRect();
+        if (rect.bottom > 0) {
+          setHeaderHeight(rect.bottom);
+          document.documentElement.style.setProperty('--app-header-height', `${rect.bottom}px`);
         }
       }
     };
