@@ -264,27 +264,8 @@ export default function ProductDetailViewClient({
           gap: '10px'
         }}
       >
-        <div className="section-wrap" style={{ padding: 0, width: '100%', maxWidth: '1480px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className="section-wrap" style={{ padding: 0, width: '100%', maxWidth: '1480px', margin: '0 auto', display: 'flex', gap: '8px' }}>
           
-          {/* Breadcrumb Navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => router.push('/')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
-            >
-              হোম
-            </button>
-            <span>/</span>
-            <button
-              onClick={() => router.push(`/category/${category.id || categoryId}`)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
-            >
-              {category.bn || 'ক্যাটাগরি'}
-            </button>
-            <span>/</span>
-            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>{product.name}</span>
-          </div>
-
           {/* Back Button */}
           <div>
             <motion.button
@@ -314,6 +295,25 @@ export default function ProductDetailViewClient({
             >
               <ArrowLeft size={16} /> পেছনে ফিরে যান
             </motion.button>
+          </div>
+
+          {/* Breadcrumb Navigation */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => router.push('/')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
+            >
+              হোম
+            </button>
+            <span>/</span>
+            <button
+              onClick={() => router.push(`/category/${category.id || categoryId}`)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
+            >
+              {category.bn || 'ক্যাটাগরি'}
+            </button>
+            <span>/</span>
+            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>{product.name}</span>
           </div>
         </div>
       </div>

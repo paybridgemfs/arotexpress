@@ -287,19 +287,8 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
           gap: '10px'
         }}
       >
-        <div className="section-wrap" style={{ padding: 0, width: '100%', maxWidth: '1480px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* Consistent Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => router.push('/')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
-            >
-              হোম
-            </button>
-            <span>/</span>
-            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>{category.bn || 'ক্যাটাগরি'}</span>
-          </div>
-
+        <div className="section-wrap" style={{ padding: 0, width: '100%', maxWidth: '1480px', margin: '0 auto', display: 'flex', gap: '8px' }}>
+          
           {/* Consistent Back Button */}
           <div>
             <motion.button
@@ -323,6 +312,18 @@ export default function ProductDetail({ categoryId, category, isLoading, onBack 
             >
               <ArrowLeft size={16} /> পেছনে ফিরে যান
             </motion.button>
+          </div>
+          
+          {/* Consistent Breadcrumb */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => router.push('/')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 600, padding: 0 }}
+            >
+              হোম
+            </button>
+            <span>/</span>
+            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>{category.bn || 'ক্যাটাগরি'}</span>
           </div>
         </div>
       </div>
