@@ -43,7 +43,7 @@ export default function AuthModal() {
         await login(phone, password, rememberMe);
         showToast('সফলভাবে লগইন হয়েছে');
       } else {
-        await register(name, phone, password);
+        await register(name, phone, password, rememberMe);
         showToast('অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে');
       }
       setName('');

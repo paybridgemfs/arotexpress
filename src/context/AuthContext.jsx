@@ -4,11 +4,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  // Customer Authentication state (stored in arot_customer_token)
+  // Customer Authentication state (stored in arot_customer_token in localStorage or sessionStorage)
   const [user, setUser] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('arot_customer_user');
+        const saved = localStorage.getItem('arot_customer_user') || sessionStorage.getItem('arot_customer_user');
         return saved ? JSON.parse(saved) : null;
       } catch {
         return null;
@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('arot_customer_token') || null;
+        return localStorage.getItem('arot_customer_token') || sessionStorage.getItem('arot_customer_token') || null;
       } catch {
         return null;
       }
@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
   const [adminUser, setAdminUser] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('arot_admin_user');
+        const saved = localStorage.getItem('arot_admin_user') || sessionStorage.getItem('arot_admin_user');
         return saved ? JSON.parse(saved) : null;
       } catch {
         return null;
@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
   const [adminToken, setAdminToken] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('arot_admin_token') || null;
+        return localStorage.getItem('arot_admin_token') || sessionStorage.getItem('arot_admin_token') || null;
       } catch {
         return null;
       }
@@ -55,12 +55,12 @@ export function AuthProvider({ children }) {
   const [adminLoading, setAdminLoading] = useState(false);
   const loading = customerLoading || adminLoading;
 
-  // On client mount, re-verify and ensure tokens from localStorage are fully in sync
+  // On client mount, re-verify and ensure tokens from localStorage/sessionStorage are fully in sync
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
-        const savedCustToken = localStorage.getItem('arot_customer_token');
-        const savedCustUser = localStorage.getItem('arot_customer_user');
+        const savedCustToken = localStorage.getItem('arot_customer_token') || sessionStorage.getItem('arot_customer_token');
+        const savedCustUser = localStorage.getItem('arot_customer_user') || sessionStorage.getItem('arot_customer_user');
         if (savedCustToken && savedCustToken !== token) {
           setToken(savedCustToken);
           if (savedCustUser) {
@@ -72,8 +72,8 @@ export function AuthProvider({ children }) {
           }
         }
 
-        const savedAdminToken = localStorage.getItem('arot_admin_token');
-        const savedAdminUser = localStorage.getItem('arot_admin_user');
+        const savedAdminToken = localStorage.getItem('arot_admin_token') || sessionStorage.getItem('arot_admin_token');
+        const savedAdminUser = localStorage.getItem('arot_admin_user') || sessionStorage.getItem('arot_admin_user');
         if (savedAdminToken && savedAdminToken !== adminToken) {
           setAdminToken(savedAdminToken);
           if (savedAdminUser) {
@@ -113,16 +113,29 @@ export function AuthProvider({ children }) {
         .then(data => {
           if (data.user?.role !== 'admin') {
             setUser(data.user);
-            localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+            if (typeof window !== 'undefined') {
+              if (localStorage.getItem('arot_customer_token')) {
+                localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+              } else if (sessionStorage.getItem('arot_customer_token')) {
+                sessionStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+              }
+            }
           } else {
             setUser(null);
-            localStorage.removeItem('arot_customer_user');
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('arot_customer_user');
+              sessionStorage.removeItem('arot_customer_user');
+            }
           }
         })
         .catch((err) => {
           if (err.message === 'AUTH_FAILED') {
-            localStorage.removeItem('arot_customer_token');
-            localStorage.removeItem('arot_customer_user');
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('arot_customer_token');
+              localStorage.removeItem('arot_customer_user');
+              sessionStorage.removeItem('arot_customer_token');
+              sessionStorage.removeItem('arot_customer_user');
+            }
             setToken(null);
             setUser(null);
           }
@@ -153,16 +166,29 @@ export function AuthProvider({ children }) {
         .then(data => {
           if (data.user?.role === 'admin') {
             setAdminUser(data.user);
-            localStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+            if (typeof window !== 'undefined') {
+              if (localStorage.getItem('arot_admin_token')) {
+                localStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+              } else if (sessionStorage.getItem('arot_admin_token')) {
+                sessionStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+              }
+            }
           } else {
             setAdminUser(null);
-            localStorage.removeItem('arot_admin_user');
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('arot_admin_user');
+              sessionStorage.removeItem('arot_admin_user');
+            }
           }
         })
         .catch((err) => {
           if (err.message === 'AUTH_FAILED') {
-            localStorage.removeItem('arot_admin_token');
-            localStorage.removeItem('arot_admin_user');
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('arot_admin_token');
+              localStorage.removeItem('arot_admin_user');
+              sessionStorage.removeItem('arot_admin_token');
+              sessionStorage.removeItem('arot_admin_user');
+            }
             setAdminToken(null);
             setAdminUser(null);
           }
@@ -175,7 +201,7 @@ export function AuthProvider({ children }) {
   }, [adminToken]);
 
   // Customer Login (Never logs into admin panel)
-  const login = async (phone, password, rememberMe = false) => {
+  const login = async (phone, password, rememberMe = true) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -185,8 +211,17 @@ export function AuthProvider({ children }) {
     if (!res.ok) {
       throw new Error(data.error || 'লগইন ব্যর্থ হয়েছে');
     }
-    localStorage.setItem('arot_customer_token', data.token);
-    localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+    if (rememberMe) {
+      localStorage.setItem('arot_customer_token', data.token);
+      localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+      sessionStorage.removeItem('arot_customer_token');
+      sessionStorage.removeItem('arot_customer_user');
+    } else {
+      sessionStorage.setItem('arot_customer_token', data.token);
+      sessionStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+      localStorage.removeItem('arot_customer_token');
+      localStorage.removeItem('arot_customer_user');
+    }
     setToken(data.token);
     setUser(data.user);
     setAuthModalOpen(false);
@@ -199,6 +234,7 @@ export function AuthProvider({ children }) {
 
   // Dedicated Admin Login (Never logs into customer frontend)
   const adminLogin = async (username, password, options = {}) => {
+    const rememberMe = Boolean(options?.rememberMe);
     const res = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -206,7 +242,7 @@ export function AuthProvider({ children }) {
         username,
         password,
         force_logout_others: Boolean(options?.force_logout_others),
-        rememberMe: Boolean(options?.rememberMe)
+        rememberMe
       })
     });
     const data = await res.json();
@@ -217,15 +253,24 @@ export function AuthProvider({ children }) {
       error.active_sessions = data.active_sessions || [];
       throw error;
     }
-    localStorage.setItem('arot_admin_token', data.token);
-    localStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+    if (rememberMe) {
+      localStorage.setItem('arot_admin_token', data.token);
+      localStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+      sessionStorage.removeItem('arot_admin_token');
+      sessionStorage.removeItem('arot_admin_user');
+    } else {
+      sessionStorage.setItem('arot_admin_token', data.token);
+      sessionStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+      localStorage.removeItem('arot_admin_token');
+      localStorage.removeItem('arot_admin_user');
+    }
     setAdminToken(data.token);
     setAdminUser(data.user);
     return data.user;
   };
 
   // Customer Register
-  const register = async (name, phone, password) => {
+  const register = async (name, phone, password, rememberMe = true) => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -235,8 +280,17 @@ export function AuthProvider({ children }) {
     if (!res.ok) {
       throw new Error(data.error || 'নিবন্ধন ব্যর্থ হয়েছে');
     }
-    localStorage.setItem('arot_customer_token', data.token);
-    localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+    if (rememberMe) {
+      localStorage.setItem('arot_customer_token', data.token);
+      localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+      sessionStorage.removeItem('arot_customer_token');
+      sessionStorage.removeItem('arot_customer_user');
+    } else {
+      sessionStorage.setItem('arot_customer_token', data.token);
+      sessionStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+      localStorage.removeItem('arot_customer_token');
+      localStorage.removeItem('arot_customer_user');
+    }
     setToken(data.token);
     setUser(data.user);
     setAuthModalOpen(false);
@@ -262,10 +316,22 @@ export function AuthProvider({ children }) {
       throw new Error(data.error || 'প্রোফাইল আপডেট ব্যর্থ হয়েছে');
     }
     if (data.token) {
-      localStorage.setItem('arot_customer_token', data.token);
+      if (typeof window !== 'undefined') {
+        if (sessionStorage.getItem('arot_customer_token')) {
+          sessionStorage.setItem('arot_customer_token', data.token);
+        } else {
+          localStorage.setItem('arot_customer_token', data.token);
+        }
+      }
       setToken(data.token);
     }
-    localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+    if (typeof window !== 'undefined') {
+      if (sessionStorage.getItem('arot_customer_token')) {
+        sessionStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+      } else {
+        localStorage.setItem('arot_customer_user', JSON.stringify(data.user));
+      }
+    }
     setUser(data.user);
     return data.user;
   };
@@ -285,10 +351,22 @@ export function AuthProvider({ children }) {
       throw new Error(data.error || 'অ্যাডমিন প্রোফাইল আপডেট ব্যর্থ হয়েছে');
     }
     if (data.token) {
-      localStorage.setItem('arot_admin_token', data.token);
+      if (typeof window !== 'undefined') {
+        if (sessionStorage.getItem('arot_admin_token')) {
+          sessionStorage.setItem('arot_admin_token', data.token);
+        } else {
+          localStorage.setItem('arot_admin_token', data.token);
+        }
+      }
       setAdminToken(data.token);
     }
-    localStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+    if (typeof window !== 'undefined') {
+      if (sessionStorage.getItem('arot_admin_token')) {
+        sessionStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+      } else {
+        localStorage.setItem('arot_admin_user', JSON.stringify(data.user));
+      }
+    }
     setAdminUser(data.user);
     return data.user;
   };
@@ -298,6 +376,8 @@ export function AuthProvider({ children }) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('arot_customer_token');
         localStorage.removeItem('arot_customer_user');
+        sessionStorage.removeItem('arot_customer_token');
+        sessionStorage.removeItem('arot_customer_user');
         localStorage.removeItem('arot_express_token');
         localStorage.removeItem('arot_user');
         localStorage.removeItem('arot_token');
@@ -311,8 +391,16 @@ export function AuthProvider({ children }) {
   };
 
   const adminLogout = () => {
-    localStorage.removeItem('arot_admin_token');
-    localStorage.removeItem('arot_admin_user');
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('arot_admin_token');
+        localStorage.removeItem('arot_admin_user');
+        sessionStorage.removeItem('arot_admin_token');
+        sessionStorage.removeItem('arot_admin_user');
+      }
+    } catch (e) {
+      console.error('Error clearing admin tokens on logout:', e);
+    }
     setAdminToken(null);
     setAdminUser(null);
   };
