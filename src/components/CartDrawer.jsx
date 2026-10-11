@@ -3,6 +3,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Minus, Plus, ArrowRight, Trash2, ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
 
 export default function CartDrawer({ onCheckout }) {
@@ -14,6 +15,7 @@ export default function CartDrawer({ onCheckout }) {
     removeFromCart,
     subtotal
   } = useCart();
+  const { confirm } = useConfirm();
 
   const cartEntries = Object.entries(cart);
   const totalItemsCount = cartEntries.reduce((sum, [, it]) => sum + (it.qty || 1), 0);
@@ -184,7 +186,18 @@ export default function CartDrawer({ onCheckout }) {
                         className="remove"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => removeFromCart(key)}
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'পণ্য সরান',
+                            message: `আপনি কি '${it.brand || 'এই পণ্যটি'}' কার্ট থেকে সরাতে চান?`,
+                            confirmText: 'সরান',
+                            cancelText: 'না',
+                            type: 'warning'
+                          });
+                          if (ok) {
+                            removeFromCart(key);
+                          }
+                        }}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',

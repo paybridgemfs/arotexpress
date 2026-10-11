@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { AuthProvider } from '../src/context/AuthContext.jsx';
+import { ConfirmProvider } from '../src/context/ConfirmContext.jsx';
 import { CartProvider } from '../src/context/CartContext.jsx';
 import { PackageBoxProvider } from '../src/context/PackageBoxContext.jsx';
 import { StoreDataProvider } from '../src/context/StoreDataContext';
@@ -15,15 +16,17 @@ export default function Providers({
 }) {
   return (
     <AuthProvider>
-      <CartProvider>
-        <PackageBoxProvider>
-          <StoreDataProvider initialData={initialData}>
-            <StoreLayout>
-              {children}
-            </StoreLayout>
-          </StoreDataProvider>
-        </PackageBoxProvider>
-      </CartProvider>
+      <ConfirmProvider>
+        <CartProvider>
+          <PackageBoxProvider>
+            <StoreDataProvider initialData={initialData}>
+              <StoreLayout>
+                {children}
+              </StoreLayout>
+            </StoreDataProvider>
+          </PackageBoxProvider>
+        </CartProvider>
+      </ConfirmProvider>
     </AuthProvider>
   );
 }

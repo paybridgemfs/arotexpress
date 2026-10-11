@@ -56,6 +56,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useStoreData } from '../context/StoreDataContext.tsx';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
 import AdminDashboard from './AdminDashboard.jsx';
 import AdminOrders from './AdminOrders.jsx';
@@ -106,6 +107,7 @@ const ADMIN_TAB_TITLES = {
 export default function AdminPanel({ onNavigateHome }) {
   const { adminUser, adminToken, adminLogin, adminLogout, updateAdminProfile, loading: authLoading, isAuthHydrated } = useAuth();
   const { showToast } = useCart();
+  const { confirm } = useConfirm();
   const storeContext = useStoreData();
   const fetchData = storeContext?.fetchData;
   const [mounted, setMounted] = useState(false);
@@ -472,7 +474,14 @@ export default function AdminPanel({ onNavigateHome }) {
 
   // Logout specific admin session
   const handleLogoutSession = async (sessionToken) => {
-    if (!window.confirm('আপনি কি এই ডিভাইসটির অ্যাডমিন সেশন লগআউট করতে চান?')) return;
+    const ok = await confirm({
+      title: 'সেশন লগআউট',
+      message: 'আপনি কি এই ডিভাইসটির অ্যাডমিন সেশন লগআউট করতে চান?',
+      confirmText: 'লগআউট',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) return;
     setSessionActionLoading(true);
     try {
       const res = await fetch('/api/admin/sessions', {
@@ -499,7 +508,14 @@ export default function AdminPanel({ onNavigateHome }) {
 
   // Logout all other sessions
   const handleLogoutAllOtherSessions = async () => {
-    if (!window.confirm('আপনি কি বর্তমান ডিভাইসটি বাদে বাকি সব ডিভাইস লগআউট করতে চান?')) return;
+    const ok = await confirm({
+      title: 'অন্যান্য সব সেশন লগআউট',
+      message: 'আপনি কি বর্তমান ডিভাইসটি বাদে বাকি সব ডিভাইস লগআউট করতে চান?',
+      confirmText: 'লগআউট করুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) return;
     setSessionActionLoading(true);
     try {
       const res = await fetch('/api/admin/sessions', {
@@ -690,7 +706,14 @@ export default function AdminPanel({ onNavigateHome }) {
 
   // Category Delete
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm('আপনি কি এই ক্যাটাগরি এবং এর অধীনস্থ সকল পণ্য মুছে ফেলতে চান?')) return;
+    const ok = await confirm({
+      title: 'ক্যাটাগরি মুছুন',
+      message: 'আপনি কি এই ক্যাটাগরি এবং এর অধীনস্থ সকল পণ্য মুছে ফেলতে চান?',
+      confirmText: 'মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) return;
     try {
       const catToDelete = categories.find((c) => c.id === id);
       if (catToDelete?.image_delete_url) {
@@ -829,7 +852,14 @@ export default function AdminPanel({ onNavigateHome }) {
     const brandName = typeof brandOrId === 'object' ? brandOrId.name : 'পণ্য';
     const brandObj = typeof brandOrId === 'object' ? brandOrId : null;
 
-    if (!window.confirm(`আপনি কি '${brandName}' পণ্যটি মুছে ফেলতে চান?`)) return;
+    const ok = await confirm({
+      title: 'পণ্য মুছুন',
+      message: `আপনি কি '${brandName}' পণ্যটি মুছে ফেলতে চান?`,
+      confirmText: 'মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) return;
     try {
       if (brandObj?.image_delete_url) {
         deleteImage(brandObj.image_delete_url, adminToken);
@@ -1182,7 +1212,14 @@ export default function AdminPanel({ onNavigateHome }) {
   };
 
   const handleDeleteArea = async (id, name) => {
-    if (!window.confirm(`আপনি কি '${name}' এলাকাটি মুছে ফেলতে চান?`)) return;
+    const ok = await confirm({
+      title: 'ডেলিভারি এলাকা মুছুন',
+      message: `আপনি কি '${name}' এলাকাটি মুছে ফেলতে চান?`,
+      confirmText: 'মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/delivery-areas/${id}`, {
         method: 'DELETE',
@@ -1680,7 +1717,19 @@ export default function AdminPanel({ onNavigateHome }) {
             whileTap={{ scale: 0.98 }}
             className="admin-btn danger"
             style={{ width: '100%', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-            onClick={() => { adminLogout(); onNavigateHome(); }}
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'অ্যাডমিন লগআউট',
+                message: 'আপনি কি নিশ্চিত যে অ্যাডমিন প্যানেল থেকে লগআউট করতে চান?',
+                confirmText: 'লগআউট',
+                cancelText: 'বাতিল',
+                type: 'warning'
+              });
+              if (ok) {
+                adminLogout();
+                onNavigateHome();
+              }
+            }}
           >
             <LogOut size={15} />
             <span>লগআউট</span>

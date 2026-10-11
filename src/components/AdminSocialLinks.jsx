@@ -24,6 +24,7 @@ import { toBengaliNumber } from '../utils/bengali.js';
 import SocialLucideIcon from './SocialLucideIcon.jsx';
 import { useStoreData } from '../context/StoreDataContext';
 import { useCart } from '../context/CartContext.jsx';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 
 // Suggested popular brand presets using React-Icons
 const POPULAR_SUGGESTIONS = [
@@ -72,6 +73,7 @@ const REACT_ICON_PICKER_LIST = [
 export default function AdminSocialLinks({ adminToken }) {
   const { settings = {}, fetchData } = useStoreData();
   const { showToast } = useCart();
+  const { confirm } = useConfirm();
 
   // Social links configuration state
   const [socialLinks, setSocialLinks] = useState([]);
@@ -195,8 +197,15 @@ export default function AdminSocialLinks({ adminToken }) {
   };
 
   // Delete Link
-  const handleDeleteLink = (id) => {
-    if (window.confirm('আপনি কি এই সোশ্যাল লিংকটি মুছে ফেলতে চান?')) {
+  const handleDeleteLink = async (id) => {
+    const ok = await confirm({
+      title: 'সোশ্যাল লিংক মুছুন',
+      message: 'আপনি কি এই সোশ্যাল লিংকটি মুছে ফেলতে চান?',
+      confirmText: 'মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (ok) {
       setSocialLinks((prev) => prev.filter((item) => item.id !== id));
     }
   };

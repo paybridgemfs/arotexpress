@@ -35,6 +35,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useStoreData } from '../context/StoreDataContext';
 import { useCart } from '../context/CartContext';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 import Footer from './Footer.jsx';
 
 const TRUST_ICON_OPTIONS = [
@@ -65,6 +66,7 @@ export default function AdminFooterSettings() {
   const { adminToken } = useAuth();
   const { footerSettings: initialFooterSettings, setFooterSettings: setContextFooterSettings, settings, activeGroups } = useStoreData();
   const { showToast } = useCart();
+  const { confirm } = useConfirm();
 
   const [activeTab, setActiveTab] = useState('trust');
   const [config, setConfig] = useState(null);
@@ -147,7 +149,14 @@ export default function AdminFooterSettings() {
 
   // Reset to default
   const handleReset = async () => {
-    if (!window.confirm('আপনি কি নিশ্চিত যে ফুটার সেটিংস ডিফল্ট মানে রিসেট করতে চান?')) return;
+    const ok = await confirm({
+      title: 'ফুটার সেটিংস রিসেট',
+      message: 'আপনি কি নিশ্চিত যে ফুটার সেটিংস ডিফল্ট মানে রিসেট করতে চান?',
+      confirmText: 'রিসেট করুন',
+      cancelText: 'বাতিল',
+      type: 'warning'
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       const res = await fetch('/api/footer-settings', {
@@ -173,7 +182,14 @@ export default function AdminFooterSettings() {
 
   // Delete subscriber
   const handleDeleteSubscriber = async (id) => {
-    if (!window.confirm('এই সাবস্ক্রাইবার মুছে ফেলতে চান?')) return;
+    const ok = await confirm({
+      title: 'সাবস্ক্রাইবার মুছুন',
+      message: 'আপনি কি এই সাবস্ক্রাইবার মুছে ফেলতে চান?',
+      confirmText: 'মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/newsletter?id=${id}`, {
         method: 'DELETE',

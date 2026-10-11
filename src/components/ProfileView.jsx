@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 import { usePackageBox } from '../context/PackageBoxContext.jsx';
 import { useStoreData } from '../context/StoreDataContext';
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
@@ -41,6 +42,7 @@ import OrderTrackingModal from './OrderTrackingModal.jsx';
 export default function ProfileView({ onBackToHome }) {
   const { user, token, logout, updateProfile } = useAuth();
   const { showToast, replaceCartWithOrder } = useCart();
+  const { confirm } = useConfirm();
   const { loadPackageOrderItems } = usePackageBox();
   const { packageProducts = [], settings } = useStoreData();
 
@@ -427,10 +429,19 @@ export default function ProfileView({ onBackToHome }) {
             className="admin-btn danger"
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => {
-              logout();
-              onBackToHome();
-              showToast('লগআউট করা হয়েছে');
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'লগআউট নিশ্চিতকরণ',
+                message: 'আপনি কি আপনার অ্যাকাউন্ট থেকে লগআউট করতে চান?',
+                confirmText: 'লগআউট',
+                cancelText: 'বাতিল',
+                type: 'warning'
+              });
+              if (ok) {
+                logout();
+                onBackToHome();
+                showToast('লগআউট করা হয়েছে');
+              }
             }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', borderRadius: 'var(--radius-pill)' }}
           >

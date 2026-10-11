@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
 import { useStoreData } from '../context/StoreDataContext.tsx';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
 import DeliveryRiderDashboard from './DeliveryRiderDashboard.jsx';
 import DeliveryRiderOrders from './DeliveryRiderOrders.jsx';
@@ -41,6 +42,7 @@ const RIDER_TAB_TITLES = {
 
 export default function DeliveryRiderPanel({ onNavigateHome }) {
   const { showToast } = useCart();
+  const { confirm } = useConfirm();
   const storeContext = useStoreData?.();
   const settings = storeContext?.settings;
 
@@ -459,7 +461,18 @@ export default function DeliveryRiderPanel({ onNavigateHome }) {
             whileTap={{ scale: 0.98 }}
             className="admin-btn danger"
             style={{ width: '100%', padding: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-            onClick={handleLogout}
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'রাইডার লগআউট',
+                message: 'আপনি কি নিশ্চিত যে রাইডার প্যানেল থেকে লগআউট করতে চান?',
+                confirmText: 'লগআউট',
+                cancelText: 'বাতিল',
+                type: 'warning'
+              });
+              if (ok) {
+                handleLogout();
+              }
+            }}
           >
             <LogOut size={15} />
             <span>লগআউট</span>

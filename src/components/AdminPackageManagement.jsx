@@ -23,6 +23,7 @@ import {
 import { toBengaliNumber } from '../utils/bengali.js';
 import { useCart } from '../context/CartContext.jsx';
 import { useStoreData } from '../context/StoreDataContext';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 
 export default function AdminPackageManagement({
   packageProducts = [],
@@ -32,6 +33,7 @@ export default function AdminPackageManagement({
   onRefresh
 }) {
   const { showToast } = useCart();
+  const { confirm } = useConfirm();
   const { fetchData } = useStoreData();
 
   // Minimum Package Items Configuration State
@@ -226,7 +228,14 @@ export default function AdminPackageManagement({
 
   // Delete/Clear slot
   const handleDeleteProduct = async (id, slotNum) => {
-    if (!window.confirm(`আপনি কি স্লট ${toBengaliNumber(slotNum)} এর পণ্যটি মুছে ফেলতে চান?`)) {
+    const ok = await confirm({
+      title: 'প্যাকেজ পণ্য মুছুন',
+      message: `আপনি কি স্লট ${toBengaliNumber(slotNum)} এর পণ্যটি মুছে ফেলতে চান?`,
+      confirmText: 'মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) {
       return;
     }
 
