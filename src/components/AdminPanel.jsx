@@ -4121,7 +4121,7 @@ export default function AdminPanel({ onNavigateHome }) {
             </div>
 
             {/* 7.1. ACTIVE ADMIN DEVICES & SESSIONS MANAGEMENT (80% WIDTH & MAX 3 DEVICES) */}
-            <div style={{ width: '80%', minWidth: '320px', maxWidth: '1000px', margin: '36px auto 0', borderTop: '1px solid var(--rule)', paddingTop: '28px' }}>
+            <div style={{ width: '80%', minWidth: '320px', maxWidth: '1000px', marginTop: '20px', borderTop: '1px solid var(--rule)', paddingTop: '28px' }}>
               
               {/* Security Header Card */}
               <div
