@@ -95,21 +95,8 @@ export default function FooterPolicyModal({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Sparkles size={18} />
-              </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#fff' }}>
                   {brandName} — গ্রাহক সেবা ও পলিসি
                 </h3>
                 <p style={{ margin: 0, fontSize: '11.5px', opacity: 0.85 }}>
