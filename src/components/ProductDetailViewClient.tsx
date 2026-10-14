@@ -78,10 +78,14 @@ export default function ProductDetailViewClient({
   initialProduct
 }: ProductDetailViewClientProps) {
   const router = useRouter();
-  const { categories } = useStoreData();
+  const { categories, fetchData } = useStoreData();
   const { cart, changeQty } = useCart();
   const { user } = useAuth();
   const [headerHeight, setHeaderHeight] = React.useState(0);
+
+  React.useEffect(() => {
+    fetchData(false);
+  }, [fetchData]);
 
   React.useEffect(() => {
     const updateHeight = () => {
@@ -194,29 +198,25 @@ export default function ProductDetailViewClient({
   };
 
   const avgRating = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '৫.০';
-  const category =
-    initialCategory ||
-    categories.find((c: any) => String(c.id) === String(categoryId) || c.en?.toLowerCase() === categoryId.toLowerCase()) ||
-    {};
+  const liveCategory = categories.find((c: any) => String(c.id) === String(categoryId) || c.en?.toLowerCase() === categoryId.toLowerCase());
+  const category = liveCategory || initialCategory || {};
 
   const brands = category?.brands || [];
-  const product =
-    initialProduct ||
-    brands.find((b: any) => String(b.id) === String(productId) || String(b.name) === decodeURIComponent(productId)) ||
-    brands[0] || {
-      id: productId,
-      name: decodeURIComponent(productId),
-      unit: 'প্রতি একক',
-      price: 100,
-      image: '',
-      stock: 100
-    };
+  const liveProduct = brands.find((b: any) => String(b.id) === String(productId) || String(b.name) === decodeURIComponent(productId));
+  const product = liveProduct || initialProduct || brands[0] || {
+    id: productId,
+    name: decodeURIComponent(productId),
+    unit: 'প্রতি একক',
+    price: 100,
+    image: '',
+    stock: 100
+  };
 
   const prodKey = product.id ? `p-${product.id}` : `${category.id || categoryId}-${product.name}`;
   const cartItem = cart[prodKey] || cart[`${category.id || categoryId}-${product.name}`];
   const qty = cartItem ? cartItem.qty : 0;
-  const stock = product.stock ?? 100;
-  const isOutOfStock = product.force_stock_out || stock === 0;
+  const stock = product.stock !== undefined && product.stock !== null ? Number(product.stock) : 100;
+  const isOutOfStock = !!product.force_stock_out || stock <= 0;
 
   const itemMeta = {
     catId: category.id || categoryId,
@@ -775,8 +775,8 @@ export default function ProductDetailViewClient({
                   const bKey = b.id ? `p-${b.id}` : `${category.id || categoryId}-${b.name}`;
                   const bCartItem = cart[bKey];
                   const bQty = bCartItem ? bCartItem.qty : 0;
-                  const bStock = b.stock ?? 100;
-                  const bOutOfStock = b.force_stock_out || bStock === 0;
+                  const bStock = b.stock !== undefined && b.stock !== null ? Number(b.stock) : 100;
+                  const bOutOfStock = !!b.force_stock_out || bStock <= 0;
 
                   const bItemMeta = {
                     catId: category.id || categoryId,
