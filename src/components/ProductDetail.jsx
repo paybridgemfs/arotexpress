@@ -29,7 +29,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
               src={rawImg}
               alt={alt}
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '6px' }}
+              style={{ objectFit: 'contain', padding: '1px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />
@@ -41,7 +41,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
               sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
               referrerPolicy="no-referrer"
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '6px' }}
+              style={{ objectFit: 'contain', padding: '1px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />

@@ -1194,7 +1194,7 @@ header, .main-app-header {
   position: relative;
   background: #FFFFFF;
   border: 1px solid var(--rule);
-  border-radius: 12px;
+  border-radius: 8px;
   transition: all 0.2s var(--ease);
   cursor: pointer;
   width: 100%;
@@ -1224,14 +1224,13 @@ header, .main-app-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .cat-card-content {
-  padding: 9px 10px 11px;
+  padding: 5px 10px 5px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
   flex: 1;
   text-align: left;
   background: #FFFFFF;
@@ -4256,7 +4255,7 @@ img.cat-logo-image {
   font-weight: 700;
   color: var(--ink);
   line-height: 1.25;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -4267,9 +4266,6 @@ img.cat-logo-image {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px solid #F1F5F3;
-  gap: 4px;
 }
 
 .product-price-display {

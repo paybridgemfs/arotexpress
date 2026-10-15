@@ -31,7 +31,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock }) {
               src={rawImg}
               alt={alt}
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '6px' }}
+              style={{ objectFit: 'contain', padding: '1px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />
@@ -43,7 +43,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock }) {
               sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 180px"
               referrerPolicy="no-referrer"
               className={`product-thumb-img ${loaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{ objectFit: 'contain', padding: '6px' }}
+              style={{ objectFit: 'contain', padding: '1px' }}
               onLoad={() => setLoaded(true)}
               onError={() => setError(true)}
             />
@@ -330,6 +330,7 @@ export default function ProductDetailViewClient({
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: 'clamp(24px, 4vw, 40px)',
             padding: '36px 0',
+	    paddingTop: '10px',
             alignItems: 'start',
           }}
         >
@@ -341,9 +342,9 @@ export default function ProductDetailViewClient({
               onMouseMove={handleMouseMove}
               style={{
                 width: '100%',
-                maxWidth: '420px',
+                maxWidth: '400px',
                 aspectRatio: '1 / 1',
-                borderRadius: 'var(--radius-lg)',
+                borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'var(--surface)',
                 border: '1px solid var(--rule)',
                 display: 'flex',
@@ -431,7 +432,7 @@ export default function ProductDetailViewClient({
               {product.name}
             </h1>
 
-            <div style={{ fontSize: '13.5px', color: 'var(--muted)', fontWeight: 600, marginBottom: '20px' }}>
+            <div style={{ fontSize: '13.5px', color: 'var(--muted)', fontWeight: 600, marginBottom: '10px' }}>
               একক / পরিমাণ: <strong style={{ color: 'var(--ink)' }}>{product.unit}</strong>
             </div>
 
@@ -441,7 +442,7 @@ export default function ProductDetailViewClient({
                 display: 'flex',
                 alignItems: 'baseline',
                 gap: '8px',
-                marginBottom: '24px'
+                marginBottom: '10px'
               }}
             >
               <span className="product-price-display" style={{ fontSize: '32px' }}>
@@ -464,7 +465,7 @@ export default function ProductDetailViewClient({
             </div>
 
             {/* Add to Cart / Quantity Controller */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
               {qty === 0 ? (
                 <motion.button
                   whileHover={{ scale: 1.02 }}

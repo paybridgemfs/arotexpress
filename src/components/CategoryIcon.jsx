@@ -145,7 +145,7 @@ export default function CategoryIcon({
                 width: '100%',
                 height: '100%',
                 objectFit: 'contain',
-                padding: '8px',
+                padding: '1px',
                 opacity: imageLoaded ? 1 : 0,
                 transition: 'opacity 0.2s ease'
               }}
