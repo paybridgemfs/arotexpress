@@ -261,7 +261,7 @@ export default async function RootLayout({
   };
 
   return (
-    <html lang="bn" data-scroll-behavior="smooth">
+    <html lang="bn" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <meta name="google" content="notranslate" />
         <meta name="googlebot" content="notranslate" />
@@ -278,7 +278,7 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div id="root">
           <Providers initialData={initialData}>
             {children}

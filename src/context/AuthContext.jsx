@@ -5,51 +5,13 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   // Customer Authentication state (stored in arot_customer_token in localStorage or sessionStorage)
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arot_customer_user') || sessionStorage.getItem('arot_customer_user');
-        return saved ? JSON.parse(saved) : null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-  const [token, setToken] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('arot_customer_token') || sessionStorage.getItem('arot_customer_token') || null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
 
   // Admin Authentication state (strictly separated in arot_admin_token)
-  const [adminUser, setAdminUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arot_admin_user') || sessionStorage.getItem('arot_admin_user');
-        return saved ? JSON.parse(saved) : null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-  const [adminToken, setAdminToken] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('arot_admin_token') || sessionStorage.getItem('arot_admin_token') || null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-  const [isAuthHydrated, setIsAuthHydrated] = useState(true);
+  const [adminUser, setAdminUser] = useState(null);
+  const [adminToken, setAdminToken] = useState(null);
+  const [isAuthHydrated, setIsAuthHydrated] = useState(false);
 
   const [customerLoading, setCustomerLoading] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
@@ -61,7 +23,7 @@ export function AuthProvider({ children }) {
       if (typeof window !== 'undefined') {
         const savedCustToken = localStorage.getItem('arot_customer_token') || sessionStorage.getItem('arot_customer_token');
         const savedCustUser = localStorage.getItem('arot_customer_user') || sessionStorage.getItem('arot_customer_user');
-        if (savedCustToken && savedCustToken !== token) {
+        if (savedCustToken) {
           setToken(savedCustToken);
           if (savedCustUser) {
             try {
@@ -74,7 +36,7 @@ export function AuthProvider({ children }) {
 
         const savedAdminToken = localStorage.getItem('arot_admin_token') || sessionStorage.getItem('arot_admin_token');
         const savedAdminUser = localStorage.getItem('arot_admin_user') || sessionStorage.getItem('arot_admin_user');
-        if (savedAdminToken && savedAdminToken !== adminToken) {
+        if (savedAdminToken) {
           setAdminToken(savedAdminToken);
           if (savedAdminUser) {
             try {
@@ -87,6 +49,8 @@ export function AuthProvider({ children }) {
       }
     } catch (e) {
       console.error('Error syncing auth tokens:', e);
+    } finally {
+      setIsAuthHydrated(true);
     }
   }, []);
 

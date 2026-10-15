@@ -159,18 +159,15 @@ export function StoreDataProvider({
     defaultDeliveryFee?: number;
   };
 }) {
-  const initialCache = getInitialCache();
-
-  // Initialize from SSR initialData first (for instant server-side hydration & AI/SEO bots),
-  // then fallback to client memory/storage cache
-  const [groups, setGroups] = useState<any[]>(() => initialData?.groups || initialCache?.groups || []);
-  const [categories, setCategories] = useState<any[]>(() => initialData?.categories || initialCache?.categories || []);
-  const [settings, setSettings] = useState<any>(() => initialData?.settings || initialCache?.settings || null);
-  const [footerSettings, setFooterSettings] = useState<any>(() => initialData?.footerSettings || initialCache?.footerSettings || null);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>(() => initialData?.paymentMethods || initialCache?.paymentMethods || []);
-  const [deliveryAreas, setDeliveryAreas] = useState<any[]>(() => initialData?.deliveryAreas || initialCache?.deliveryAreas || []);
-  const [packageProducts, setPackageProducts] = useState<any[]>(() => initialData?.packageProducts || initialCache?.packageProducts || []);
-  const [defaultDeliveryFee, setDefaultDeliveryFee] = useState<number>(() => initialData?.defaultDeliveryFee ?? initialCache?.defaultDeliveryFee ?? 60);
+  // Initialize from SSR initialData (identical on server and initial client render)
+  const [groups, setGroups] = useState<any[]>(() => initialData?.groups || []);
+  const [categories, setCategories] = useState<any[]>(() => initialData?.categories || []);
+  const [settings, setSettings] = useState<any>(() => initialData?.settings || null);
+  const [footerSettings, setFooterSettings] = useState<any>(() => initialData?.footerSettings || null);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>(() => initialData?.paymentMethods || []);
+  const [deliveryAreas, setDeliveryAreas] = useState<any[]>(() => initialData?.deliveryAreas || []);
+  const [packageProducts, setPackageProducts] = useState<any[]>(() => initialData?.packageProducts || []);
+  const [defaultDeliveryFee, setDefaultDeliveryFee] = useState<number>(() => initialData?.defaultDeliveryFee ?? 60);
 
   // Sync settings immediately if SSR initialData has maintenance mode or new settings
   useEffect(() => {
@@ -179,8 +176,9 @@ export function StoreDataProvider({
     }
   }, [initialData?.settings]);
 
-  // Always start loading as true on initial mount to ensure fresh settings (like maintenance mode) are verified before render
-  const [loading, setLoading] = useState<boolean>(true);
+  // If SSR data is present, loading is false so SSR matches initial client render seamlessly
+  const hasSSRData = Array.isArray(initialData?.categories) && initialData.categories.length > 0;
+  const [loading, setLoading] = useState<boolean>(() => !hasSSRData);
   const [isRevalidating, setIsRevalidating] = useState<boolean>(false);
   const [activeGroupTab, setActiveGroupTab] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
