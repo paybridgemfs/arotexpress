@@ -2,18 +2,33 @@ import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 
 // Clean & Simple Supabase Session Pooler Configuration (Discrete Credentials)
-const pool = new Pool({
-  host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
-  port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
-  database: process.env.PGDATABASE || 'postgres',
-  user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
-  password: process.env.PGPASSWORD || 'SPmd1151@@##',
-  ssl: { rejectUnauthorized: false }
-});
+// Use globalThis singleton to prevent creating multiple pools on Next.js re-evaluations
+declare global {
+  var _pgPool: Pool | undefined;
+}
 
-pool.on('error', (err) => {
-  console.warn('⚠️ PostgreSQL pool notice:', err.message);
-});
+const pool: Pool =
+  globalThis._pgPool ||
+  new Pool({
+    host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
+    port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
+    database: process.env.PGDATABASE || 'postgres',
+    user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
+    password: process.env.PGPASSWORD || 'SPmd1151@@##',
+    ssl: { rejectUnauthorized: false },
+    max: 5, // Strict limit for Supabase session pooler to avoid exhausting connection slots
+    idleTimeoutMillis: 30000, // Return idle connections to pooler after 30 seconds
+    connectionTimeoutMillis: 8000 // Timeout if connection acquisition takes longer than 8 seconds
+  });
+
+if (!globalThis._pgPool) {
+  pool.on('error', (err) => {
+    console.warn('⚠️ PostgreSQL pool notice:', err.message);
+  });
+  if (process.env.NODE_ENV !== 'production') {
+    globalThis._pgPool = pool;
+  }
+}
 
 let isPgConnected = false;
 
@@ -478,8 +493,9 @@ export class DBManager {
     }
 
     this.initPromise = (async () => {
+      let client: any = null;
       try {
-        const client = await pool.connect();
+        client = await pool.connect();
         isPgConnected = true;
         console.log('✅ PostgreSQL Database connected successfully!');
 
@@ -1271,12 +1287,18 @@ export class DBManager {
         console.warn('Notice syncing sequences:', seqErr.message);
       }
 
-      client.release();
       this.isInitialized = true;
     } catch (err: any) {
       console.warn('⚠️ PostgreSQL direct connection not active yet, using active high-performance resilient storage:', err.message);
       isPgConnected = false;
     } finally {
+      if (client) {
+        try {
+          client.release();
+        } catch (relErr: any) {
+          console.warn('Notice releasing client to pooler:', relErr.message);
+        }
+      }
       this.initPromise = null;
     }
   })();
