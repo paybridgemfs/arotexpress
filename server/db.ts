@@ -10,11 +10,11 @@ declare global {
 const pool: Pool =
   globalThis._pgPool ||
   new Pool({
-    host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
+    host: process.env.PGHOST,
     port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
-    database: process.env.PGDATABASE || 'postgres',
-    user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
-    password: process.env.PGPASSWORD || 'SPmd1151@@##',
+    database: process.env.PGDATABASE,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
     ssl: { rejectUnauthorized: false },
     max: 5, // Strict limit for Supabase session pooler to avoid exhausting connection slots
     idleTimeoutMillis: 30000, // Return idle connections to pooler after 30 seconds
