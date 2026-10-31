@@ -279,6 +279,7 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
+        <div id="google_translate_element" style={{ display: 'none' }} aria-hidden="true" />
         <div id="root">
           <Providers initialData={initialData}>
             {children}

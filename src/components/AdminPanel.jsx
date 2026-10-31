@@ -268,7 +268,20 @@ export default function AdminPanel({ onNavigateHome }) {
   // Payments / Delivery state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
-  const [newPayment, setNewPayment] = useState({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true });
+  const [newPayment, setNewPayment] = useState({
+    code: '',
+    name_bn: '',
+    name_en: '',
+    number: '',
+    account_type: 'পার্সোনাল (Send Money)',
+    instructions_bn: '',
+    logo: '',
+    logo_delete_url: '',
+    is_active: true
+  });
+  const [paymentLogoFile, setPaymentLogoFile] = useState(null);
+  const [paymentLogoPreview, setPaymentLogoPreview] = useState(null);
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState(null);
@@ -1018,10 +1031,33 @@ export default function AdminPanel({ onNavigateHome }) {
     }
   };
 
-  // Payment Method Save
+  // Payment Method Save (with Google Drive logo upload)
   const handleSavePaymentMethod = async (e) => {
     e.preventDefault();
+    setSavingPayment(true);
     try {
+      let finalLogo = newPayment.logo || '';
+      let finalDeleteUrl = newPayment.logo_delete_url || '';
+
+      if (paymentLogoFile) {
+        showToast('পেমেন্ট লোগো গুগল ড্রাইভে আপলোড হচ্ছে...');
+        const semanticName = `payment_${newPayment.code || 'method'}_logo`;
+        const uploadRes = await uploadImage(paymentLogoFile, adminToken, true, semanticName);
+        if (uploadRes && uploadRes.url) {
+          if (editingPayment?.logo_delete_url) {
+            deleteImage(editingPayment.logo_delete_url, adminToken);
+          }
+          finalLogo = uploadRes.url;
+          finalDeleteUrl = uploadRes.delete_url || '';
+        }
+      }
+
+      const payload = {
+        ...newPayment,
+        logo: finalLogo,
+        logo_delete_url: finalDeleteUrl
+      };
+
       const isEdit = Boolean(editingPayment && editingPayment.id);
       const url = isEdit ? `/api/payment-methods/${editingPayment.id}` : '/api/payment-methods';
       const method = isEdit ? 'PUT' : 'POST';
@@ -1032,7 +1068,7 @@ export default function AdminPanel({ onNavigateHome }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${adminToken}`
         },
-        body: JSON.stringify(newPayment)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const saved = await res.json();
@@ -1045,11 +1081,60 @@ export default function AdminPanel({ onNavigateHome }) {
           showToast('নতুন পেমেন্ট মেথড যোগ হয়েছে');
         }
         setEditingPayment(null);
-        setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true });
+        setNewPayment({
+          code: '',
+          name_bn: '',
+          name_en: '',
+          number: '',
+          account_type: 'পার্সোনাল (Send Money)',
+          instructions_bn: '',
+          logo: '',
+          logo_delete_url: '',
+          is_active: true
+        });
+        setPaymentLogoFile(null);
+        setPaymentLogoPreview(null);
         setIsPaymentModalOpen(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'পেমেন্ট মেথড সংরক্ষণে ত্রুটি');
       }
     } catch (err) {
-      showToast('পেমেন্ট মেথড সংরক্ষণে ত্রুটি');
+      showToast(err.message || 'পেমেন্ট মেথড সংরক্ষণে ত্রুটি');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  // Delete Payment Method
+  const handleDeletePaymentMethod = async (payment) => {
+    const ok = await confirm({
+      title: 'পেমেন্ট মেথড মুছুন',
+      message: `আপনি কি '${payment.name_bn}' পেমেন্ট মেথডটি স্থায়ীভাবে মুছে ফেলতে চান?`,
+      confirmText: 'মুছে ফেলুন',
+      cancelText: 'বাতিল',
+      type: 'danger'
+    });
+    if (!ok) return;
+
+    try {
+      if (payment.logo_delete_url) {
+        deleteImage(payment.logo_delete_url, adminToken);
+      }
+      const targetId = payment.id !== undefined ? payment.id : payment.code;
+      const res = await fetch(`/api/payment-methods/${targetId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+      if (res.ok) {
+        setPaymentMethods((prev) => prev.filter((p) => p.id !== payment.id && p.code !== payment.code));
+        showToast(`'${payment.name_bn}' পেমেন্ট মেথড মুছে ফেলা হয়েছে`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'পেমেন্ট মেথড মুছতে ব্যর্থ');
+      }
+    } catch (err) {
+      showToast('পেমেন্ট মেথড মুছতে সমস্যা হয়েছে');
     }
   };
 
@@ -3089,14 +3174,26 @@ export default function AdminPanel({ onNavigateHome }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '18px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CreditCard size={18} />
-                <span>পেমেন্ট মেথড তালিকা</span>
+                <span>পেমেন্ট মেথড তালিকা (অনলাইন গেটওয়ে)</span>
               </h3>
               <button
                 className="admin-btn primary"
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => {
                   setEditingPayment(null);
-                  setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true });
+                  setNewPayment({
+                    code: '',
+                    name_bn: '',
+                    name_en: '',
+                    number: '',
+                    account_type: 'পার্সোনাল (Send Money)',
+                    instructions_bn: '',
+                    logo: '',
+                    logo_delete_url: '',
+                    is_active: true
+                  });
+                  setPaymentLogoFile(null);
+                  setPaymentLogoPreview(null);
                   setIsPaymentModalOpen(true);
                 }}
               >
@@ -3113,7 +3210,7 @@ export default function AdminPanel({ onNavigateHome }) {
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
-                    style={{ maxWidth: '500px', width: '90%' }}
+                    style={{ maxWidth: '520px', width: '92%' }}
                   >
                     <div className="admin-modal-header">
                       <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}>
@@ -3125,6 +3222,8 @@ export default function AdminPanel({ onNavigateHome }) {
                         onClick={() => {
                           setIsPaymentModalOpen(false);
                           setEditingPayment(null);
+                          setPaymentLogoFile(null);
+                          setPaymentLogoPreview(null);
                         }}
                       >
                         <X size={18} />
@@ -3132,72 +3231,171 @@ export default function AdminPanel({ onNavigateHome }) {
                     </div>
 
                     <form onSubmit={handleSavePaymentMethod} className="admin-modal-form">
-                      <div className="admin-modal-body">
-                        <div className="field">
-                          <label>কোড (Key) <span style={{ color: 'red' }}>*</span></label>
-                          <input
-                            type="text"
-                            placeholder="e.g. bkash, nagad, rocket"
-                            value={newPayment.code}
-                            onChange={(e) => setNewPayment({ ...newPayment, code: e.target.value })}
-                            required
-                          />
+                      <div className="admin-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        
+                        {/* Logo Upload via Google Drive */}
+                        <div className="field" style={{ margin: 0 }}>
+                          <label style={{ fontWeight: 600, fontSize: '13px' }}>
+                            পেমেন্ট মেথড লোগো (গুগল ড্রাইভে আপলোড)
+                          </label>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <div
+                              style={{
+                                width: '48px',
+                                height: '48px',
+                                border: '1px solid var(--rule)',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: '#F8FAF9',
+                                flexShrink: 0,
+                                overflow: 'hidden',
+                                position: 'relative'
+                              }}
+                              title="লোগো প্রিভিউ"
+                            >
+                              {(paymentLogoPreview || newPayment.logo) ? (
+                                <Image
+                                  src={paymentLogoPreview || newPayment.logo}
+                                  alt="Logo Preview"
+                                  width={44}
+                                  height={44}
+                                  style={{ objectFit: 'contain' }}
+                                  referrerPolicy="no-referrer"
+                                  unoptimized
+                                />
+                              ) : (
+                                <CreditCard size={22} color="var(--muted)" />
+                              )}
+                            </div>
+                            <ImageUploadInput
+                              value={newPayment.logo || ''}
+                              file={paymentLogoFile}
+                              previewUrl={paymentLogoPreview || ''}
+                              onFileSelect={(file, preview) => {
+                                setPaymentLogoFile(file);
+                                setPaymentLogoPreview(preview);
+                              }}
+                              onClear={() => {
+                                setPaymentLogoFile(null);
+                                setPaymentLogoPreview(null);
+                                setNewPayment({ ...newPayment, logo: '' });
+                              }}
+                              placeholder="লোগো সিলেক্ট বা ড্রাইভ আপলোড..."
+                              disabled={savingPayment}
+                            />
+                          </div>
                         </div>
-                        <div className="field">
-                          <label>পেমেন্ট মেথড নাম (বাংলা) <span style={{ color: 'red' }}>*</span></label>
-                          <input
-                            type="text"
-                            placeholder="যেমন: বিকাশ পার্সোনাল"
-                            value={newPayment.name_bn}
-                            onChange={(e) => setNewPayment({ ...newPayment, name_bn: e.target.value })}
-                            required
-                          />
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div className="field" style={{ margin: 0 }}>
+                            <label>কোড (Key) <span style={{ color: 'red' }}>*</span></label>
+                            <input
+                              type="text"
+                              placeholder="যেমন: bkash, nagad, rocket"
+                              value={newPayment.code}
+                              onChange={(e) => setNewPayment({ ...newPayment, code: e.target.value.toLowerCase().trim() })}
+                              required
+                            />
+                          </div>
+                          <div className="field" style={{ margin: 0 }}>
+                            <label>পেমেন্ট মেথড নাম (বাংলা) <span style={{ color: 'red' }}>*</span></label>
+                            <input
+                              type="text"
+                              placeholder="যেমন: বিকাশ"
+                              value={newPayment.name_bn}
+                              onChange={(e) => setNewPayment({ ...newPayment, name_bn: e.target.value })}
+                              required
+                            />
+                          </div>
                         </div>
-                        <div className="field">
-                          <label>হিসাব / অ্যাকাউন্ট নম্বর</label>
-                          <input
-                            type="text"
-                            placeholder="017XXXXXXXX"
-                            value={newPayment.number}
-                            onChange={(e) => setNewPayment({ ...newPayment, number: e.target.value })}
-                          />
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div className="field" style={{ margin: 0 }}>
+                            <label>অ্যাকাউন্ট টাইপ</label>
+                            <select
+                              value={newPayment.account_type || 'পার্সোনাল (Send Money)'}
+                              onChange={(e) => setNewPayment({ ...newPayment, account_type: e.target.value })}
+                              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1.5px solid var(--rule)', background: '#F8FAF9', fontSize: '13px' }}
+                            >
+                              <option value="পার্সোনাল (Send Money)">পার্সোনাল (Send Money)</option>
+                              <option value="মার্চেন্ট (Payment)">মার্চেন্ট (Payment)</option>
+                              <option value="এজেন্ট (Cash In)">এজেন্ট (Cash In)</option>
+                            </select>
+                          </div>
+                          <div className="field" style={{ margin: 0 }}>
+                            <label>অ্যাকাউন্ট নম্বর <span style={{ color: 'red' }}>*</span></label>
+                            <input
+                              type="text"
+                              placeholder="01XXXXXXXXX"
+                              value={newPayment.number}
+                              onChange={(e) => setNewPayment({ ...newPayment, number: e.target.value.trim() })}
+                              required
+                            />
+                          </div>
                         </div>
-                        <div className="field">
-                          <label>নির্দেশনা (Instructions)</label>
+
+                        <div className="field" style={{ margin: 0 }}>
+                          <label>কাউন্টডাউন মোডালে নির্দেশিকা (Instructions)</label>
                           <textarea
-                            placeholder="Send money করুন এবং TrxID দিন..."
+                            placeholder="বিকাশ অ্যাপ থেকে Send Money অপশনে গিয়ে উপরের নম্বরে টাকা পাঠান..."
                             value={newPayment.instructions_bn}
                             onChange={(e) => setNewPayment({ ...newPayment, instructions_bn: e.target.value })}
-                            rows={2}
-                            style={{ width: '100%', padding: '10px', border: '1.5px solid var(--rule)', borderRadius: 'var(--radius-md)', background: '#F8FAF9', fontSize: '14px', resize: 'vertical' }}
+                            rows={3}
+                            style={{
+                              width: '100%',
+                              padding: '10px',
+                              border: '1.5px solid var(--rule)',
+                              borderRadius: 'var(--radius-md)',
+                              background: '#F8FAF9',
+                              fontSize: '13.5px',
+                              resize: 'vertical'
+                            }}
                           />
                         </div>
-                        <div className="field" style={{ marginTop: '12px' }}>
+
+                        <div className="field" style={{ margin: 0 }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input
                               type="checkbox"
                               checked={newPayment.is_active}
                               onChange={(e) => setNewPayment({ ...newPayment, is_active: e.target.checked })}
-                              style={{ width: '16px', height: '16px', accentColor: 'var(--green)' }}
+                              style={{ width: '18px', height: '18px', accentColor: 'var(--green)' }}
                             />
-                            <span style={{ fontSize: '13px', fontWeight: 600 }}>ওয়েবসাইটে পদ্ধতিটি সক্রিয় রাখুন</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600 }}>ওয়েবসাইটে পদ্ধতিটি সক্রিয় রাখুন</span>
                           </label>
                         </div>
                       </div>
 
-                      <div className="admin-modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <div className="admin-modal-footer" style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                         <button
                           type="button"
                           className="admin-btn secondary"
+                          disabled={savingPayment}
                           onClick={() => {
                             setIsPaymentModalOpen(false);
                             setEditingPayment(null);
+                            setPaymentLogoFile(null);
+                            setPaymentLogoPreview(null);
                           }}
                         >
                           বাতিল
                         </button>
-                        <button type="submit" className="admin-btn primary">
-                          {editingPayment ? 'আপডেট করুন' : 'যোগ করুন'}
+                        <button
+                          type="submit"
+                          className="admin-btn primary"
+                          disabled={savingPayment}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          {savingPayment ? (
+                            <>
+                              <Loader2 size={15} className="animate-spin" />
+                              <span>আপলোড ও সংরক্ষণ হচ্ছে...</span>
+                            </>
+                          ) : (
+                            <span>{editingPayment ? 'আপডেট করুন' : 'যোগ করুন'}</span>
+                          )}
                         </button>
                       </div>
                     </form>
@@ -3210,10 +3408,11 @@ export default function AdminPanel({ onNavigateHome }) {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>পদ্ধতি</th>
+                    <th>লোগো</th>
+                    <th>পদ্ধতি ও ধরন</th>
                     <th>কোড</th>
                     <th>অ্যাকাউন্ট নম্বর</th>
-                    <th>নির্দেশনা</th>
+                    <th>৫ মিনিটের নির্দেশিকা</th>
                     <th>সক্রিয় স্ট্যাটাস</th>
                     <th>অ্যাকশন</th>
                   </tr>
@@ -3221,10 +3420,50 @@ export default function AdminPanel({ onNavigateHome }) {
                 <tbody>
                   {paymentMethods.map((p) => (
                     <tr key={p.id || p.code}>
-                      <td><strong>{p.name_bn}</strong></td>
-                      <td className="mono">{p.code}</td>
-                      <td className="mono">{p.number || '—'}</td>
-                      <td style={{ fontSize: '12px' }}>{p.instructions_bn}</td>
+                      <td>
+                        <div
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {p.logo ? (
+                            <Image
+                              src={p.logo}
+                              alt={p.name_bn || 'Payment logo'}
+                              width={36}
+                              height={36}
+                              style={{ objectFit: 'contain' }}
+                              referrerPolicy="no-referrer"
+                              unoptimized
+                            />
+                          ) : (
+                            <CreditCard size={18} color="var(--muted)" />
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div>
+                          <strong>{p.name_bn}</strong>
+                          {p.account_type && (
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>
+                              {p.account_type}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="mono" style={{ fontSize: '12px' }}>{p.code}</td>
+                      <td className="mono" style={{ fontWeight: 700, color: 'var(--green)' }}>{p.number || '—'}</td>
+                      <td style={{ fontSize: '12px', maxWidth: '240px', color: '#475569' }}>
+                        {p.instructions_bn || '—'}
+                      </td>
                       <td>
                         <button
                           type="button"
@@ -3259,16 +3498,37 @@ export default function AdminPanel({ onNavigateHome }) {
                         </button>
                       </td>
                       <td>
-                        <button
-                          className="admin-btn"
-                          onClick={() => {
-                            setEditingPayment(p);
-                            setNewPayment({ ...p });
-                            setIsPaymentModalOpen(true);
-                          }}
-                        >
-                          এডিট
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            className="admin-btn"
+                            style={{ padding: '6px 10px', fontSize: '12px' }}
+                            onClick={() => {
+                              setEditingPayment(p);
+                              setNewPayment({
+                                ...p,
+                                account_type: p.account_type || 'পার্সোনাল (Send Money)'
+                              });
+                              setPaymentLogoFile(null);
+                              setPaymentLogoPreview(p.logo || null);
+                              setIsPaymentModalOpen(true);
+                            }}
+                            title="এডিট করুন"
+                          >
+                            <Edit3 size={13} style={{ marginRight: '3px' }} />
+                            <span>এডিট</span>
+                          </button>
+                          {p.code !== 'cod' && (
+                            <button
+                              type="button"
+                              className="admin-btn danger"
+                              style={{ padding: '6px 10px', fontSize: '12px', color: '#dc2626', borderColor: '#fecaca', background: '#fff1f2' }}
+                              onClick={() => handleDeletePaymentMethod(p)}
+                              title="পেমেন্ট মেথড মুছুন"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -4121,7 +4381,7 @@ export default function AdminPanel({ onNavigateHome }) {
             </div>
 
             {/* 7.1. ACTIVE ADMIN DEVICES & SESSIONS MANAGEMENT (80% WIDTH & MAX 3 DEVICES) */}
-            <div style={{ width: '80%', minWidth: '320px', maxWidth: '1000px', marginTop: '20px', borderTop: '1px solid var(--rule)', paddingTop: '28px' }}>
+            <div style={{ width: '80%', minWidth: '320px', maxWidth: '1000px', margin: '36px auto 0', borderTop: '1px solid var(--rule)', paddingTop: '28px' }}>
               
               {/* Security Header Card */}
               <div

@@ -205,13 +205,8 @@ export default function LanguageToggle({ className = '', style = {} }) {
   }, [currentLang, mounted]);
 
   return (
-    <>
-      {/* Hidden container for Google Translate Engine */}
-      <div id="google_translate_element" style={{ display: 'none' }} aria-hidden="true" />
-
-      {/* Pill Toggle Switch: [ বাং | EN ] (with notranslate so Google never alters "বাং") */}
-      <div
-        className={`lang-toggle-pill notranslate ${className}`}
+    <div
+      className={`lang-toggle-pill notranslate ${className}`}
         translate="no"
         style={{
           display: 'inline-flex',
@@ -287,6 +282,5 @@ export default function LanguageToggle({ className = '', style = {} }) {
           <span className="notranslate" translate="no">EN</span>
         </button>
       </div>
-    </>
   );
 }

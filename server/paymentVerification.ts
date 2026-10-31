@@ -7,7 +7,7 @@
 export interface PaymentVerificationParams {
   apiUrl: string;
   apiKey: string;
-  trxId: string;
+  trxId?: string;
   sender: 'bkash' | 'nagad' | '16216' | string;
   number: string;
   amount: number;
@@ -46,7 +46,7 @@ export function normalizePaymentSender(methodCodeOrName: string): string {
 async function callVerificationApi(
   apiUrl: string,
   apiKey: string,
-  payload: { trxId: string; sender: string; number: string; amount: number },
+  payload: any,
   timeoutMs: number = 8000
 ): Promise<{ status: number; ok: boolean; data: any }> {
   const controller = new AbortController();
@@ -111,21 +111,24 @@ export async function verifyPaymentWithRetry(
   const cleanSender = normalizePaymentSender(sender);
   const numAmount = Math.round(Number(amount) || 0);
 
-  if (!cleanTrxId) {
+  if (!cleanNumber) {
     return {
       success: false,
       verified: false,
-      code: 'INVALID_TRX_ID',
-      message: 'ট্রানজেকশন আইডি (TrxID) প্রদান করুন।'
+      code: 'INVALID_NUMBER',
+      message: 'প্রেরক মোবাইল নম্বর প্রদান করুন।'
     };
   }
 
-  const payload = {
-    trxId: cleanTrxId,
+  const payload: any = {
     sender: cleanSender,
     number: cleanNumber,
     amount: numAmount
   };
+
+  if (cleanTrxId) {
+    payload.trxId = cleanTrxId;
+  }
 
   const MAX_ATTEMPTS = 3;
   let lastResponse: any = null;
@@ -142,13 +145,14 @@ export async function verifyPaymentWithRetry(
 
       // 1. STRICT SUCCESS CASE: ONLY when response code is strictly "VERIFIED_SUCCESS"
       if (responseCode === 'VERIFIED_SUCCESS') {
+        const foundTrxId = res.data?.data?.trxId || res.data?.data?.trx_id || res.data?.trxId || cleanTrxId || '';
         console.log(`[PaymentVerify] ✅ Verified successfully with VERIFIED_SUCCESS on attempt ${attempt}:`, res.data);
         return {
           success: true,
           verified: true,
           code: 'VERIFIED_SUCCESS',
           message: res.data.message || 'পেমেন্ট সফলভাবে যাচাই হয়েছে।',
-          data: res.data.data,
+          data: { ...(res.data.data || {}), trxId: foundTrxId },
           raw: res.data,
           attemptsMade
         };
@@ -219,7 +223,9 @@ export async function verifyPaymentWithRetry(
   } else if (String(finalCode).toUpperCase() === 'AMOUNT_MISMATCH') {
     bengaliMessage = 'টাকার পরিমাণের অমিল পাওয়া গেছে! অনুগ্রহ করে অর্ডারের সম্পূর্ণ টাকা পরিশোধ করে সঠিক TrxID দিন।';
   } else if (String(finalCode).toUpperCase() === 'TRANSACTION_NOT_FOUND') {
-    bengaliMessage = `TrxID "${cleanTrxId}" এর কোনো লেনদেন খুঁজে পাওয়া যায়নি। অনুগ্রহ করে আপনার TrxID এবং প্রেরক নম্বর সঠিকভাবে চেক করুন। (৩ বার অনুসন্ধান করা হয়েছে)`;
+    bengaliMessage = cleanTrxId
+      ? `TrxID "${cleanTrxId}" এর কোনো লেনদেন খুঁজে পাওয়া যায়নি। অনুগ্রহ করে আপনার TrxID এবং প্রেরক নম্বর সঠিকভাবে চেক করুন।`
+      : `নম্বর ${cleanNumber} থেকে ৳${numAmount} এর লেনদেন এখনও পাওয়া যায়নি। অনুসন্ধান চলছে...`;
   }
 
   return {

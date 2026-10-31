@@ -104,12 +104,20 @@ export async function POST(req: NextRequest) {
     // Check if the selected payment is COD or online payment (bKash, Nagad, Rocket)
     const methodStr = String(payment_method || '').toLowerCase();
     const isCod = methodStr === 'cod' || methodStr.includes('ক্যাশ') || methodStr.includes('cash');
+    const isOnlinePayment = !isCod && (
+      methodStr === 'online' ||
+      methodStr.includes('online') ||
+      methodStr.includes('অনলাইন') ||
+      !trx_id
+    );
 
-    let payment_status = isCod ? 'unpaid' : 'pending';
+    let payment_status = isCod ? 'unpaid' : (isOnlinePayment ? 'pending_payment' : 'pending');
+    let order_status = isOnlinePayment ? 'pending_payment' : 'পেন্ডিং';
     let payment_verified_at: string | null = null;
     let payment_verified_data: any = null;
 
-    if (!isCod) {
+    // If customer already supplied TrxID directly, attempt immediate verification
+    if (!isCod && trx_id && String(trx_id).trim()) {
       const cleanTrx = String(trx_id || '').trim();
 
       // Check if trx_id is already used in any regular or package order in the database
@@ -139,13 +147,6 @@ export async function POST(req: NextRequest) {
           }, { status: 400 });
         }
 
-        if (!cleanTrx) {
-          return NextResponse.json({
-            error: 'পেমেন্ট যাচাইয়ের জন্য ট্রানজেকশন আইডি (TrxID) আবশ্যক',
-            code: 'MISSING_TRX_ID'
-          }, { status: 400 });
-        }
-
         const senderKey = normalizePaymentSender(payment_method);
 
         console.log(`[OrderPayment] Auto-verifying order payment for customer ${customer_phone} via ${senderKey}`);
@@ -172,6 +173,7 @@ export async function POST(req: NextRequest) {
 
         // Verification successful strictly with VERIFIED_SUCCESS!
         payment_status = 'verified';
+        order_status = 'confirmed';
         payment_verified_at = new Date().toISOString();
         payment_verified_data = verifyResult.data || {
           trxId: cleanTrx,
@@ -189,21 +191,28 @@ export async function POST(req: NextRequest) {
       customer_phone,
       delivery_address,
       delivery_area,
-      payment_method,
+      payment_method: isOnlinePayment ? 'অনলাইন পেমেন্ট' : (isCod ? 'ক্যাশ অন ডেলিভারি' : payment_method),
       sender_number: sender_number || '',
       trx_id: trx_id || '',
       items_json: verifiedItems,
       subtotal: serverSubtotal,
       delivery_fee: serverDeliveryFee,
       total_amount: calculatedTotal,
+      status: order_status,
       payment_status,
       payment_verified_at,
       payment_verified_data
     });
 
-    DBManager.saveUserCart(userPayload.id, {});
+    if (isCod || payment_status === 'verified') {
+      DBManager.saveUserCart(userPayload.id, {});
+    }
 
-    return NextResponse.json(order);
+    return NextResponse.json({
+      ...order,
+      is_online_payment: isOnlinePayment,
+      redirect_url: isOnlinePayment ? `/payment?order_id=${order.id}&type=regular` : undefined
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

@@ -34,10 +34,10 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   const { adminUser, adminToken, isAuthHydrated } = useAuth();
   const { isCartOpen, setIsCartOpen, totalCount, subtotal } = useCart();
 
-  // Hide header/footer and skip store maintenance checks on admin and delivery views
-  const isAdminOrDelivery = pathname.startsWith('/admin') || pathname.startsWith('/delivery') || pathname.startsWith('/delivery-man');
+  // Hide header/footer and skip store maintenance checks on admin, delivery, and dedicated payment gateway views
+  const isStandalonePage = pathname.startsWith('/admin') || pathname.startsWith('/delivery') || pathname.startsWith('/delivery-man') || pathname.startsWith('/payment');
 
-  if (isAdminOrDelivery) {
+  if (isStandalonePage) {
     return <>{children}</>;
   }
 

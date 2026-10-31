@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -14,7 +15,9 @@ import {
   ShieldCheck,
   Loader2,
   Package,
-  ShoppingCart
+  ShoppingCart,
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
@@ -27,6 +30,7 @@ export default function CheckoutView({
   deliveryAreas: propDeliveryAreas,
   defaultDeliveryFee: propDefaultDeliveryFee
 }) {
+  const router = useRouter();
   const { user, token, openAuthModal } = useAuth();
   const { cart, subtotal: cartSubtotal, clearCart, showToast } = useCart();
 
@@ -66,9 +70,7 @@ export default function CheckoutView({
   const [phone, setPhone] = useState(user ? user.phone : '');
   const [address, setAddress] = useState('');
   const [area, setArea] = useState('');
-  const [selectedPaymentCode, setSelectedPaymentCode] = useState('cod');
-  const [senderNumber, setSenderNumber] = useState('');
-  const [trxId, setTrxId] = useState('');
+  const [selectedPaymentType, setSelectedPaymentType] = useState('cod'); // 'cod' | 'online'
 
   const [deliveryAreas, setDeliveryAreas] = useState(propDeliveryAreas || []);
   const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(propDefaultDeliveryFee || 60);
@@ -124,10 +126,6 @@ export default function CheckoutView({
 
   const totalAmount = subtotal + deliveryFee;
 
-  const currentPaymentMethod = paymentMethods.find(
-    (p) => p.code === selectedPaymentCode
-  ) || paymentMethods[0];
-
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
@@ -150,15 +148,6 @@ export default function CheckoutView({
     }
     if (!area) newErrors.area = 'এলাকা বেছে নিন';
 
-    if (selectedPaymentCode !== 'cod') {
-      if (!senderNumber.trim()) {
-        newErrors.senderNumber = 'যে নম্বর থেকে টাকা পাঠিয়েছেন তা দিন';
-      }
-      if (!trxId.trim()) {
-        newErrors.trxId = 'TrxID ট্রানজেকশন কোড দিন';
-      }
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       showToast('অনুগ্রহ করে সব তথ্য সঠিকভাবে দিন');
@@ -167,7 +156,7 @@ export default function CheckoutView({
 
     setSubmitting(true);
     try {
-      // If this is a package order
+      // 1. PACKAGE ORDER FLOW
       if (isPackageOrder) {
         const res = await fetch('/api/package-orders', {
           method: 'POST',
@@ -180,9 +169,7 @@ export default function CheckoutView({
             customer_phone: phone.trim(),
             delivery_address: address.trim(),
             delivery_area: area,
-            payment_method: selectedPaymentCode === 'cod' ? 'ক্যাশ অন ডেলিভারি' : (currentPaymentMethod ? currentPaymentMethod.name_bn : 'ক্যাশ অন ডেলিভারি'),
-            sender_number: senderNumber.trim() || null,
-            trx_id: trxId.trim() || null,
+            payment_method: selectedPaymentType === 'cod' ? 'ক্যাশ অন ডেলিভারি' : 'অনলাইন পেমেন্ট',
             items: packageOrderData.items,
             subtotal: packageRegularTotal,
             discount_total: discountTotal,
@@ -196,6 +183,16 @@ export default function CheckoutView({
           throw new Error(data.error || 'প্যাকেজ অর্ডার করতে সমস্যা হয়েছে');
         }
 
+        // If online payment, immediately route to dedicated /payment gateway page!
+        if (selectedPaymentType === 'online' && (data.redirect_url || data.is_online_payment)) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('arot_last_placed_order', JSON.stringify(data));
+          }
+          router.push(data.redirect_url || `/payment?order_id=${data.id}&type=package`);
+          return;
+        }
+
+        // Cash on delivery flow:
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('package_order_data');
           sessionStorage.setItem('arot_last_placed_order', JSON.stringify(data));
@@ -205,7 +202,7 @@ export default function CheckoutView({
         return;
       }
 
-      // Standard Cart Order
+      // 2. STANDARD CART ORDER FLOW
       const items = cartEntries.map(([key, item]) => ({
         key,
         productId: item.productId || item.brandId || item.id || null,
@@ -231,9 +228,7 @@ export default function CheckoutView({
           customer_phone: phone.trim(),
           delivery_address: address.trim(),
           delivery_area: area,
-          payment_method: currentPaymentMethod ? currentPaymentMethod.name_bn : 'ক্যাশ অন ডেলিভারি',
-          sender_number: senderNumber.trim(),
-          trx_id: trxId.trim(),
+          payment_method: selectedPaymentType === 'cod' ? 'ক্যাশ অন ডেলিভারি' : 'অনলাইন পেমেন্ট',
           items,
           subtotal,
           delivery_fee: deliveryFee,
@@ -243,33 +238,29 @@ export default function CheckoutView({
 
       const data = await res.json();
       if (!res.ok) {
-        if (data.code || data.verified === false) {
-          setVerificationErrorModal({
-            code: data.code || 'VERIFICATION_FAILED',
-            message: data.error || data.message || 'পেমেন্ট যাচাইকরণ ব্যর্থ হয়েছে',
-            details: data.details || null,
-            attemptsMade: data.attemptsMade || 3
-          });
-          return;
-        }
         throw new Error(data.error || 'অর্ডার করতে সমস্যা হয়েছে');
       }
 
+      // If online payment, immediately route to dedicated /payment gateway page!
+      if (selectedPaymentType === 'online' && (data.redirect_url || data.is_online_payment)) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('arot_last_placed_order', JSON.stringify(data));
+        }
+        router.push(data.redirect_url || `/payment?order_id=${data.id}&type=regular`);
+        return;
+      }
+
+      // Cash on delivery flow:
       try {
         sessionStorage.removeItem('package_order_data');
         localStorage.removeItem('arot_active_package_order');
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('arot_last_placed_order', JSON.stringify(data));
         }
-        if (isPackageOrder) {
-          localStorage.removeItem('arot_package_box_quantities');
-          window.dispatchEvent(new Event('arot_package_cleared'));
-        }
       } catch (e) {}
 
-      if (!isPackageOrder) {
-        clearCart();
-      }
+      clearCart();
+      showToast('আপনার অর্ডার সফলভাবে সম্পন্ন হয়েছে!');
       onOrderSuccess(data);
     } catch (err) {
       showToast(err.message || 'অর্ডার করতে সমস্যা হয়েছে');
@@ -539,114 +530,149 @@ export default function CheckoutView({
               {errors.area && <div className="err-msg">{errors.area}</div>}
             </div>
 
-            {/* Payment Methods Section */}
-            <div className="payment-method-box">
-              <label style={{ fontSize: '13px', fontWeight: 700 }}>
+            {/* Payment Methods Section: Cash on Delivery vs Online Payment */}
+            <div className="payment-method-box" style={{ marginTop: '20px' }}>
+              <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', display: 'block', marginBottom: '10px' }}>
                 পেমেন্ট পদ্ধতি বেছে নিন:
               </label>
-              <div className="payment-method-grid">
-                {paymentMethods
-                  .filter((p) => p.is_active)
-                  .map((method) => (
-                    <div
-                      key={method.id}
-                      className={`payment-pill ${
-                        selectedPaymentCode === method.code ? 'selected' : ''
-                      }`}
-                      onClick={() => setSelectedPaymentCode(method.code)}
-                    >
-                      {method.name_bn}
-                    </div>
-                  ))}
-              </div>
 
-              {/* COD Instruction */}
-              {selectedPaymentCode === 'cod' && (
-                <div className="payment-instructions" style={{ background: '#f8fafc', borderColor: '#cbd5e1' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, fontSize: '13px', color: 'var(--ink)' }}>
-                    <Banknote size={18} style={{ color: 'var(--green)', flexShrink: 0 }} />
-                    <div>
-                      <strong>ক্যাশ অন ডেলিভারি:</strong> পণ্য বুঝে পেয়ে ডেলিভারি ম্যানকে সর্বমোট <strong>৳{totalAmount}</strong> পরিশোধ করুন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই।
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                {/* Cash on Delivery Card */}
+                <div
+                  onClick={() => setSelectedPaymentType('cod')}
+                  style={{
+                    border: selectedPaymentType === 'cod' ? '2px solid var(--green, #006C4C)' : '1.5px solid #e2e8f0',
+                    background: selectedPaymentType === 'cod' ? '#f0fdf4' : '#ffffff',
+                    borderRadius: '12px',
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: selectedPaymentType === 'cod' ? '0 4px 12px rgba(0, 108, 76, 0.08)' : 'none'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      border: selectedPaymentType === 'cod' ? '6px solid var(--green, #006C4C)' : '2px solid #cbd5e1',
+                      background: '#ffffff',
+                      flexShrink: 0,
+                      marginTop: '2px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '14px', color: 'var(--ink)' }}>
+                      <Banknote size={18} style={{ color: selectedPaymentType === 'cod' ? 'var(--green, #006C4C)' : '#64748b' }} />
+                      <span>ক্যাশ অন ডেলিভারি</span>
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                      পণ্য হাতে পেয়ে সম্পূর্ণ মূল্য পরিশোধ করুন। কোনো অগ্রিম পেমেন্ট লাগবে না।
+                    </p>
+                  </div>
+                </div>
+
+                {/* Online Payment Card */}
+                <div
+                  onClick={() => setSelectedPaymentType('online')}
+                  style={{
+                    border: selectedPaymentType === 'online' ? '2px solid var(--green, #006C4C)' : '1.5px solid #e2e8f0',
+                    background: selectedPaymentType === 'online' ? '#f0fdf4' : '#ffffff',
+                    borderRadius: '12px',
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: selectedPaymentType === 'online' ? '0 4px 12px rgba(0, 108, 76, 0.08)' : 'none'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      border: selectedPaymentType === 'online' ? '6px solid var(--green, #006C4C)' : '2px solid #cbd5e1',
+                      background: '#ffffff',
+                      flexShrink: 0,
+                      marginTop: '2px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '14px', color: 'var(--ink)', flexWrap: 'wrap' }}>
+                      <CreditCard size={18} style={{ color: selectedPaymentType === 'online' ? 'var(--green, #006C4C)' : '#64748b' }} />
+                      <span>অনলাইন পেমেন্ট</span>
+                      <span
+                        style={{
+                          background: '#dcfce7',
+                          color: '#15803d',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        অটো-ভেরিফাই
+                      </span>
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                      বিকাশ, নগদ, রকেট ইত্যাদির মাধ্যমে তাৎক্ষণিক ও নিরাপদে পেমেন্ট করুন।
+                    </p>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                      <span style={{ fontSize: '10.5px', background: '#e11d48', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>বিকাশ</span>
+                      <span style={{ fontSize: '10.5px', background: '#ea580c', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>নগদ</span>
+                      <span style={{ fontSize: '10.5px', background: '#7c3aed', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>রকেট</span>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Online/Mobile Payment Instructions & TrxID inputs */}
-              {currentPaymentMethod && selectedPaymentCode !== 'cod' && (
-                <div className="payment-instructions">
-                  <p>
-                    <strong>{currentPaymentMethod.name_bn}:</strong>{' '}
-                    {currentPaymentMethod.instructions_bn}
-                  </p>
-                  {currentPaymentMethod.number && (
-                    <p style={{ marginTop: '4px', fontWeight: 600 }}>
-                      নম্বর:{' '}
-                      <span className="mono" style={{ color: 'var(--green)' }}>
-                        {currentPaymentMethod.number}
-                      </span>
-                    </p>
-                  )}
-
-                  <div className="field-row" style={{ marginTop: '10px' }}>
-                    <div
-                      className={`field ${errors.senderNumber ? 'error' : ''}`}
-                    >
-                      <label style={{ fontSize: '11.5px' }}>
-                        আপনার যে নম্বর থেকে টাকা পাঠিয়েছেন:
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="01XXXXXXXXX"
-                        value={senderNumber}
-                        onChange={(e) => {
-                          setSenderNumber(e.target.value);
-                          if (errors.senderNumber) setErrors({ ...errors, senderNumber: '' });
-                        }}
-                      />
-                      {errors.senderNumber && (
-                        <div className="err-msg">{errors.senderNumber}</div>
-                      )}
-                    </div>
-                    <div className={`field ${errors.trxId ? 'error' : ''}`}>
-                      <label style={{ fontSize: '11.5px' }}>
-                        ট্রানজেকশন আইডি (TrxID):
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="যেমন: 8N7A6D5E"
-                        value={trxId}
-                        onChange={(e) => {
-                          setTrxId(e.target.value);
-                          if (errors.trxId) setErrors({ ...errors, trxId: '' });
-                        }}
-                      />
-                      {errors.trxId && (
-                        <div className="err-msg">{errors.trxId}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Automated Verification on Order Submit Note */}
-                  <div
-                    style={{
-                      marginTop: '14px',
-                      background: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
-                      borderRadius: '8px',
-                      padding: '10px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      fontSize: '12.5px',
-                      color: '#15803d'
-                    }}
-                  >
-                    <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
-                    <span style={{ lineHeight: 1.4 }}>
-                      সঠিক প্রেরক নম্বর ও TrxID লিখে নিচের <strong>"অর্ডার নিশ্চিত করুন"</strong> বাটনে চাপ দিন। সার্ভার স্বয়ংক্রিয়ভাবে পেমেন্ট যাচাই করে অর্ডার সম্পন্ন করবে।
-                    </span>
-                  </div>
+              {/* Informative Guidance Banner */}
+              {selectedPaymentType === 'cod' ? (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '12.5px',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Banknote size={16} style={{ color: 'var(--green, #006C4C)', flexShrink: 0 }} />
+                  <span>
+                    অর্ডার নিশ্চিত করলে আপনার ঠিকানায় পণ্য পাঠিয়ে দেওয়া হবে। ডেলিভারির সময় সর্বমোট <strong>৳{toBengaliNumber(totalAmount)}</strong> টাকা পরিশোধ করুন।
+                  </span>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '12.5px',
+                    color: '#1e40af',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <ShieldCheck size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
+                  <span>
+                    নিচের বাটনে চাপ দিলে আমাদের নিরাপদ পেমেন্ট পেজে নিয়ে যাওয়া হবে, যেখানে আপনি আপনার বিকাশ/নগদ/রকেট নম্বর দিয়ে ৫ মিনিটে পেমেন্ট সম্পন্ন করতে পারবেন।
+                  </span>
                 </div>
               )}
             </div>
@@ -655,19 +681,41 @@ export default function CheckoutView({
               type="submit"
               className="place-order-btn"
               disabled={submitting}
-              whileHover={{ scale: 1.02 }}
+              whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                marginTop: '16px',
+                background: selectedPaymentType === 'online' ? '#0284c7' : 'var(--green, #006C4C)',
+                boxShadow: selectedPaymentType === 'online'
+                  ? '0 4px 14px rgba(2, 132, 199, 0.35)'
+                  : 'var(--shadow-green, 0 4px 14px rgba(0, 108, 76, 0.3))'
+              }}
             >
               {submitting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  <span>{selectedPaymentCode !== 'cod' ? 'পেমেন্ট যাচাই ও অর্ডার সম্পন্ন হচ্ছে...' : 'অর্ডার জমা হচ্ছে...'}</span>
+                  <span>
+                    {selectedPaymentType === 'online' ? 'পেমেন্ট গেটওয়েতে সংযোগ করা হচ্ছে...' : 'অর্ডার সম্পন্ন হচ্ছে...'}
+                  </span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 size={18} />
-                  <span>অর্ডার নিশ্চিত করুন</span>
+                  {selectedPaymentType === 'online' ? (
+                    <>
+                      <CreditCard size={18} />
+                      <span>পেমেন্টে এগিয়ে যান (অনলাইন পেমেন্ট)</span>
+                      <ChevronRight size={18} />
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={18} />
+                      <span>অর্ডার নিশ্চিত করুন (ক্যাশ অন ডেলিভারি)</span>
+                    </>
+                  )}
                 </>
               )}
             </motion.button>

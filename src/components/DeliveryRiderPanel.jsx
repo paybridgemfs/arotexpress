@@ -47,19 +47,21 @@ export default function DeliveryRiderPanel({ onNavigateHome }) {
   const settings = storeContext?.settings;
 
   // Rider auth state (stored in localStorage for persistent session)
-  const [riderToken, setRiderToken] = useState(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('rider_token') || null;
-  });
-  const [rider, setRider] = useState(() => {
-    if (typeof window === 'undefined') return null;
+  const [riderToken, setRiderToken] = useState(null);
+  const [rider, setRider] = useState(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem('rider_data');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+      if (typeof window !== 'undefined') {
+        const savedToken = localStorage.getItem('rider_token');
+        const savedData = localStorage.getItem('rider_data');
+        if (savedToken) setRiderToken(savedToken);
+        if (savedData) setRider(JSON.parse(savedData));
+      }
+    } catch {}
+    setIsHydrated(true);
+  }, []);
 
   // Login form state
   const [loginPhone, setLoginPhone] = useState('');
@@ -251,6 +253,15 @@ export default function DeliveryRiderPanel({ onNavigateHome }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'পাসওয়ার্ড পরিবর্তন ব্যর্থ');
   };
+
+  // If NOT yet hydrated, render neutral loading placeholder to avoid SSR mismatch
+  if (!isHydrated) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--cream)' }}>
+        <div style={{ color: 'var(--muted)', fontSize: '14px', fontWeight: 600 }}>লোড হচ্ছে...</div>
+      </div>
+    );
+  }
 
   // =========================================================================
   // VIEW 1: LOGIN FORM (If not authenticated as rider)

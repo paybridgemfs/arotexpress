@@ -74,6 +74,9 @@ export interface PaymentMethod {
   name_bn: string;
   name_en: string;
   number: string;
+  account_type?: string;
+  logo?: string;
+  logo_delete_url?: string;
   instructions_bn: string;
   is_active: boolean;
 }
@@ -576,8 +579,15 @@ export class DBManager {
           name_en VARCHAR(100) NOT NULL,
           number VARCHAR(50),
           instructions_bn TEXT,
-          is_active BOOLEAN DEFAULT TRUE
+          is_active BOOLEAN DEFAULT TRUE,
+          logo TEXT,
+          logo_delete_url TEXT,
+          account_type VARCHAR(50)
         );
+
+        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo TEXT;
+        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_delete_url TEXT;
+        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS account_type VARCHAR(50);
 
         CREATE TABLE IF NOT EXISTS orders (
           id SERIAL PRIMARY KEY,
@@ -1874,8 +1884,28 @@ export class DBManager {
       const current = this.data.paymentMethods[idx];
       if (isPgConnected) {
         pool.query(
-          `UPDATE payment_methods SET name_bn = $1, name_en = $2, number = $3, instructions_bn = $4, is_active = $5 WHERE id = $6 OR code = $7`,
-          [current.name_bn, current.name_en, current.number || '', current.instructions_bn || '', current.is_active !== false, current.id, current.code]
+          `UPDATE payment_methods SET
+             name_bn = $1,
+             name_en = $2,
+             number = $3,
+             instructions_bn = $4,
+             is_active = $5,
+             logo = $6,
+             logo_delete_url = $7,
+             account_type = $8
+           WHERE id = $9 OR code = $10`,
+          [
+            current.name_bn,
+            current.name_en,
+            current.number || '',
+            current.instructions_bn || '',
+            current.is_active !== false,
+            current.logo || null,
+            current.logo_delete_url || null,
+            current.account_type || null,
+            current.id,
+            current.code
+          ]
         ).catch((e) => console.warn('PG sync error (payment update):', e.message));
       }
       return this.data.paymentMethods[idx];
@@ -1902,15 +1932,28 @@ export class DBManager {
 
       if (isPgConnected) {
         pool.query(
-          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo, logo_delete_url, account_type)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
              name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
              instructions_bn = EXCLUDED.instructions_bn,
-             is_active = EXCLUDED.is_active`,
-          [updated.code, updated.name_bn, updated.name_en, updated.number || '', updated.instructions_bn || '', updated.is_active !== undefined ? updated.is_active : true]
+             is_active = EXCLUDED.is_active,
+             logo = EXCLUDED.logo,
+             logo_delete_url = EXCLUDED.logo_delete_url,
+             account_type = EXCLUDED.account_type`,
+          [
+            updated.code,
+            updated.name_bn,
+            updated.name_en,
+            updated.number || '',
+            updated.instructions_bn || '',
+            updated.is_active !== undefined ? updated.is_active : true,
+            updated.logo || null,
+            updated.logo_delete_url || null,
+            updated.account_type || null
+          ]
         ).catch((e) => console.warn('PG sync error (payment upsert):', e.message));
       }
       return updated;
@@ -1928,16 +1971,29 @@ export class DBManager {
     if (isPgConnected) {
       try {
         const res = await pool.query(
-          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo, logo_delete_url, account_type)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
              name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
              instructions_bn = EXCLUDED.instructions_bn,
-             is_active = EXCLUDED.is_active
+             is_active = EXCLUDED.is_active,
+             logo = EXCLUDED.logo,
+             logo_delete_url = EXCLUDED.logo_delete_url,
+             account_type = EXCLUDED.account_type
            RETURNING *`,
-          [newMethod.code, newMethod.name_bn, newMethod.name_en, newMethod.number || '', newMethod.instructions_bn || '', newMethod.is_active]
+          [
+            newMethod.code,
+            newMethod.name_bn,
+            newMethod.name_en,
+            newMethod.number || '',
+            newMethod.instructions_bn || '',
+            newMethod.is_active,
+            newMethod.logo || null,
+            newMethod.logo_delete_url || null,
+            newMethod.account_type || null
+          ]
         );
         if (res.rows[0]) {
           newMethod.id = res.rows[0].id;
@@ -1947,6 +2003,20 @@ export class DBManager {
       }
     }
     return newMethod;
+  }
+
+  static async deletePaymentMethod(id: number | string) {
+    const numId = typeof id === 'number' ? id : parseInt(String(id), 10);
+    const idx = this.data.paymentMethods.findIndex(p => (Number.isInteger(numId) && p.id === numId) || (p.code && p.code === String(id)));
+    if (idx !== -1) {
+      const deleted = this.data.paymentMethods.splice(idx, 1)[0];
+      if (isPgConnected) {
+        pool.query(`DELETE FROM payment_methods WHERE id = $1 OR code = $2`, [deleted.id, deleted.code])
+          .catch((e: any) => console.warn('PG sync error (payment delete):', e.message));
+      }
+      return true;
+    }
+    return false;
   }
 
   // Delivery Areas & Charge
@@ -2000,25 +2070,121 @@ export class DBManager {
   }
 
   // Orders
-  static isTrxIdUsed(trxId: string): { used: boolean; orderType?: 'orders' | 'package_orders'; order?: any } {
+  static isTrxIdUsed(trxId: string, excludeOrderId?: number, excludeOrderType?: 'orders' | 'package_orders'): { used: boolean; orderType?: 'orders' | 'package_orders'; order?: any } {
     if (!trxId || !String(trxId).trim()) return { used: false };
     const clean = String(trxId).trim().toUpperCase();
 
     const regularOrder = (this.data.orders || []).find(
-      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean
+      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean && !(excludeOrderType === 'orders' && o.id === excludeOrderId)
     );
     if (regularOrder) {
       return { used: true, orderType: 'orders', order: regularOrder };
     }
 
     const packageOrder = (this.data.package_orders || []).find(
-      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean
+      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean && !(excludeOrderType === 'package_orders' && o.id === excludeOrderId)
     );
     if (packageOrder) {
       return { used: true, orderType: 'package_orders', order: packageOrder };
     }
 
     return { used: false };
+  }
+
+  static getOrderById(orderId: number | string, orderType: 'orders' | 'package_orders' = 'orders') {
+    const numId = typeof orderId === 'number' ? orderId : parseInt(String(orderId), 10);
+    if (orderType === 'package_orders') {
+      return (this.data.package_orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
+    }
+    return (this.data.orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
+  }
+
+  static confirmOrderPayment(
+    orderId: number | string,
+    orderType: 'orders' | 'package_orders',
+    paymentData: {
+      payment_method: string;
+      sender_number: string;
+      trx_id?: string;
+      payment_verified_data?: any;
+    }
+  ) {
+    const numId = typeof orderId === 'number' ? orderId : parseInt(String(orderId), 10);
+    const nowIso = new Date().toISOString();
+
+    if (orderType === 'package_orders') {
+      const pOrder = (this.data.package_orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
+      if (!pOrder) return null;
+
+      pOrder.status = 'confirmed';
+      pOrder.payment_status = 'verified';
+      pOrder.payment_method = paymentData.payment_method;
+      pOrder.sender_number = paymentData.sender_number;
+      pOrder.trx_id = paymentData.trx_id || pOrder.trx_id || '';
+      pOrder.payment_verified_at = nowIso;
+      pOrder.payment_verified_data = paymentData.payment_verified_data || null;
+
+      if (isPgConnected) {
+        pool.query(
+          `UPDATE package_orders SET
+             status = $1,
+             payment_status = $2,
+             payment_method = $3,
+             sender_number = $4,
+             trx_id = $5,
+             payment_verified_at = $6,
+             payment_verified_data = $7
+           WHERE id = $8`,
+          [
+            pOrder.status,
+            pOrder.payment_status,
+            pOrder.payment_method,
+            pOrder.sender_number,
+            pOrder.trx_id,
+            pOrder.payment_verified_at,
+            pOrder.payment_verified_data ? JSON.stringify(pOrder.payment_verified_data) : null,
+            pOrder.id
+          ]
+        ).catch((e) => console.warn('PG sync error (confirm package payment):', e.message));
+      }
+      return pOrder;
+    }
+
+    const order = (this.data.orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
+    if (!order) return null;
+
+    order.status = 'confirmed';
+    order.payment_status = 'verified';
+    order.payment_method = paymentData.payment_method;
+    order.sender_number = paymentData.sender_number;
+    order.trx_id = paymentData.trx_id || order.trx_id || '';
+    order.payment_verified_at = nowIso;
+    order.payment_verified_data = paymentData.payment_verified_data || null;
+
+    if (isPgConnected) {
+      pool.query(
+        `UPDATE orders SET
+           status = $1,
+           payment_status = $2,
+           payment_method = $3,
+           sender_number = $4,
+           trx_id = $5,
+           payment_verified_at = $6,
+           payment_verified_data = $7
+         WHERE id = $8`,
+        [
+          order.status,
+          order.payment_status,
+          order.payment_method,
+          order.sender_number,
+          order.trx_id,
+          order.payment_verified_at,
+          order.payment_verified_data ? JSON.stringify(order.payment_verified_data) : null,
+          order.id
+        ]
+      ).catch((e) => console.warn('PG sync error (confirm order payment):', e.message));
+    }
+    return order;
   }
 
   static getOrders() {

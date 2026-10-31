@@ -65,22 +65,7 @@ function ProductItemImage({ image, category, alt, isOutOfStock, stock, unit }) {
 export default function ProductDetail({ categoryId, category, isLoading, onBack }) {
   const router = useRouter();
   const { cart, changeQty } = useCart();
-  const [headerHeight, setHeaderHeight] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const headerEl = document.querySelector('.main-app-header');
-      if (headerEl) {
-        const h = headerEl.getBoundingClientRect().height;
-        if (h > 0) return h;
-      }
-      const cssVar = getComputedStyle(document.documentElement).getPropertyValue('--app-header-height');
-      if (cssVar) {
-        const parsed = parseFloat(cssVar);
-        if (parsed > 0) return parsed;
-      }
-      return window.innerWidth <= 768 ? 154 : 110;
-    }
-    return 110;
-  });
+  const [headerHeight, setHeaderHeight] = useState(110);
   const [isTransitioning, setIsTransitioning] = useState(true);
 
   // Progressive lazy loading for products in category

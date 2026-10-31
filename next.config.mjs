@@ -15,6 +15,16 @@ const nextConfig = {
         hostname: 'drive.google.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ibb.co',
+        pathname: '/**',
+      },
     ],
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
