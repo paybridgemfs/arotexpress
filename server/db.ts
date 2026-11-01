@@ -10,13 +10,13 @@ declare global {
 const pool: Pool =
   globalThis._pgPool ||
   new Pool({
-    host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
+    host: process.env.PGHOST,
     port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
-    database: process.env.PGDATABASE || 'postgres',
-    user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
-    password: process.env.PGPASSWORD || 'SPmd1151@@##',
+    database: process.env.PGDATABASE,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
     ssl: { rejectUnauthorized: false },
-    max: 5, // Strict limit for Supabase session pooler to avoid exhausting connection slots
+    max: 10, // Strict limit for Supabase session pooler to avoid exhausting connection slots
     idleTimeoutMillis: 30000, // Return idle connections to pooler after 30 seconds
     connectionTimeoutMillis: 8000 // Timeout if connection acquisition takes longer than 8 seconds
   });
@@ -952,6 +952,8 @@ export class DBManager {
           name_bn: p.name_bn,
           name_en: p.name_en,
           number: p.number || '',
+          logo: p.logo || '',
+          logo_delete_url: p.logo_delete_url || '',
           instructions_bn: p.instructions_bn || '',
           is_active: p.is_active !== undefined ? p.is_active : true
         }));
@@ -975,6 +977,8 @@ export class DBManager {
           name_bn: p.name_bn,
           name_en: p.name_en,
           number: p.number || '',
+          logo: p.logo || '',
+          logo_delete_url: p.logo_delete_url || '',
           instructions_bn: p.instructions_bn || '',
           is_active: p.is_active !== undefined ? p.is_active : true
         }));

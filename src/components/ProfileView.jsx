@@ -188,6 +188,51 @@ export default function ProfileView({ onBackToHome }) {
     }
   };
 
+  const handlePayNow = (order, isPkg) => {
+    const typeStr = isPkg ? 'package' : 'regular';
+    router.push(`/payment?order_id=${order.id}&type=${typeStr}`);
+  };
+
+  const handleCancelOrderFromProfile = async (order, isPkg) => {
+    const ok = await confirm({
+      title: 'অর্ডার বাতিল করবেন?',
+      message: `আপনি কি নিশ্চিত যে অর্ডার #${order.order_code || order.id} বাতিল করতে চান?`,
+      confirmText: 'হ্যাঁ, বাতিল করুন',
+      cancelText: 'না, রেখে দিন',
+      type: 'danger'
+    });
+    if (!ok) return;
+
+    try {
+      const res = await fetch('/api/payment/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          order_id: Number(order.id),
+          order_type: isPkg ? 'package_orders' : 'orders'
+        })
+      });
+      if (res.ok) {
+        showToast('অর্ডারটি সফলভাবে বাতিল করা হয়েছে');
+        const updatedRes = await fetch('/api/orders', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (updatedRes.ok) {
+          const data = await updatedRes.json();
+          if (Array.isArray(data)) setOrders(data);
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'অর্ডার বাতিল করতে সমস্যা হয়েছে');
+      }
+    } catch (e) {
+      showToast('অর্ডার বাতিল করতে ত্রুটি হয়েছে');
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetch('/api/orders', {
@@ -898,6 +943,55 @@ export default function ProfileView({ onBackToHome }) {
                                       <Printer size={12} />
                                       <span>মেমো</span>
                                     </motion.button>
+
+                                    {(() => {
+                                      const isPendingPayment = (order.payment_status === 'pending' || order.status === 'pending_payment' || (order.payment_method === 'অনলাইন পেমেন্ট' && order.payment_status !== 'verified')) && order.status !== 'cancelled' && order.status !== 'ডেলিভার্ড' && order.status !== 'delivered';
+                                      if (!isPendingPayment) return null;
+                                      return (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => handlePayNow(order, isPackageOrder)}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '12px',
+                                              background: '#006C4C',
+                                              color: '#FFFFFF',
+                                              border: 'none',
+                                              borderRadius: '9999px',
+                                              fontWeight: 700,
+                                              cursor: 'pointer',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px'
+                                            }}
+                                          >
+                                            <CreditCard size={12} />
+                                            <span>পেমেন্ট করুন</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCancelOrderFromProfile(order, isPackageOrder)}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '12px',
+                                              background: '#FEF2F2',
+                                              color: '#DC2626',
+                                              border: '1px solid #FECACA',
+                                              borderRadius: '9999px',
+                                              fontWeight: 700,
+                                              cursor: 'pointer',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px'
+                                            }}
+                                          >
+                                            <X size={12} />
+                                            <span>বাতিল করুন</span>
+                                          </button>
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 </td>
                               </tr>
@@ -1097,6 +1191,55 @@ export default function ProfileView({ onBackToHome }) {
                               <Printer size={13} />
                               <span>ক্যাশ মেমো</span>
                             </motion.button>
+
+                            {(() => {
+                              const isPendingPayment = (order.payment_status === 'pending' || order.status === 'pending_payment' || (order.payment_method === 'অনলাইন পেমেন্ট' && order.payment_status !== 'verified')) && order.status !== 'cancelled' && order.status !== 'ডেলিভার্ড' && order.status !== 'delivered';
+                              if (!isPendingPayment) return null;
+                              return (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePayNow(order, isPackageOrder)}
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: '12px',
+                                      background: '#006C4C',
+                                      color: '#FFFFFF',
+                                      border: 'none',
+                                      borderRadius: '9999px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <CreditCard size={12} />
+                                    <span>পেমেন্ট করুন</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelOrderFromProfile(order, isPackageOrder)}
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: '12px',
+                                      background: '#FEF2F2',
+                                      color: '#DC2626',
+                                      border: '1px solid #FECACA',
+                                      borderRadius: '9999px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <X size={12} />
+                                    <span>বাতিল করুন</span>
+                                  </button>
+                                </>
+                              );
+                            })()}
                           </div>
                         </motion.div>
                       );
