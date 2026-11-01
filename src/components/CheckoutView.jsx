@@ -530,8 +530,121 @@ export default function CheckoutView({
               {errors.area && <div className="err-msg">{errors.area}</div>}
             </div>
 
+            {/* ORDER SUMMARY SECTION (Placed directly above payment methods as requested) */}
+            <div className="co-summary" style={{ marginTop: '20px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--ink)' }}>অর্ডার সামারি</h3>
+                {isPackageOrder && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      padding: '2px 8px',
+                      borderRadius: '12px'
+                    }}
+                  >
+                    <Package size={12} /> প্যাকেজ অফার
+                  </span>
+                )}
+              </div>
+
+              {isPackageOrder ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                  {packageOrderData.items.map((it, idx) => (
+                    <div className="co-row" key={idx} style={{ alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text)' }}>
+                          {it.product_name || it.brand} ×{toBengaliNumber(it.qty)}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                          একক: {it.unit}
+                          {it.regular_price > it.final_price && (
+                            <span style={{ textDecoration: 'line-through', marginLeft: '6px' }}>
+                              ৳{toBengaliNumber(it.regular_price * it.qty)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                          ৳{toBengaliNumber((it.final_price || it.price) * it.qty)}
+                        </span>
+                        {it.discount_amount > 0 && (
+                          <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 600 }}>
+                            -৳{toBengaliNumber(it.discount_amount * it.qty)} ছাড়
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {packageRegularTotal > subtotal && (
+                    <div className="co-row" style={{ color: 'var(--muted)', fontSize: '13px' }}>
+                      <span>নিয়মিত মূল্য</span>
+                      <span className="mono">৳{toBengaliNumber(packageRegularTotal)}</span>
+                    </div>
+                  )}
+
+                  {discountTotal > 0 && (
+                    <div className="co-row" style={{ color: '#15803d', fontWeight: 600 }}>
+                      <span>প্যাকেজ বিশেষ ছাড়</span>
+                      <span className="mono">-৳{toBengaliNumber(discountTotal)}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                cartEntries.map(([key, it]) => (
+                  <div className="co-row" key={key}>
+                    <span>
+                      {it.brand} ×{toBengaliNumber(it.qty)}
+                    </span>
+                    <span className="mono">৳{toBengaliNumber(it.price * it.qty)}</span>
+                  </div>
+                ))
+              )}
+
+              <div className="co-row">
+                <span>ডেলিভারি চার্জ</span>
+                <span className="mono">৳{toBengaliNumber(deliveryFee)}</span>
+              </div>
+              <div className="co-row total">
+                <span>সর্বমোট</span>
+                <span>৳{toBengaliNumber(totalAmount)}</span>
+              </div>
+
+              {isPackageOrder && (
+                <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed var(--rule)', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.removeItem('package_order_data');
+                      }
+                      setPackageOrderData(null);
+                      onBackToShop();
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--muted)',
+                      fontSize: '12px',
+                      textDecoration: 'underline',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    প্যাকেজ পরিবর্তন করতে মূল দোকানে ফিরে যান
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Payment Methods Section: Cash on Delivery vs Online Payment */}
-            <div className="payment-method-box" style={{ marginTop: '20px' }}>
+            <div className="payment-method-box" style={{ marginTop: '0px' }}>
               <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', display: 'block', marginBottom: '10px' }}>
                 পেমেন্ট পদ্ধতি বেছে নিন:
               </label>
@@ -720,118 +833,6 @@ export default function CheckoutView({
               )}
             </motion.button>
           </form>
-
-          <div className="co-summary">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ margin: 0 }}>অর্ডার সামারি</h3>
-              {isPackageOrder && (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    background: '#dcfce7',
-                    color: '#15803d',
-                    padding: '2px 8px',
-                    borderRadius: '12px'
-                  }}
-                >
-                  <Package size={12} /> প্যাকেজ অফার
-                </span>
-              )}
-            </div>
-
-            {isPackageOrder ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                {packageOrderData.items.map((it, idx) => (
-                  <div className="co-row" key={idx} style={{ alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text)' }}>
-                        {it.product_name || it.brand} ×{toBengaliNumber(it.qty)}
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                        একক: {it.unit}
-                        {it.regular_price > it.final_price && (
-                          <span style={{ textDecoration: 'line-through', marginLeft: '6px' }}>
-                            ৳{toBengaliNumber(it.regular_price * it.qty)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                        ৳{toBengaliNumber((it.final_price || it.price) * it.qty)}
-                      </span>
-                      {it.discount_amount > 0 && (
-                        <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 600 }}>
-                          -৳{toBengaliNumber(it.discount_amount * it.qty)} ছাড়
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {packageRegularTotal > subtotal && (
-                  <div className="co-row" style={{ color: 'var(--muted)', fontSize: '13px' }}>
-                    <span>নিয়মিত মূল্য</span>
-                    <span className="mono">৳{toBengaliNumber(packageRegularTotal)}</span>
-                  </div>
-                )}
-
-                {discountTotal > 0 && (
-                  <div className="co-row" style={{ color: '#15803d', fontWeight: 600 }}>
-                    <span>প্যাকেজ বিশেষ ছাড়</span>
-                    <span className="mono">-৳{toBengaliNumber(discountTotal)}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              cartEntries.map(([key, it]) => (
-                <div className="co-row" key={key}>
-                  <span>
-                    {it.brand} ×{toBengaliNumber(it.qty)}
-                  </span>
-                  <span className="mono">৳{toBengaliNumber(it.price * it.qty)}</span>
-                </div>
-              ))
-            )}
-
-            <div className="co-row">
-              <span>ডেলিভারি চার্জ</span>
-              <span className="mono">৳{toBengaliNumber(deliveryFee)}</span>
-            </div>
-            <div className="co-row total">
-              <span>সর্বমোট</span>
-              <span>৳{toBengaliNumber(totalAmount)}</span>
-            </div>
-
-            {isPackageOrder && (
-              <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed var(--rule)', textAlign: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      sessionStorage.removeItem('package_order_data');
-                    }
-                    setPackageOrderData(null);
-                    onBackToShop();
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--muted)',
-                    fontSize: '12px',
-                    textDecoration: 'underline',
-                    cursor: 'pointer'
-                  }}
-                >
-                  প্যাকেজ পরিবর্তন করতে মূল দোকানে ফিরে যান
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </section>
 

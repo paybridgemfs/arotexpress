@@ -80,6 +80,7 @@ export default function AdminPackageOrders({
   // Status normalizer helper (supports English and Bengali)
   const normalizeStatus = (status) => {
     const s = String(status || '').toLowerCase().trim();
+    if (s === 'pending_payment' || s === 'পেমেন্ট বাকি') return 'pending_payment';
     if (s === 'pending' || s === 'পেন্ডিং') return 'pending';
     if (s === 'processing' || s === 'প্রসেসিং') return 'processing';
     if (s === 'shipped' || s === 'পাঠানো হয়েছে' || s === 'ডেলিভারিতে আছে' || s === 'অন-ডেলিভারি' || s === 'অন-ওয়ে') return 'shipped';
@@ -91,6 +92,7 @@ export default function AdminPackageOrders({
   const getStatusLabel = (st) => {
     const norm = normalizeStatus(st);
     switch (norm) {
+      case 'pending_payment': return 'পেমেন্ট বাকি';
       case 'pending': return 'পেন্ডিং';
       case 'processing': return 'প্রসেসিং';
       case 'shipped': return 'পাঠানো হয়েছে';
@@ -117,6 +119,7 @@ export default function AdminPackageOrders({
   const stats = useMemo(() => {
     const counts = {
       all: ordersList.length,
+      pending_payment: 0,
       pending: 0,
       processing: 0,
       shipped: 0,
@@ -130,7 +133,9 @@ export default function AdminPackageOrders({
       const amount = Number(o.total_amount) || 0;
       const norm = normalizeStatus(o.status);
 
-      if (norm === 'pending') {
+      if (norm === 'pending_payment') {
+        counts.pending_payment++;
+      } else if (norm === 'pending') {
         counts.pending++;
         pendingRevenue += amount;
       } else if (norm === 'processing') {
@@ -300,6 +305,16 @@ export default function AdminPackageOrders({
             <Clock size={14} />
             <span>পেন্ডিং ({toBengaliNumber(stats.counts.pending)})</span>
           </button>
+          {stats.counts.pending_payment > 0 && (
+            <button
+              type="button"
+              className={`admin-filter-pill ${statusFilter === 'pending_payment' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('pending_payment')}
+            >
+              <Clock size={14} />
+              <span>পেমেন্ট বাকি ({toBengaliNumber(stats.counts.pending_payment)})</span>
+            </button>
+          )}
           <button
             type="button"
             className={`admin-filter-pill ${statusFilter === 'processing' ? 'active' : ''}`}

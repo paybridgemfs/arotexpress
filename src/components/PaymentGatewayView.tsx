@@ -10,6 +10,7 @@ import {
   Check,
   AlertCircle,
   ArrowLeft,
+  X,
   RefreshCw,
   CreditCard,
   Phone,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useStoreData } from '@/src/context/StoreDataContext';
 import { useCart } from '@/src/context/CartContext.jsx';
+import { useConfirm } from '@/src/context/ConfirmContext.jsx';
 import { toBengaliNumber } from '@/src/utils/bengali.js';
 
 interface OrderDetails {
@@ -57,12 +59,13 @@ export default function PaymentGatewayView() {
 
   const { settings, paymentMethods, fetchData } = useStoreData();
   const { clearCart } = useCart();
+  const { confirm } = useConfirm();
 
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [orderError, setOrderError] = useState('');
 
-  // Selected payment method & sender number
+  // Selected payment method & sender number (kept blank initially per user requirement)
   const [selectedMethodCode, setSelectedMethodCode] = useState<string>('');
   const [senderNumber, setSenderNumber] = useState<string>('');
   const [numberError, setNumberError] = useState<string>('');
@@ -107,10 +110,7 @@ export default function PaymentGatewayView() {
       })
       .then((data) => {
         setOrder(data);
-        // Pre-fill sender phone from customer phone if applicable
-        if (data.customer_phone && /^01[3-9]\d{8}$/.test(data.customer_phone)) {
-          setSenderNumber(data.customer_phone);
-        }
+        // Do NOT prefill sender phone number - keep input empty per user request
 
         // If already verified, show success immediately
         if (data.payment_status === 'verified' && (data.status === 'confirmed' || data.status === 'পেন্ডিং')) {
@@ -351,42 +351,38 @@ export default function PaymentGatewayView() {
   const siteName = settings?.site_name || 'আড়ৎ এক্সপ্রেস';
   const siteTagline = settings?.site_tagline || 'তাজা পাইকারি ও খুচরা মুদি বাজার';
 
-  // Helper to render method logo using Next.js Image or fallback
-  const renderMethodLogo = (method: any, size = 42) => {
+  // Helper to render method logo using Next.js Image or fallback (width & height support)
+  const renderMethodLogo = (method: any, width = 128, height = 68) => {
     if (method.logo && typeof method.logo === 'string' && method.logo.trim()) {
       return (
         <div
           style={{
             position: 'relative',
-            width: `${size}px`,
-            height: `${size}px`,
-            borderRadius: '10px',
-            overflow: 'hidden',
-            backgroundColor: '#FFFFFF',
-            border: '1px solid rgba(0,0,0,0.06)',
-            flexShrink: 0,
+            width: `${width}px`,
+            height: `${height}px`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '2px'
+            overflow: 'hidden'
           }}
         >
           <Image
             src={method.logo.trim()}
-            alt={method.name_bn || 'পেমেন্ট'}
+            alt={method.name_bn || 'পেমেন্ট মেথড'}
             fill
-            sizes={`${size}px`}
+            sizes={`${width}px`}
             referrerPolicy="no-referrer"
             style={{ objectFit: 'contain' }}
+            unoptimized
           />
         </div>
       );
     }
 
-    // Default colorful badges
+    // Default colorful badges when no custom logo is uploaded
     const code = (method.code || '').toLowerCase();
     let bg = '#006C4C';
-    let text = 'Pay';
+    let text = method.name_bn || 'Pay';
     if (code.includes('bkash')) {
       bg = '#E2136E';
       text = 'বিকাশ';
@@ -398,29 +394,91 @@ export default function PaymentGatewayView() {
       text = 'রকেট';
     } else if (code.includes('upay')) {
       bg = '#003B70';
-      text = 'উপায়';
+      text = 'উপায়';
     }
 
     return (
       <div
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: '10px',
+          width: `${width}px`,
+          height: `${height}px`,
           background: bg,
           color: '#FFFFFF',
           fontWeight: 800,
-          fontSize: size > 40 ? '13px' : '11px',
+          fontSize: '15px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          flexShrink: 0,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          borderRadius: '8px',
+          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.2)'
         }}
       >
         {text}
       </div>
     );
+  };
+
+  // Cancel Payment completely with website's custom confirmation popup
+  const handleCancelPayment = async () => {
+    const ok = await confirm({
+      title: 'পেমেন্ট বাতিল করবেন?',
+      message: 'আপনি কি নিশ্চিত যে এই পেমেন্ট বাতিল করতে চান? আপনার অসম্পূর্ণ অর্ডারটি বাতিল হয়ে যাবে।',
+      confirmText: 'হ্যাঁ, বাতিল করুন',
+      cancelText: 'না, অপেক্ষা করুন',
+      type: 'danger'
+    });
+    if (!ok) return;
+
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    isPollingRunningRef.current = false;
+
+    try {
+      if (orderId) {
+        await fetch('/api/payment/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order_id: Number(orderId),
+            order_type: orderType
+          })
+        }).catch(() => {});
+        localStorage.removeItem(`arot_payment_session_${orderId}`);
+      }
+    } catch {}
+
+    setSession(null);
+    router.push('/checkout');
+  };
+
+  // Change payment method with website's custom confirmation popup
+  const handleChangePaymentMethod = async () => {
+    const ok = await confirm({
+      title: 'পদ্ধতি পরিবর্তন করবেন?',
+      message: 'আপনি কি বর্তমান ৫ মিনিটের কাউন্টডাউন বন্ধ করে অন্য কোনো পেমেন্ট মেথড বেছে নিতে চান?',
+      confirmText: 'হ্যাঁ, পরিবর্তন করব',
+      cancelText: 'না, এখানেই থাকব',
+      type: 'info'
+    });
+    if (!ok) return;
+
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    isPollingRunningRef.current = false;
+
+    if (orderId) {
+      try {
+        localStorage.removeItem(`arot_payment_session_${orderId}`);
+      } catch {}
+    }
+    setSession(null);
+    setShowTrxFallback(false);
+    setManualTrxId('');
+    setManualVerifyError('');
   };
 
   // Loading state
@@ -542,44 +600,70 @@ export default function PaymentGatewayView() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '32px 16px 60px'
+        padding: '16px 12px 36px'
       }}
     >
+      {/* TOP CANCEL/BACK BUTTON */}
+      <div style={{ maxWidth: '520px', width: '100%', marginBottom: '10px', display: 'flex', justifyContent: 'flex-start' }}>
+        <button
+          type="button"
+          onClick={handleCancelPayment}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'none',
+            border: 'none',
+            color: 'var(--muted, #64748B)',
+            fontSize: '12.5px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            padding: '4px 6px',
+            borderRadius: '6px',
+            transition: 'color 0.15s ease'
+          }}
+        >
+          <ArrowLeft size={15} />
+          <span>পেমেন্ট বাতিল করে ফিরে যান</span>
+        </button>
+      </div>
+
       {/* 1. BRAND HEADER SECTION */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           textAlign: 'center',
-          marginBottom: '26px'
+          marginBottom: '14px'
         }}
       >
         {siteLogo ? (
-          <div style={{ position: 'relative', width: '160px', height: '48px', marginBottom: '8px' }}>
+          <div style={{ position: 'relative', width: '140px', height: '40px', marginBottom: '6px' }}>
             <Image
               src={siteLogo}
               alt={siteName}
               fill
-              sizes="160px"
+              sizes="140px"
               priority
               referrerPolicy="no-referrer"
               style={{ objectFit: 'contain' }}
+              unoptimized
             />
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--green, #006C4C)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--green, #006C4C)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '15px' }}>
               AE
             </div>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--ink)' }}>{siteName}</span>
+            <span style={{ fontSize: '18px', fontWeight: 900, color: 'var(--ink)' }}>{siteName}</span>
           </div>
         )}
 
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#15803D', fontWeight: 700, background: '#DCFCE7', padding: '3px 10px', borderRadius: '9999px', marginTop: '4px' }}>
-          <Lock size={12} />
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#15803D', fontWeight: 700, background: '#DCFCE7', padding: '2px 8px', borderRadius: '9999px', marginTop: '2px' }}>
+          <Lock size={11} />
           <span>নিরাপদ ও এনক্রিপ্টেড পেমেন্ট গেটওয়ে</span>
         </div>
       </motion.div>
@@ -593,26 +677,26 @@ export default function PaymentGatewayView() {
           width: '100%',
           background: '#FFFFFF',
           border: '1px solid var(--rule, #E2E8F0)',
-          borderRadius: '16px',
-          padding: '16px 20px',
-          marginBottom: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+          borderRadius: '14px',
+          padding: '12px 16px',
+          marginBottom: '14px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '12px'
+          gap: '8px'
         }}
       >
         <div>
-          <div style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>অর্ডার রেফারেন্স</div>
-          <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)' }}>#{order.order_code || order.id}</div>
-          <div style={{ fontSize: '12px', color: 'var(--muted)' }}>গ্রাহক: {order.customer_name} ({order.customer_phone})</div>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>অর্ডার রেফারেন্স</div>
+          <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink)' }}>#{order.order_code || order.id}</div>
+          <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>গ্রাহক: {order.customer_name} ({order.customer_phone})</div>
         </div>
 
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 600 }}>পরিশোধযোগ্য মোট বিল</div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--green, #006C4C)', letterSpacing: '-0.5px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>পরিশোধযোগ্য মোট বিল</div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--green, #006C4C)', letterSpacing: '-0.5px' }}>
             ৳{toBengaliNumber(order.total_amount)}
           </div>
         </div>
@@ -620,78 +704,90 @@ export default function PaymentGatewayView() {
 
       {/* 3. MAIN PAYMENT FORM CARD */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         style={{
           maxWidth: '520px',
           width: '100%',
           background: '#FFFFFF',
           border: '1px solid var(--rule, #E2E8F0)',
-          borderRadius: '20px',
-          padding: '24px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+          borderRadius: '16px',
+          padding: '18px 16px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
         }}
       >
         <form onSubmit={handleStartPaymentSession}>
-          <h2 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CreditCard size={18} style={{ color: 'var(--green)' }} />
+          <h2 style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--ink)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CreditCard size={16} style={{ color: 'var(--green)' }} />
             <span>আপনার পেমেন্ট মাধ্যম বেছে নিন</span>
           </h2>
 
-          {/* Payment Methods Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+          {/* Payment Methods Grid - Strictly Logos only (height: 68px, width: 128px) */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '16px'
+            }}
+          >
             {activeOnlineMethods.map((method: any) => {
               const isSelected = selectedMethodCode.toLowerCase() === method.code?.toLowerCase();
               return (
-                <div
+                <button
+                  type="button"
                   key={method.id || method.code}
                   onClick={() => {
                     setSelectedMethodCode(method.code);
                     if (numberError) setNumberError('');
                   }}
+                  title={method.name_bn || method.code}
                   style={{
-                    border: isSelected ? '2px solid var(--green, #006C4C)' : '1.5px solid var(--rule, #E2E8F0)',
+                    width: '128px',
+                    height: '68px',
+                    borderRadius: '12px',
+                    border: isSelected ? '2.5px solid var(--green, #006C4C)' : '1.5px solid var(--rule, #CBD5E1)',
                     backgroundColor: isSelected ? '#F0FDF4' : '#FFFFFF',
-                    borderRadius: '14px',
-                    padding: '12px 14px',
                     cursor: 'pointer',
                     transition: 'all 0.18s ease',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    boxShadow: isSelected ? '0 4px 12px rgba(0, 108, 76, 0.12)' : 'none'
+                    justifyContent: 'center',
+                    padding: '4px',
+                    position: 'relative',
+                    boxShadow: isSelected ? '0 4px 12px rgba(0, 108, 76, 0.16)' : '0 1px 3px rgba(0,0,0,0.03)',
+                    transform: isSelected ? 'scale(1.02)' : 'scale(1)'
                   }}
                 >
-                  {renderMethodLogo(method, 40)}
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <strong style={{ fontSize: '14px', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {method.name_bn}
-                      </strong>
-                      <div
-                        style={{
-                          width: '18px',
-                          height: '18px',
-                          borderRadius: '50%',
-                          border: isSelected ? '5px solid var(--green, #006C4C)' : '2px solid #CBD5E1',
-                          backgroundColor: '#FFFFFF',
-                          flexShrink: 0
-                        }}
-                      />
+                  {renderMethodLogo(method, 116, 56)}
+                  {isSelected && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '-5px',
+                        right: '-5px',
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--green, #006C4C)',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                    >
+                      <Check size={11} strokeWidth={3} />
                     </div>
-
-                    <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span>{method.account_type || 'পার্সোনাল'}</span>
-                      {method.number && <span className="mono">({method.number})</span>}
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </button>
               );
             })}
           </div>
 
-          {/* SENDER NUMBER INPUT (Appears seamlessly when a method is chosen) */}
+          {/* SENDER NUMBER INPUT (Empty initially per user specification) */}
           <AnimatePresence>
             {selectedMethodCode && (
               <motion.div
@@ -700,20 +796,20 @@ export default function PaymentGatewayView() {
                 exit={{ opacity: 0, height: 0 }}
                 style={{ overflow: 'hidden' }}
               >
-                <div style={{ background: '#F8FAF9', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+                <div style={{ background: '#F8FAF9', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '14px', marginBottom: '16px' }}>
                   <label
                     htmlFor="sender-phone"
-                    style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', display: 'block', marginBottom: '6px' }}
+                    style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)', display: 'block', marginBottom: '4px' }}
                   >
                     যে নম্বর থেকে টাকা পাঠাবেন সেই নম্বর দিন <span style={{ color: 'red' }}>*</span>
                   </label>
-                  <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--muted)' }}>
-                    আপনার {currentSelectedMethod?.name_bn || 'মোবাইল ব্যাংকিং'} প্রেরক নম্বরটি দিন (যেমন: 017XXXXXXXX)
+                  <p style={{ margin: '0 0 8px', fontSize: '11.5px', color: 'var(--muted)' }}>
+                    আপনার প্রেরক মোবাইল ব্যাংকিং নম্বরটি লিখুন (যেমন: 017XXXXXXXX)
                   </p>
 
                   <div style={{ position: 'relative' }}>
                     <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}>
-                      <Phone size={16} />
+                      <Phone size={15} />
                     </div>
                     <input
                       id="sender-phone"
@@ -728,11 +824,11 @@ export default function PaymentGatewayView() {
                       className="mono"
                       style={{
                         width: '100%',
-                        padding: '12px 14px 12px 38px',
-                        fontSize: '15px',
+                        padding: '10px 12px 10px 36px',
+                        fontSize: '14px',
                         fontWeight: 700,
                         border: numberError ? '1.5px solid var(--danger, #DC2626)' : '1.5px solid var(--rule, #CBD5E1)',
-                        borderRadius: '10px',
+                        borderRadius: '9px',
                         background: '#FFFFFF',
                         color: 'var(--ink)',
                         letterSpacing: '0.5px'
@@ -740,7 +836,7 @@ export default function PaymentGatewayView() {
                     />
                   </div>
                   {numberError && (
-                    <div style={{ fontSize: '12px', color: 'var(--danger, #DC2626)', marginTop: '6px', fontWeight: 600 }}>
+                    <div style={{ fontSize: '11.5px', color: 'var(--danger, #DC2626)', marginTop: '4px', fontWeight: 600 }}>
                       {numberError}
                     </div>
                   )}
@@ -755,11 +851,11 @@ export default function PaymentGatewayView() {
             disabled={!selectedMethodCode}
             style={{
               width: '100%',
-              padding: '14px 20px',
+              padding: '13px 18px',
               backgroundColor: selectedMethodCode ? 'var(--green, #006C4C)' : '#94A3B8',
               color: '#FFFFFF',
               fontWeight: 800,
-              fontSize: '15px',
+              fontSize: '14.5px',
               borderRadius: '9999px',
               border: 'none',
               cursor: selectedMethodCode ? 'pointer' : 'not-allowed',
@@ -767,12 +863,12 @@ export default function PaymentGatewayView() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              boxShadow: selectedMethodCode ? '0 4px 16px rgba(0, 108, 76, 0.25)' : 'none',
+              boxShadow: selectedMethodCode ? '0 4px 14px rgba(0, 108, 76, 0.22)' : 'none',
               transition: 'all 0.2s ease'
             }}
           >
             <span>পেমেন্ট করুন (৳{toBengaliNumber(order.total_amount)})</span>
-            <Sparkles size={16} />
+            <Sparkles size={15} />
           </button>
         </form>
       </motion.div>
@@ -790,69 +886,61 @@ export default function PaymentGatewayView() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '16px',
+              padding: '12px',
               overflowY: 'auto'
             }}
           >
             <motion.div
-              initial={{ scale: 0.94, opacity: 0, y: 15 }}
+              initial={{ scale: 0.95, opacity: 0, y: 12 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.94, opacity: 0, y: 15 }}
+              exit={{ scale: 0.95, opacity: 0, y: 12 }}
               style={{
-                maxWidth: '480px',
+                maxWidth: '460px',
                 width: '100%',
                 backgroundColor: '#FFFFFF',
-                borderRadius: '24px',
-                padding: '28px 22px',
+                borderRadius: '20px',
+                padding: '20px 16px',
                 boxShadow: '0 20px 48px rgba(0, 0, 0, 0.2)',
                 position: 'relative',
-                maxHeight: '92vh',
+                maxHeight: '94vh',
                 overflowY: 'auto'
               }}
             >
               {/* TOP HEADER: TIMER & STATUS */}
-              <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: remainingSeconds > 60 ? '#FEF3C7' : '#FEE2E2', color: remainingSeconds > 60 ? '#92400E' : '#991B1B', padding: '6px 16px', borderRadius: '9999px', fontWeight: 800, fontSize: '13px', marginBottom: '8px' }}>
-                  <Clock size={16} className={remainingSeconds > 0 ? 'animate-pulse' : ''} />
-                  <span>সময় বাকি: <strong className="mono" style={{ fontSize: '16px' }}>{formatTime(remainingSeconds)}</strong></span>
+              <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: remainingSeconds > 60 ? '#FEF3C7' : '#FEE2E2', color: remainingSeconds > 60 ? '#92400E' : '#991B1B', padding: '5px 14px', borderRadius: '9999px', fontWeight: 800, fontSize: '12.5px', marginBottom: '6px' }}>
+                  <Clock size={15} className={remainingSeconds > 0 ? 'animate-pulse' : ''} />
+                  <span>সময় বাকি: <strong className="mono" style={{ fontSize: '15px' }}>{formatTime(remainingSeconds)}</strong></span>
                 </div>
 
-                <h3 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--ink)', margin: '4px 0 2px' }}>
-                  {currentSelectedMethod?.name_bn || 'পেমেন্ট'} সম্পন্ন করুন
+                <h3 style={{ fontSize: '16.5px', fontWeight: 900, color: 'var(--ink)', margin: '4px 0 2px' }}>
+                  পেমেন্ট সম্পন্ন করুন
                 </h3>
-                <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--muted)' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>
                   ৫ মিনিটের মধ্যে টাকা পাঠালে সার্ভার স্বয়ংক্রিয়ভাবে অর্ডার কনফার্ম করবে
                 </p>
               </div>
 
-              {/* PAYMENT TARGET BOX (Receiver Account Number, Amount, Type) */}
+              {/* PAYMENT TARGET BOX (Receiver Account Number & Amount - NO personal/merchant mention) */}
               <div
                 style={{
                   background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
                   border: '1.5px solid #86EFAC',
-                  borderRadius: '16px',
-                  padding: '18px 16px',
-                  marginBottom: '16px'
+                  borderRadius: '14px',
+                  padding: '14px 12px',
+                  marginBottom: '12px'
                 }}
               >
-                {/* Method & Account Type */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {currentSelectedMethod && renderMethodLogo(currentSelectedMethod, 32)}
-                    <span style={{ fontWeight: 800, fontSize: '15px', color: '#166534' }}>
-                      {currentSelectedMethod?.name_bn || 'মোবাইল ব্যাংকিং'}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '11.5px', fontWeight: 700, background: '#FFFFFF', color: '#166534', padding: '3px 8px', borderRadius: '6px', border: '1px solid #BBF7D0' }}>
-                    {currentSelectedMethod?.account_type || 'পার্সোনাল (Send Money)'}
-                  </span>
+                {/* Method Logo Banner (No personal/merchant/cashin text) */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                  {currentSelectedMethod && renderMethodLogo(currentSelectedMethod, 100, 50)}
                 </div>
 
                 {/* Receiver Account Number with 1-Click Copy */}
-                <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '12px 14px', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ background: '#FFFFFF', borderRadius: '10px', padding: '10px 12px', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>এই নম্বরে টাকা পাঠান</div>
-                    <div className="mono" style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A', letterSpacing: '0.5px' }}>
+                    <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 700 }}>এই নম্বরে টাকা পাঠান</div>
+                    <div className="mono" style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', letterSpacing: '0.5px' }}>
                       {currentSelectedMethod?.number || '01XXXXXXXXX'}
                     </div>
                   </div>
@@ -866,24 +954,24 @@ export default function PaymentGatewayView() {
                       background: copiedField === 'number' ? '#22C55E' : 'var(--green, #006C4C)',
                       color: '#FFFFFF',
                       border: 'none',
-                      borderRadius: '8px',
-                      padding: '8px 12px',
-                      fontSize: '12px',
+                      borderRadius: '7px',
+                      padding: '7px 11px',
+                      fontSize: '11.5px',
                       fontWeight: 700,
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
                   >
-                    {copiedField === 'number' ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedField === 'number' ? <Check size={13} /> : <Copy size={13} />}
                     <span>{copiedField === 'number' ? 'কপি হয়েছে!' : 'কপি করুন'}</span>
                   </button>
                 </div>
 
                 {/* Amount to send with 1-Click Copy */}
-                <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '10px 14px', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ background: '#FFFFFF', borderRadius: '10px', padding: '9px 12px', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>টাকার সঠিক পরিমাণ</div>
-                    <div style={{ fontSize: '18px', fontWeight: 900, color: 'var(--green, #006C4C)' }}>
+                    <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 700 }}>টাকার সঠিক পরিমাণ</div>
+                    <div style={{ fontSize: '17px', fontWeight: 900, color: 'var(--green, #006C4C)' }}>
                       ৳{toBengaliNumber(order.total_amount)}
                     </div>
                   </div>
@@ -897,31 +985,31 @@ export default function PaymentGatewayView() {
                       background: copiedField === 'amount' ? '#22C55E' : '#EEF2F6',
                       color: copiedField === 'amount' ? '#FFFFFF' : '#334155',
                       border: 'none',
-                      borderRadius: '8px',
-                      padding: '6px 10px',
-                      fontSize: '11.5px',
+                      borderRadius: '7px',
+                      padding: '6px 9px',
+                      fontSize: '11px',
                       fontWeight: 700,
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
                   >
-                    {copiedField === 'amount' ? <Check size={13} /> : <Copy size={13} />}
+                    {copiedField === 'amount' ? <Check size={12} /> : <Copy size={12} />}
                     <span>{copiedField === 'amount' ? 'কপি হয়েছে!' : 'টাকা কপি'}</span>
                   </button>
                 </div>
               </div>
 
               {/* SENDER INFO SUMMARY */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#F8FAF9', borderRadius: '10px', border: '1px solid #E2E8F0', marginBottom: '14px', fontSize: '12.5px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#F8FAF9', borderRadius: '8px', border: '1px solid #E2E8F0', marginBottom: '12px', fontSize: '12px' }}>
                 <span style={{ color: 'var(--muted)' }}>আপনার প্রেরক নম্বর:</span>
                 <span className="mono" style={{ fontWeight: 800, color: 'var(--ink)' }}>{session.senderNumber}</span>
               </div>
 
               {/* ADMIN INSTRUCTIONS IF DEFINED */}
               {currentSelectedMethod?.instructions_bn && (
-                <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px', fontSize: '12.5px', color: '#92400E', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 800, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <HelpCircle size={14} /> নির্দেশনাবলী:
+                <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px', fontSize: '12px', color: '#92400E', lineHeight: 1.45 }}>
+                  <div style={{ fontWeight: 800, marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <HelpCircle size={13} /> নির্দেশনাবলী:
                   </div>
                   <div style={{ whiteSpace: 'pre-line' }}>{currentSelectedMethod.instructions_bn}</div>
                 </div>
@@ -932,28 +1020,28 @@ export default function PaymentGatewayView() {
                 style={{
                   background: '#F0F9FF',
                   border: '1px solid #BAE6FD',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                  marginBottom: '16px',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  marginBottom: '12px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px'
                 }}
               >
-                <div style={{ position: 'relative', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ position: 'relative', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <span className="animate-ping" style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', background: '#38BDF8', opacity: 0.75 }} />
-                  <RefreshCw size={14} className="animate-spin" style={{ color: '#0284C7' }} />
+                  <RefreshCw size={13} className="animate-spin" style={{ color: '#0284C7' }} />
                 </div>
-                <div style={{ flex: 1, fontSize: '12px', color: '#0369A1', lineHeight: 1.4 }}>
+                <div style={{ flex: 1, fontSize: '11.5px', color: '#0369A1', lineHeight: 1.35 }}>
                   <strong>সার্ভারে স্বয়ংক্রিয় অনুসন্ধান চলছে...</strong>
-                  <div style={{ fontSize: '11px', color: '#0284C7' }}>
+                  <div style={{ fontSize: '10.5px', color: '#0284C7' }}>
                     {pollStatusMessage || 'টাকা পাঠানোর সাথে সাথেই নিশ্চিত করা হবে। অপেক্ষা করুন...'} (চেক: {toBengaliNumber(pollAttempts)} বার)
                   </div>
                 </div>
               </div>
 
               {/* TRANSACTION ID FALLBACK ACCORDION */}
-              <div style={{ borderTop: '1px dashed #E2E8F0', paddingTop: '12px', marginBottom: '12px' }}>
+              <div style={{ borderTop: '1px dashed #E2E8F0', paddingTop: '10px', marginBottom: '10px' }}>
                 <button
                   type="button"
                   onClick={() => setShowTrxFallback(!showTrxFallback)}
@@ -964,15 +1052,15 @@ export default function PaymentGatewayView() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '6px 0',
-                    fontSize: '12.5px',
+                    padding: '4px 0',
+                    fontSize: '12px',
                     color: 'var(--green, #006C4C)',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
                   <span>Transaction ID দিয়ে ভেরিফাই করতে চান?</span>
-                  {showTrxFallback ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {showTrxFallback ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                 </button>
 
                 <AnimatePresence>
@@ -981,10 +1069,10 @@ export default function PaymentGatewayView() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      style={{ overflow: 'hidden', marginTop: '10px' }}
+                      style={{ overflow: 'hidden', marginTop: '8px' }}
                     >
-                      <form onSubmit={handleManualTrxSubmit} style={{ background: '#F8FAF9', padding: '12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                        <label style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                      <form onSubmit={handleManualTrxSubmit} style={{ background: '#F8FAF9', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                        <label style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
                           আপনার TrxID ট্রানজেকশন কোড লিখুন
                         </label>
                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -999,10 +1087,10 @@ export default function PaymentGatewayView() {
                             className="mono"
                             style={{
                               flex: 1,
-                              padding: '8px 10px',
-                              fontSize: '13.5px',
+                              padding: '7px 10px',
+                              fontSize: '13px',
                               fontWeight: 700,
-                              borderRadius: '8px',
+                              borderRadius: '7px',
                               border: manualVerifyError ? '1px solid #DC2626' : '1px solid #CBD5E1',
                               background: '#FFFFFF'
                             }}
@@ -1014,9 +1102,9 @@ export default function PaymentGatewayView() {
                               background: 'var(--green, #006C4C)',
                               color: '#FFFFFF',
                               border: 'none',
-                              borderRadius: '8px',
-                              padding: '8px 14px',
-                              fontSize: '12px',
+                              borderRadius: '7px',
+                              padding: '7px 12px',
+                              fontSize: '11.5px',
                               fontWeight: 700,
                               cursor: manualVerifying ? 'wait' : 'pointer'
                             }}
@@ -1025,7 +1113,7 @@ export default function PaymentGatewayView() {
                           </button>
                         </div>
                         {manualVerifyError && (
-                          <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '6px', fontWeight: 600 }}>
+                          <div style={{ fontSize: '10.5px', color: '#DC2626', marginTop: '4px', fontWeight: 600 }}>
                             {manualVerifyError}
                           </div>
                         )}
@@ -1035,90 +1123,100 @@ export default function PaymentGatewayView() {
                 </AnimatePresence>
               </div>
 
-              {/* TIMEOUT EXPIRED STATE BUTTONS */}
+              {/* TIMEOUT EXPIRED STATE */}
               {remainingSeconds <= 0 && (
-                <div style={{ textAlign: 'center', padding: '12px', background: '#FEF2F2', borderRadius: '12px', border: '1px solid #FECACA', marginTop: '12px' }}>
-                  <div style={{ fontSize: '13px', color: '#991B1B', fontWeight: 800, marginBottom: '6px' }}>
+                <div style={{ textAlign: 'center', padding: '10px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FECACA', margin: '8px 0' }}>
+                  <div style={{ fontSize: '12.5px', color: '#991B1B', fontWeight: 800, marginBottom: '4px' }}>
                     ⏰ ৫ মিনিটের সময় শেষ হয়েছে
                   </div>
-                  <p style={{ margin: '0 0 10px', fontSize: '11.5px', color: '#7F1D1D' }}>
-                    আপনি কি টাকা পাঠিয়েছেন? পাঠিয়ে থাকলে TrxID দিয়ে ভেরিফাই করুন অথবা পুনরায় ৫ মিনিট সময় চালু করুন।
+                  <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#7F1D1D' }}>
+                    টাকা পাঠিয়ে থাকলে TrxID দিন অথবা পুনরায় সময় বাড়িয়ে নিন।
                   </p>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const durationMs = 5 * 60 * 1000;
-                        const renewed: PaymentSession = {
-                          ...session,
-                          endTime: Date.now() + durationMs
-                        };
-                        try {
-                          localStorage.setItem(`arot_payment_session_${session.orderId}`, JSON.stringify(renewed));
-                        } catch {}
-                        setSession(renewed);
-                        setRemainingSeconds(300);
-                      }}
-                      style={{
-                        background: 'var(--green, #006C4C)',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '6px 12px',
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      আরো ৫ মিনিট নিন
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          localStorage.removeItem(`arot_payment_session_${session.orderId}`);
-                        } catch {}
-                        setSession(null);
-                      }}
-                      style={{
-                        background: '#FFFFFF',
-                        color: '#475569',
-                        border: '1px solid #CBD5E1',
-                        borderRadius: '6px',
-                        padding: '6px 12px',
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      পদ্ধতি পরিবর্তন করুন
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const durationMs = 5 * 60 * 1000;
+                      const renewed: PaymentSession = {
+                        ...session,
+                        endTime: Date.now() + durationMs
+                      };
+                      try {
+                        localStorage.setItem(`arot_payment_session_${session.orderId}`, JSON.stringify(renewed));
+                      } catch {}
+                      setSession(renewed);
+                      setRemainingSeconds(300);
+                    }}
+                    style={{
+                      background: 'var(--green, #006C4C)',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '5px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    আরো ৫ মিনিট নিন
+                  </button>
                 </div>
               )}
 
-              {/* CANCEL / CLOSE BUTTON */}
-              <div style={{ textAlign: 'center', marginTop: '14px' }}>
+              {/* 5-MINUTE SESSION MODAL FOOTER BUTTONS: CHANGE METHOD & CANCEL PAYMENT (WITH CUSTOM POPUP CONFIRMATION) */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '8px',
+                  marginTop: '12px',
+                  paddingTop: '10px',
+                  borderTop: '1px solid #E2E8F0'
+                }}
+              >
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm('আপনি কি পেমেন্ট সেশন বন্ধ করতে চান?')) {
-                      try {
-                        localStorage.removeItem(`arot_payment_session_${session.orderId}`);
-                      } catch {}
-                      setSession(null);
-                    }
-                  }}
+                  onClick={handleChangePaymentMethod}
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#94A3B8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '8px',
+                    padding: '9px 10px',
                     fontSize: '12px',
-                    textDecoration: 'underline',
-                    cursor: 'pointer'
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.18s'
                   }}
                 >
-                  অন্য পদ্ধতিতে পেমেন্ট করুন
+                  <ArrowLeft size={13} />
+                  <span>অন্য পদ্ধতি</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCancelPayment}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    border: '1px solid #FECACA',
+                    borderRadius: '8px',
+                    padding: '9px 10px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.18s'
+                  }}
+                >
+                  <X size={13} />
+                  <span>পেমেন্ট বাতিল</span>
                 </button>
               </div>
             </motion.div>

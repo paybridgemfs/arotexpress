@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Package,
@@ -27,7 +28,8 @@ import {
   X,
   Camera,
   Trash2,
-  Upload
+  Upload,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
@@ -40,6 +42,7 @@ import CustomerInvoiceModal from './CustomerInvoiceModal.jsx';
 import OrderTrackingModal from './OrderTrackingModal.jsx';
 
 export default function ProfileView({ onBackToHome }) {
+  const router = useRouter();
   const { user, token, logout, updateProfile } = useAuth();
   const { showToast, replaceCartWithOrder } = useCart();
   const { confirm } = useConfirm();
@@ -274,6 +277,7 @@ export default function ProfileView({ onBackToHome }) {
   const getStatusBn = (status) => {
     const s = String(status || '').toLowerCase().trim();
     if (s === 'pending' || s === 'পেন্ডিং') return 'পেন্ডিং';
+    if (s === 'pending_payment' || s === 'পেমেন্ট বাকি' || s === 'pending payment') return 'পেমেন্ট বাকি';
     if (s === 'processing' || s === 'প্রসেসিং') return 'প্রসেসিং';
     if (s === 'shipped' || s === 'পাঠানো হয়েছে' || s === 'ডেলিভারিতে আছে' || s === 'ডেলিভারিতে পাঠানো হয়েছে' || s === 'অন-ওয়ে' || s === 'অন-ডেলিভারি') return 'ডেলিভারিতে আছে';
     if (s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন' || s === 'ডেলিভারি সম্পন্ন') return 'ডেলিভার্ড';
@@ -284,6 +288,7 @@ export default function ProfileView({ onBackToHome }) {
   const getStatusClass = (status) => {
     const s = String(status || '').toLowerCase().trim();
     if (s === 'pending' || s === 'পেন্ডিং') return 'status-pending';
+    if (s === 'pending_payment' || s === 'পেমেন্ট বাকি' || s === 'pending payment') return 'status-pending-payment';
     if (s === 'processing' || s === 'প্রসেসিং') return 'status-processing';
     if (s === 'shipped' || s === 'পাঠানো হয়েছে' || s === 'ডেলিভারিতে আছে' || s === 'অন-ওয়ে' || s === 'অন-ডেলিভারি') return 'status-shipped';
     if (s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন' || s === 'ডেলিভারি সম্পন্ন') return 'status-delivered';
@@ -298,11 +303,15 @@ export default function ProfileView({ onBackToHome }) {
       const s = String(o.status || '').toLowerCase();
       return s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন';
     }).length;
+    const pendingPayment = orders.filter((o) => {
+      const s = String(o.status || '').toLowerCase();
+      return s === 'pending_payment' || s === 'পেমেন্ট বাকি' || s === 'pending payment';
+    }).length;
     const active = orders.filter((o) => {
       const s = String(o.status || '').toLowerCase();
       return s === 'pending' || s === 'পেন্ডিং' || s === 'processing' || s === 'প্রসেসিং' || s === 'shipped' || s === 'ডেলিভারিতে আছে';
     }).length;
-    return { total, delivered, active };
+    return { total, delivered, active, pendingPayment };
   }, [orders]);
 
   // Filtered Orders
@@ -321,6 +330,9 @@ export default function ProfileView({ onBackToHome }) {
       }
 
       // Status matching
+      if (statusFilter === 'pending_payment') {
+        return s === 'pending_payment' || s === 'পেমেন্ট বাকি' || s === 'pending payment';
+      }
       if (statusFilter === 'active') {
         return s === 'pending' || s === 'পেন্ডিং' || s === 'processing' || s === 'প্রসেসিং' || s === 'shipped' || s === 'ডেলিভারিতে আছে';
       }
@@ -561,6 +573,23 @@ export default function ProfileView({ onBackToHome }) {
                     }}
                   >
                     চলমান ({toBengaliNumber(stats.active)})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('pending_payment')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      background: statusFilter === 'pending_payment' ? '#C2410C' : '#FFFFFF',
+                      color: statusFilter === 'pending_payment' ? '#FFFFFF' : 'var(--ink)',
+                      borderColor: statusFilter === 'pending_payment' ? '#C2410C' : 'var(--rule)'
+                    }}
+                  >
+                    পেমেন্ট বাকি ({toBengaliNumber(stats.pendingPayment)})
                   </button>
                   <button
                     type="button"

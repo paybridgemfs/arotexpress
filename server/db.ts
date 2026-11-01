@@ -10,11 +10,11 @@ declare global {
 const pool: Pool =
   globalThis._pgPool ||
   new Pool({
-    host: process.env.PGHOST,
+    host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
     port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
-    database: process.env.PGDATABASE,
-    user: process.env.PGUSER,
-    password: process.env.PGPASSWORD,
+    database: process.env.PGDATABASE || 'postgres',
+    user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
+    password: process.env.PGPASSWORD || 'SPmd1151@@##',
     ssl: { rejectUnauthorized: false },
     max: 5, // Strict limit for Supabase session pooler to avoid exhausting connection slots
     idleTimeoutMillis: 30000, // Return idle connections to pooler after 30 seconds
@@ -2469,6 +2469,60 @@ export class DBManager {
       }
 
       return order;
+    }
+    return null;
+  }
+
+  // Cancel unpaid online order (regular or package)
+  static cancelUnpaidOrder(orderId: number, orderType: 'orders' | 'package_orders' = 'orders') {
+    if (orderType === 'package_orders') {
+      const pkgOrder = (this.data.package_orders || []).find(o => o.id === orderId);
+      if (pkgOrder && pkgOrder.payment_status !== 'verified') {
+        pkgOrder.status = 'বাতিল';
+        pkgOrder.payment_status = 'cancelled';
+        if (isPgConnected) {
+          pool.query(`UPDATE package_orders SET status = 'বাতিল', payment_status = 'cancelled' WHERE id = $1`, [orderId])
+            .catch((e: any) => console.warn('PG sync error (cancel unpaid pkg order):', e.message));
+        }
+        return pkgOrder;
+      }
+    } else {
+      const order = (this.data.orders || []).find(o => o.id === orderId);
+      if (order && order.payment_status !== 'verified') {
+        const oldStatus = order.status;
+        order.status = 'বাতিল';
+        order.payment_status = 'cancelled';
+        if (isPgConnected) {
+          pool.query(`UPDATE orders SET status = 'বাতিল', payment_status = 'cancelled' WHERE id = $1`, [orderId])
+            .catch((e: any) => console.warn('PG sync error (cancel unpaid order):', e.message));
+        }
+        // Restore stock if it was deducted
+        if (oldStatus !== 'বাতিল') {
+          try {
+            const items = typeof order.items_json === 'string' ? JSON.parse(order.items_json) : order.items_json;
+            if (Array.isArray(items)) {
+              for (const item of items) {
+                let brand: any = null;
+                const pId = item.productId || item.product_id || item.id;
+                if (pId) {
+                  for (const cat of this.data.categories) {
+                    const b = cat.brands?.find((b: any) => b.id === pId);
+                    if (b) { brand = b; break; }
+                  }
+                }
+                if (brand && brand.stock !== undefined) {
+                  brand.stock += (item.qty || 1);
+                  if (isPgConnected && brand.id) {
+                    pool.query(`UPDATE product_brands SET stock = stock + $1 WHERE id = $2`, [item.qty || 1, brand.id])
+                      .catch(() => {});
+                  }
+                }
+              }
+            }
+          } catch {}
+        }
+        return order;
+      }
     }
     return null;
   }

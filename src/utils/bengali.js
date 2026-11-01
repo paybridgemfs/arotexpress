@@ -99,6 +99,7 @@ export function formatStockDisplay(stockQty, unit = '') {
  */
 export function normalizeOrderStatus(status) {
   const s = String(status || '').toLowerCase().trim();
+  if (s === 'pending_payment' || s === 'পেমেন্ট বাকি' || s === 'payment_pending' || s === 'awaiting_payment') return 'pending_payment';
   if (s === 'pending' || s === 'পেন্ডিং') return 'pending';
   if (s === 'processing' || s === 'প্রসেসিং') return 'processing';
   if (s === 'shipped' || s === 'পাঠানো হয়েছে' || s === 'ডেলিভারিতে আছে' || s === 'ডেলিভারিতে পাঠানো হয়েছে' || s === 'অন-ওয়ে' || s === 'অন-ডেলিভারি') return 'shipped';
@@ -113,6 +114,7 @@ export function normalizeOrderStatus(status) {
 export function getOrderStatusBn(status) {
   const norm = normalizeOrderStatus(status);
   switch (norm) {
+    case 'pending_payment': return 'পেমেন্ট বাকি';
     case 'pending': return 'পেন্ডিং';
     case 'processing': return 'প্রসেসিং';
     case 'shipped': return 'পাঠানো হয়েছে';
