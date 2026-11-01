@@ -353,7 +353,8 @@ export default function PaymentGatewayView() {
 
   // Helper to render method logo using Next.js Image or high fidelity SVG brand artwork (width 128px, height 68px, no plain text)
   const renderMethodLogo = (method: any, width = 128, height = 68) => {
-    if (method.logo && typeof method.logo === 'string' && method.logo.trim()) {
+    const logoUrl = method?.logo || method?.logo_url || method?.image;
+    if (logoUrl && typeof logoUrl === 'string' && logoUrl.trim()) {
       return (
         <div
           style={{
@@ -364,12 +365,13 @@ export default function PaymentGatewayView() {
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
-            borderRadius: '8px'
+            borderRadius: '8px',
+            backgroundColor: '#ffffff'
           }}
         >
           <Image
-            src={method.logo.trim()}
-            alt={method.name_bn || 'পেমেন্ট মেথড'}
+            src={logoUrl.trim()}
+            alt={method?.name_bn || 'পেমেন্ট মেথড'}
             fill
             sizes={`${width}px`}
             referrerPolicy="no-referrer"
