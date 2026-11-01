@@ -351,7 +351,7 @@ export default function PaymentGatewayView() {
   const siteName = settings?.site_name || 'আড়ৎ এক্সপ্রেস';
   const siteTagline = settings?.site_tagline || 'তাজা পাইকারি ও খুচরা মুদি বাজার';
 
-  // Helper to render method logo using Next.js Image or fallback (width & height support)
+  // Helper to render method logo using Next.js Image or high fidelity SVG brand artwork (width 128px, height 68px, no plain text)
   const renderMethodLogo = (method: any, width = 128, height = 68) => {
     if (method.logo && typeof method.logo === 'string' && method.logo.trim()) {
       return (
@@ -363,7 +363,8 @@ export default function PaymentGatewayView() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            borderRadius: '8px'
           }}
         >
           <Image
@@ -379,22 +380,59 @@ export default function PaymentGatewayView() {
       );
     }
 
-    // Default colorful badges when no custom logo is uploaded
     const code = (method.code || '').toLowerCase();
-    let bg = '#006C4C';
-    let text = method.name_bn || 'Pay';
+    
     if (code.includes('bkash')) {
-      bg = '#E2136E';
-      text = 'বিকাশ';
-    } else if (code.includes('nagad')) {
-      bg = '#F7941D';
-      text = 'নগদ';
-    } else if (code.includes('rocket')) {
-      bg = '#8C3494';
-      text = 'রকেট';
-    } else if (code.includes('upay')) {
-      bg = '#003B70';
-      text = 'উপায়';
+      return (
+        <div style={{ width: `${width}px`, height: `${height}px`, background: '#E2136E', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(226, 19, 110, 0.25)' }}>
+          <svg width="86" height="32" viewBox="0 0 110 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 32V8H20C25 8 28 11 28 16C28 21 25 24 20 24H17V32H14ZM17 14V18H19.5C22 18 24 17 24 16C24 15 22 14 19.5 14H17Z" fill="white"/>
+            <path d="M32 32V8H35V32H32Z" fill="white"/>
+            <path d="M39 32L47 20L39 8H43L49 17L55 8H59L51 20L59 32H55L49 23L43 32H39Z" fill="white"/>
+            <path d="M63 32V8H66V20L75 8H79L70 19.5L79 32H75L66 21.5V32H63Z" fill="white"/>
+            <path d="M83 32V8H86V32H83Z" fill="white"/>
+          </svg>
+        </div>
+      );
+    }
+    if (code.includes('nagad')) {
+      return (
+        <div style={{ width: `${width}px`, height: `${height}px`, background: '#F7941D', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(247, 148, 29, 0.25)' }}>
+          <svg width="90" height="32" viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 32V14H13V11H19V32H16Z" fill="white"/>
+            <path d="M25 32V8H28V32H25Z" fill="white"/>
+            <path d="M33 32V11H30V8H39V32H33Z" fill="white"/>
+            <path d="M44 32V8H47V20L56 8H60L51 20L60 32H56V21.5H47V32H44Z" fill="white"/>
+            <path d="M64 32V14H61V11H67V32H64Z" fill="white"/>
+            <path d="M72 32V8H81V11H75V17H80V20H75V29H81V32H72Z" fill="white"/>
+          </svg>
+        </div>
+      );
+    }
+    if (code.includes('rocket')) {
+      return (
+        <div style={{ width: `${width}px`, height: `${height}px`, background: '#8C3494', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(140, 52, 148, 0.25)' }}>
+          <svg width="90" height="32" viewBox="0 0 130 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 32V8H20C25 8 28 11 28 16C28 21 25 24 20 24H17V32H14ZM17 14V18H19.5C22 18 24 17 24 16C24 15 22 14 19.5 14H17Z" fill="white"/>
+            <path d="M32 32V8H35V20L44 8H48L39 20L49 32H45L37 22.5V32H32Z" fill="white"/>
+            <path d="M53 32V8H56V29H65V32H53Z" fill="white"/>
+            <path d="M69 32V8H72V32H69Z" fill="white"/>
+            <path d="M76 32V8H85V11H79V17H84V20H79V29H85V32H76Z" fill="white"/>
+          </svg>
+        </div>
+      );
+    }
+    if (code.includes('upay')) {
+      return (
+        <div style={{ width: `${width}px`, height: `${height}px`, background: '#005CA9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(0, 92, 169, 0.25)' }}>
+          <svg width="80" height="32" viewBox="0 0 110 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 23V8H16V22C16 25 18 27 21 27C24 27 26 25 26 22V8H29V23C29 27 26 30 21 30C16 30 13 27 13 23Z" fill="white"/>
+            <path d="M33 32V8H36V32H33Z" fill="white"/>
+            <path d="M41 32V19L38 8H42L45.5 16L49 8H53L50 19V32H47V22H44V32H41Z" fill="white"/>
+            <path d="M57 32V8H60V32H57Z" fill="white"/>
+          </svg>
+        </div>
+      );
     }
 
     return (
@@ -402,18 +440,17 @@ export default function PaymentGatewayView() {
         style={{
           width: `${width}px`,
           height: `${height}px`,
-          background: bg,
-          color: '#FFFFFF',
-          fontWeight: 800,
-          fontSize: '15px',
+          background: '#006C4C',
+          borderRadius: '10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: '8px',
-          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.2)'
+          color: '#FFFFFF',
+          fontWeight: 800,
+          fontSize: '15px'
         }}
       >
-        {text}
+        <span>Online Pay</span>
       </div>
     );
   };
