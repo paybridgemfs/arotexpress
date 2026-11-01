@@ -641,8 +641,8 @@ export default function PaymentGatewayView() {
             <span>আপনার পেমেন্ট মাধ্যম বেছে নিন</span>
           </h2>
 
-          {/* Payment Methods Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '14px', marginBottom: '20px', justifyContent: 'center' }}>
+          {/* Payment Methods Grid: 3 columns responsive with max width 128px and max height 68px */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginBottom: '20px' }}>
             {activeOnlineMethods.map((method: any) => {
               const isSelected = selectedMethodCode.toLowerCase() === method.code?.toLowerCase();
               return (
@@ -655,8 +655,8 @@ export default function PaymentGatewayView() {
                   style={{
                     border: isSelected ? '2.5px solid var(--green, #006C4C)' : '1.5px solid var(--rule, #E2E8F0)',
                     backgroundColor: isSelected ? '#F0FDF4' : '#FFFFFF',
-                    borderRadius: '16px',
-                    padding: '14px 10px',
+                    borderRadius: '12px',
+                    padding: '8px 4px',
                     cursor: 'pointer',
                     transition: 'all 0.18s ease',
                     display: 'flex',
@@ -664,14 +664,22 @@ export default function PaymentGatewayView() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
-                    boxShadow: isSelected ? '0 6px 16px rgba(0, 108, 76, 0.15)' : '0 2px 6px rgba(0,0,0,0.02)'
+                    maxWidth: '128px',
+                    width: '100%',
+                    margin: '0 auto',
+                    boxShadow: isSelected ? '0 4px 12px rgba(0, 108, 76, 0.15)' : '0 1px 4px rgba(0,0,0,0.02)'
                   }}
                 >
-                  {renderMethodLogo(method, 128, 68)}
+                  <div style={{ width: '100%', maxWidth: '128px', maxHeight: '68px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    {renderMethodLogo(method, '100%', '100%')}
+                  </div>
+                  <div style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--ink)', marginTop: '4px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                    {method.name_bn}
+                  </div>
 
                   {isSelected && (
-                    <div style={{ position: 'absolute', top: '6px', right: '6px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--green, #006C4C)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
-                      <Check size={12} strokeWidth={3} />
+                    <div style={{ position: 'absolute', top: '4px', right: '4px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--green, #006C4C)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}>
+                      ✓
                     </div>
                   )}
                 </div>
