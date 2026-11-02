@@ -271,9 +271,7 @@ export default function AdminPanel({ onNavigateHome }) {
   const [newPayment, setNewPayment] = useState({
     code: '',
     name_bn: '',
-    name_en: '',
     number: '',
-    account_type: 'পার্সোনাল (Send Money)',
     instructions_bn: '',
     logo: '',
     logo_delete_url: '',
@@ -1084,9 +1082,7 @@ export default function AdminPanel({ onNavigateHome }) {
         setNewPayment({
           code: '',
           name_bn: '',
-          name_en: '',
           number: '',
-          account_type: 'পার্সোনাল (Send Money)',
           instructions_bn: '',
           logo: '',
           logo_delete_url: '',
@@ -3184,9 +3180,7 @@ export default function AdminPanel({ onNavigateHome }) {
                   setNewPayment({
                     code: '',
                     name_bn: '',
-                    name_en: '',
                     number: '',
-                    account_type: 'পার্সোনাল (Send Money)',
                     instructions_bn: '',
                     logo: '',
                     logo_delete_url: '',
@@ -3311,19 +3305,7 @@ export default function AdminPanel({ onNavigateHome }) {
                           </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                          <div className="field" style={{ margin: 0 }}>
-                            <label>অ্যাকাউন্ট টাইপ</label>
-                            <select
-                              value={newPayment.account_type || 'পার্সোনাল (Send Money)'}
-                              onChange={(e) => setNewPayment({ ...newPayment, account_type: e.target.value })}
-                              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1.5px solid var(--rule)', background: '#F8FAF9', fontSize: '13px' }}
-                            >
-                              <option value="পার্সোনাল (Send Money)">পার্সোনাল (Send Money)</option>
-                              <option value="মার্চেন্ট (Payment)">মার্চেন্ট (Payment)</option>
-                              <option value="এজেন্ট (Cash In)">এজেন্ট (Cash In)</option>
-                            </select>
-                          </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                           <div className="field" style={{ margin: 0 }}>
                             <label>অ্যাকাউন্ট নম্বর <span style={{ color: 'red' }}>*</span></label>
                             <input
@@ -3409,7 +3391,7 @@ export default function AdminPanel({ onNavigateHome }) {
                 <thead>
                   <tr>
                     <th>লোগো</th>
-                    <th>পদ্ধতি ও ধরন</th>
+                    <th>পদ্ধতি</th>
                     <th>কোড</th>
                     <th>অ্যাকাউন্ট নম্বর</th>
                     <th>৫ মিনিটের নির্দেশিকা</th>
@@ -3452,11 +3434,6 @@ export default function AdminPanel({ onNavigateHome }) {
                       <td>
                         <div>
                           <strong>{p.name_bn}</strong>
-                          {p.account_type && (
-                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>
-                              {p.account_type}
-                            </div>
-                          )}
                         </div>
                       </td>
                       <td className="mono" style={{ fontSize: '12px' }}>{p.code}</td>
@@ -3505,8 +3482,7 @@ export default function AdminPanel({ onNavigateHome }) {
                             onClick={() => {
                               setEditingPayment(p);
                               setNewPayment({
-                                ...p,
-                                account_type: p.account_type || 'পার্সোনাল (Send Money)'
+                                ...p
                               });
                               setPaymentLogoFile(null);
                               setPaymentLogoPreview(p.logo || null);

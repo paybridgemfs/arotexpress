@@ -96,9 +96,7 @@ export interface PaymentMethod {
   id: number;
   code: string;
   name_bn: string;
-  name_en: string;
   number: string;
-  account_type?: string;
   logo?: string;
   logo_delete_url?: string;
   instructions_bn: string;
@@ -453,10 +451,10 @@ export const initialData = {
     }
   ] as Category[],
   paymentMethods: [
-    { id: 1, code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', name_en: 'Cash on Delivery', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
-    { id: 2, code: 'bkash', name_bn: 'বিকাশ', name_en: 'bKash', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন।', is_active: true },
-    { id: 3, code: 'nagad', name_bn: 'নগদ', name_en: 'Nagad', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন।', is_active: true },
-    { id: 4, code: 'rocket', name_bn: 'রকেট', name_en: 'Rocket', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন।', is_active: true }
+    { id: 1, code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
+    { id: 2, code: 'bkash', name_bn: 'বিকাশ', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন।', is_active: true },
+    { id: 3, code: 'nagad', name_bn: 'নগদ', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন।', is_active: true },
+    { id: 4, code: 'rocket', name_bn: 'রকেট', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন।', is_active: true }
   ] as PaymentMethod[],
   users: [] as DBUser[],
   admins: [
@@ -606,18 +604,17 @@ export class DBManager {
           id SERIAL PRIMARY KEY,
           code VARCHAR(50) UNIQUE NOT NULL,
           name_bn VARCHAR(100) NOT NULL,
-          name_en VARCHAR(100) NOT NULL,
           number VARCHAR(50),
           instructions_bn TEXT,
           is_active BOOLEAN DEFAULT TRUE,
           logo TEXT,
-          logo_delete_url TEXT,
-          account_type VARCHAR(50)
+          logo_delete_url TEXT
         );
 
         ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo TEXT;
         ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_delete_url TEXT;
-        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS account_type VARCHAR(50);
+        ALTER TABLE payment_methods DROP COLUMN IF EXISTS account_type;
+        ALTER TABLE payment_methods DROP COLUMN IF EXISTS name_en;
 
         CREATE TABLE IF NOT EXISTS orders (
           id SERIAL PRIMARY KEY,
@@ -964,7 +961,6 @@ export class DBManager {
           id: p.id,
           code: p.code,
           name_bn: p.name_bn,
-          name_en: p.name_en,
           number: p.number || '',
           logo: p.logo || '',
           logo_delete_url: p.logo_delete_url || '',
@@ -973,15 +969,15 @@ export class DBManager {
         }));
       } else {
         const defaultPaymentMethods = [
-          { code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', name_en: 'Cash on Delivery', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
-          { code: 'bkash', name_bn: 'বিকাশ', name_en: 'bKash', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
-          { code: 'nagad', name_bn: 'নগদ', name_en: 'Nagad', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
-          { code: 'rocket', name_bn: 'রকেট', name_en: 'Rocket', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true }
+          { code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
+          { code: 'bkash', name_bn: 'বিকাশ', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
+          { code: 'nagad', name_bn: 'নগদ', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
+          { code: 'rocket', name_bn: 'রকেট', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true }
         ];
         for (const pm of defaultPaymentMethods) {
           await client.query(
-            `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (code) DO NOTHING`,
-            [pm.code, pm.name_bn, pm.name_en, pm.number, pm.instructions_bn, pm.is_active]
+            `INSERT INTO payment_methods (code, name_bn, number, instructions_bn, is_active) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO NOTHING`,
+            [pm.code, pm.name_bn, pm.number, pm.instructions_bn, pm.is_active]
           );
         }
         const recheckPay = await client.query(`SELECT * FROM payment_methods ORDER BY id ASC`);
@@ -989,7 +985,6 @@ export class DBManager {
           id: p.id,
           code: p.code,
           name_bn: p.name_bn,
-          name_en: p.name_en,
           number: p.number || '',
           logo: p.logo || '',
           logo_delete_url: p.logo_delete_url || '',
@@ -1929,23 +1924,19 @@ export class DBManager {
           await pool.query(
             `UPDATE payment_methods SET
                name_bn = $1,
-               name_en = $2,
-               number = $3,
-               instructions_bn = $4,
-               is_active = $5,
-               logo = $6,
-               logo_delete_url = $7,
-               account_type = $8
-             WHERE id = $9 OR code = $10`,
+               number = $2,
+               instructions_bn = $3,
+               is_active = $4,
+               logo = $5,
+               logo_delete_url = $6
+             WHERE id = $7 OR code = $8`,
             [
               current.name_bn,
-              current.name_en,
               current.number || '',
               current.instructions_bn || '',
               current.is_active !== false,
               current.logo || null,
               current.logo_delete_url || null,
-              current.account_type || null,
               current.id,
               current.code
             ]
@@ -1979,27 +1970,23 @@ export class DBManager {
       if (getIsPgConnected()) {
         try {
           await pool.query(
-            `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo, logo_delete_url, account_type)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `INSERT INTO payment_methods (code, name_bn, number, instructions_bn, is_active, logo, logo_delete_url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (code) DO UPDATE SET
                name_bn = EXCLUDED.name_bn,
-               name_en = EXCLUDED.name_en,
                number = EXCLUDED.number,
                instructions_bn = EXCLUDED.instructions_bn,
                is_active = EXCLUDED.is_active,
                logo = EXCLUDED.logo,
-               logo_delete_url = EXCLUDED.logo_delete_url,
-               account_type = EXCLUDED.account_type`,
+               logo_delete_url = EXCLUDED.logo_delete_url`,
             [
               updated.code,
               updated.name_bn,
-              updated.name_en,
               updated.number || '',
               updated.instructions_bn || '',
               updated.is_active !== undefined ? updated.is_active : true,
               updated.logo || null,
-              updated.logo_delete_url || null,
-              updated.account_type || null
+              updated.logo_delete_url || null
             ]
           );
         } catch (e: any) {
@@ -2021,28 +2008,24 @@ export class DBManager {
     if (getIsPgConnected()) {
       try {
         const res = await pool.query(
-          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo, logo_delete_url, account_type)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          `INSERT INTO payment_methods (code, name_bn, number, instructions_bn, is_active, logo, logo_delete_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
-             name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
              instructions_bn = EXCLUDED.instructions_bn,
              is_active = EXCLUDED.is_active,
              logo = EXCLUDED.logo,
-             logo_delete_url = EXCLUDED.logo_delete_url,
-             account_type = EXCLUDED.account_type
+             logo_delete_url = EXCLUDED.logo_delete_url
            RETURNING *`,
           [
             newMethod.code,
             newMethod.name_bn,
-            newMethod.name_en,
             newMethod.number || '',
             newMethod.instructions_bn || '',
             newMethod.is_active,
             newMethod.logo || null,
-            newMethod.logo_delete_url || null,
-            newMethod.account_type || null
+            newMethod.logo_delete_url || null
           ]
         );
         if (res.rows[0]) {

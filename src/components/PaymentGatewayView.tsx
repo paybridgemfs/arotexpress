@@ -832,15 +832,10 @@ export default function PaymentGatewayView() {
                 }}
               >
                 {/* Method & Account Type */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {currentSelectedMethod && renderMethodLogo(currentSelectedMethod, 32)}
-                    <span style={{ fontWeight: 800, fontSize: '15px', color: '#166534' }}>
-                      {currentSelectedMethod?.name_bn || 'মোবাইল ব্যাংকিং'}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '11.5px', fontWeight: 700, background: '#FFFFFF', color: '#166534', padding: '3px 8px', borderRadius: '6px', border: '1px solid #BBF7D0' }}>
-                    {currentSelectedMethod?.account_type || 'পার্সোনাল (Send Money)'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  {currentSelectedMethod && renderMethodLogo(currentSelectedMethod, 32)}
+                  <span style={{ fontWeight: 800, fontSize: '15px', color: '#166534' }}>
+                    {currentSelectedMethod?.name_bn || 'মোবাইল ব্যাংকিং'}
                   </span>
                 </div>
 
