@@ -8,6 +8,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const user = auth.user as any;
+  const isAdmin = user?.role === 'admin';
+
   try {
     const contentType = req.headers.get('content-type') || '';
 
@@ -26,12 +29,17 @@ export async function POST(req: NextRequest) {
 
       const rawFileName = (typeof customName === 'string' && customName.trim()) ? customName.trim() : ((file as any).name || `img_${Date.now()}`);
       fileName = rawFileName;
-      mimeType = file.type || 'image/jpeg';
+      mimeType = (file as any).type || 'image/jpeg';
       const arrayBuffer = await file.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
 
-      // 1MB size limit check for profile pictures
+      // Check if user is trying to upload non-profile image without admin privileges
       const isProfilePic = formData.get('type') === 'profile' || rawFileName.startsWith('user_') || rawFileName.includes('profile');
+      if (!isAdmin && !isProfilePic) {
+        return NextResponse.json({ error: 'শুধুমাত্র অ্যাডমিন পণ্য ও সাইটের ছবি আপলোড করতে পারবেন।' }, { status: 403 });
+      }
+
+      // 1MB size limit check for profile pictures
       if (isProfilePic && buffer.length > 1 * 1024 * 1024) {
         return NextResponse.json({ error: 'প্রোফাইল ছবির সাইজ সর্বোচ্চ ১ মেগাবাইট (1MB) হতে পারবে।' }, { status: 400 });
       }
@@ -61,6 +69,14 @@ export async function POST(req: NextRequest) {
         fileName = customName.trim();
       }
       buffer = Buffer.from(base64Data, 'base64');
+
+      const isProfilePic = fileName.startsWith('user_') || fileName.includes('profile');
+      if (!isAdmin && !isProfilePic) {
+        return NextResponse.json({ error: 'শুধুমাত্র অ্যাডমিন পণ্য ও সাইটের ছবি আপলোড করতে পারবেন।' }, { status: 403 });
+      }
+      if (isProfilePic && buffer.length > 1 * 1024 * 1024) {
+        return NextResponse.json({ error: 'প্রোফাইল ছবির সাইজ সর্বোচ্চ ১ মেগাবাইট (1MB) হতে পারবে।' }, { status: 400 });
+      }
     }
 
     const uploadResult = await uploadImageBufferToDrive(buffer, fileName, mimeType);
@@ -69,15 +85,12 @@ export async function POST(req: NextRequest) {
       success: true,
       url: uploadResult.url,
       display_url: uploadResult.display_url,
+      thumb_url: uploadResult.url,
       delete_url: uploadResult.delete_url,
-      file_id: uploadResult.file_id,
-      name: uploadResult.name
+      file_id: uploadResult.file_id
     });
   } catch (err: any) {
     console.error('Error in GDrive upload route:', err);
-    return NextResponse.json(
-      { error: err.message || 'গুগল ড্রাইভে ছবি আপলোড করতে ব্যর্থ হয়েছে' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message || 'গুগল ড্রাইভে ছবি আপলোড করতে ব্যর্থ' }, { status: 500 });
   }
 }

@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { motion } from 'motion/react';
 import { X, Printer, Download, CheckCircle2, Phone, MapPin, Building2, Calendar, Clock, CreditCard, Banknote, Truck, User } from 'lucide-react';
 import { useStoreData } from '../context/StoreDataContext';
-import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
+import { toBengaliNumber, formatStockDisplay, getOrderStatusBn as getStatusBn } from '../utils/bengali.js';
 import { printElement } from '../utils/printHelper.js';
 
 function safeFormatDate(dateVal) {

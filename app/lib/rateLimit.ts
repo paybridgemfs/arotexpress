@@ -3,29 +3,90 @@ import { NextRequest } from 'next/server';
 interface RateLimitRecord {
   count: number;
   resetAt: number;
+  blockedUntil?: number;
 }
 
+const loginFailuresMap = new Map<string, RateLimitRecord>();
 const rateLimitMap = new Map<string, RateLimitRecord>();
 
-// Clean up expired records every 5 minutes
+// Clean up expired records every 15 minutes
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now();
+    for (const [key, record] of loginFailuresMap.entries()) {
+      if (record.resetAt <= now && (!record.blockedUntil || record.blockedUntil <= now)) {
+        loginFailuresMap.delete(key);
+      }
+    }
     for (const [key, record] of rateLimitMap.entries()) {
       if (record.resetAt <= now) {
         rateLimitMap.delete(key);
       }
     }
-  }, 5 * 60 * 1000);
+  }, 15 * 60 * 1000);
+}
+
+export function getClientIp(req: NextRequest): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    '127.0.0.1'
+  );
 }
 
 /**
- * In-memory rate limiter helper for Next.js Route Handlers.
- * @param req NextRequest
- * @param keyPrefix e.g. "admin_login", "user_login", "upload"
- * @param maxAttempts Maximum allowed hits in the time window (e.g. 5)
- * @param windowMs Time window in milliseconds (default 60 seconds)
- * @returns { allowed: boolean, remaining: number, resetInSeconds: number }
+ * Checks if login is currently blocked due to 5 consecutive failed attempts.
+ */
+export function checkLoginRateLimit(req: NextRequest, prefix: string): { blocked: boolean; minutesLeft: number } {
+  const ip = getClientIp(req);
+  const key = `${prefix}:${ip}`;
+  const now = Date.now();
+  const record = loginFailuresMap.get(key);
+
+  if (record && record.blockedUntil && record.blockedUntil > now) {
+    const minutesLeft = Math.ceil((record.blockedUntil - now) / (60 * 1000));
+    return { blocked: true, minutesLeft };
+  }
+
+  return { blocked: false, minutesLeft: 0 };
+}
+
+/**
+ * Records a failed login attempt. If failures reach 5, blocks IP for 15 minutes.
+ */
+export function recordLoginFailure(req: NextRequest, prefix: string): void {
+  const ip = getClientIp(req);
+  const key = `${prefix}:${ip}`;
+  const now = Date.now();
+  const record = loginFailuresMap.get(key);
+
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+
+  if (!record || record.resetAt <= now) {
+    loginFailuresMap.set(key, {
+      count: 1,
+      resetAt: now + windowMs
+    });
+    return;
+  }
+
+  record.count += 1;
+  if (record.count >= 5) {
+    record.blockedUntil = now + windowMs;
+  }
+}
+
+/**
+ * Resets failed attempts upon successful login.
+ */
+export function resetLoginRateLimit(req: NextRequest, prefix: string): void {
+  const ip = getClientIp(req);
+  const key = `${prefix}:${ip}`;
+  loginFailuresMap.delete(key);
+}
+
+/**
+ * Standard general rate limiter helper.
  */
 export function checkRateLimit(
   req: NextRequest,
@@ -33,11 +94,7 @@ export function checkRateLimit(
   maxAttempts: number = 5,
   windowMs: number = 60 * 1000
 ): { allowed: boolean; remaining: number; resetInSeconds: number } {
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    '127.0.0.1';
-
+  const ip = getClientIp(req);
   const cacheKey = `${keyPrefix}:${ip}`;
   const now = Date.now();
   const record = rateLimitMap.get(cacheKey);

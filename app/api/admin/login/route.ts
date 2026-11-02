@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/app/lib/db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { checkRateLimit } from '@/app/lib/rateLimit';
+import { checkLoginRateLimit, recordLoginFailure, resetLoginRateLimit } from '@/app/lib/rateLimit';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'arot_express_secret_key_2026';
@@ -87,11 +87,11 @@ function parseDeviceInfo(userAgent: string, ipAddress: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Rate limiting: Max 6 attempts per minute
-    const rateCheck = checkRateLimit(req, 'admin_login', 6, 60 * 1000);
-    if (!rateCheck.allowed) {
+    // 1. IP-based login rate limit: 5 failed attempts blocks login from that IP for 15 minutes
+    const blockCheck = checkLoginRateLimit(req, 'admin_login');
+    if (blockCheck.blocked) {
       return NextResponse.json(
-        { error: `অনেক বেশি ব্যর্থ চেষ্টা করা হয়েছে। দয়া করে ${rateCheck.resetInSeconds} সেকেন্ড অপেক্ষা করুন।` },
+        { error: `বারবার ভুল তথ্য দেওয়ার কারণে আপনার আইপি (IP) থেকে ১৫ মিনিটের জন্য লগইন সাময়িকভাবে ব্লক করা হয়েছে। দয়া করে ${blockCheck.minutesLeft} মিনিট পরে চেষ্টা করুন।` },
         { status: 429 }
       );
     }
@@ -104,14 +104,19 @@ export async function POST(req: NextRequest) {
     const DBManager = await getDB();
     const admin = DBManager.findAdminByUsername(username.trim());
     if (!admin) {
+      recordLoginFailure(req, 'admin_login');
       return NextResponse.json({ error: 'শুধুমাত্র অনুমোদিত অ্যাডমিন লগইন করতে পারবেন' }, { status: 401 });
     }
 
     // 2. Secure async bcrypt check
     const validPassword = await bcrypt.compare(password.trim(), admin.password_hash);
     if (!validPassword) {
+      recordLoginFailure(req, 'admin_login');
       return NextResponse.json({ error: 'ভুল অ্যাডমিন পাসওয়ার্ড' }, { status: 401 });
     }
+
+    // Reset login failure rate limit on successful login
+    resetLoginRateLimit(req, 'admin_login');
 
     // 3. Capture current device & IP details
     const ua = req.headers.get('user-agent') || '';

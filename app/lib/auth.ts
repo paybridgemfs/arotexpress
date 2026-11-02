@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'arot_express_secret_key_2026';
+export const JWT_SECRET = process.env.JWT_SECRET || 'arot_express_secure_jwt_secret_key_8f93e1b72a0c';
 
 export async function authenticateToken(req: NextRequest) {
   const authHeader = req.headers.get('authorization');

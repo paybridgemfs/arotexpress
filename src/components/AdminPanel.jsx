@@ -268,7 +268,10 @@ export default function AdminPanel({ onNavigateHome }) {
   // Payments / Delivery state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
-  const [newPayment, setNewPayment] = useState({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true });
+  const [newPayment, setNewPayment] = useState({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
+  const [paymentLogoFile, setPaymentLogoFile] = useState(null);
+  const [paymentLogoPreview, setPaymentLogoPreview] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState(null);
@@ -1021,7 +1024,21 @@ export default function AdminPanel({ onNavigateHome }) {
   // Payment Method Save
   const handleSavePaymentMethod = async (e) => {
     e.preventDefault();
+    setSavingPayment(true);
     try {
+      let payload = { ...newPayment };
+      if (paymentLogoFile) {
+        showToast('পেমেন্ট মেথডের লোগো গুগল ড্রাইভে আপলোড হচ্ছে...');
+        const uploadRes = await uploadImage(paymentLogoFile, adminToken, true, 'payment_logo');
+        if (uploadRes?.url) {
+          if (payload.logo_delete_url) {
+            deleteImage(payload.logo_delete_url, adminToken);
+          }
+          payload.logo_url = uploadRes.url;
+          payload.logo_delete_url = uploadRes.delete_url || '';
+        }
+      }
+
       const isEdit = Boolean(editingPayment && editingPayment.id);
       const url = isEdit ? `/api/payment-methods/${editingPayment.id}` : '/api/payment-methods';
       const method = isEdit ? 'PUT' : 'POST';
@@ -1032,7 +1049,7 @@ export default function AdminPanel({ onNavigateHome }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${adminToken}`
         },
-        body: JSON.stringify(newPayment)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const saved = await res.json();
@@ -1045,11 +1062,15 @@ export default function AdminPanel({ onNavigateHome }) {
           showToast('নতুন পেমেন্ট মেথড যোগ হয়েছে');
         }
         setEditingPayment(null);
-        setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true });
+        setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
+        setPaymentLogoFile(null);
+        setPaymentLogoPreview('');
         setIsPaymentModalOpen(false);
       }
     } catch (err) {
       showToast('পেমেন্ট মেথড সংরক্ষণে ত্রুটি');
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -3096,7 +3117,9 @@ export default function AdminPanel({ onNavigateHome }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => {
                   setEditingPayment(null);
-                  setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true });
+                  setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
+                  setPaymentLogoFile(null);
+                  setPaymentLogoPreview('');
                   setIsPaymentModalOpen(true);
                 }}
               >
@@ -3172,6 +3195,53 @@ export default function AdminPanel({ onNavigateHome }) {
                             style={{ width: '100%', padding: '10px', border: '1.5px solid var(--rule)', borderRadius: 'var(--radius-md)', background: '#F8FAF9', fontSize: '14px', resize: 'vertical' }}
                           />
                         </div>
+                        <div className="field">
+                          <label>পেমেন্ট মেথড লোগো (ঐচ্ছিক)</label>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <div
+                              style={{
+                                width: '42px',
+                                height: '42px',
+                                border: '1px solid var(--rule)',
+                                borderRadius: 'var(--radius-md)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: '#F8FAF9',
+                                flexShrink: 0,
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {(paymentLogoPreview || newPayment.logo_url) ? (
+                                <img
+                                  src={paymentLogoPreview || newPayment.logo_url}
+                                  alt="Logo Preview"
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                              ) : (
+                                <CreditCard size={20} color="var(--muted)" />
+                              )}
+                            </div>
+                            <ImageUploadInput
+                              value={newPayment.logo_url || ''}
+                              file={paymentLogoFile}
+                              previewUrl={paymentLogoPreview || ''}
+                              onFileSelect={(file, preview) => {
+                                setPaymentLogoFile(file);
+                                setPaymentLogoPreview(preview);
+                              }}
+                              onClear={() => {
+                                setPaymentLogoFile(null);
+                                setPaymentLogoPreview('');
+                                setNewPayment({ ...newPayment, logo_url: '', logo_delete_url: '' });
+                              }}
+                              placeholder="লোগো ছবি আপলোড করুন..."
+                              disabled={savingPayment}
+                            />
+                          </div>
+                        </div>
+
                         <div className="field" style={{ marginTop: '12px' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input
@@ -3264,6 +3334,8 @@ export default function AdminPanel({ onNavigateHome }) {
                           onClick={() => {
                             setEditingPayment(p);
                             setNewPayment({ ...p });
+                            setPaymentLogoFile(null);
+                            setPaymentLogoPreview(p.logo_url || '');
                             setIsPaymentModalOpen(true);
                           }}
                         >

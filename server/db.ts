@@ -1,13 +1,13 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 
-// Clean & Simple Supabase Session Pooler Configuration (Discrete Credentials)
+// Secure Supabase Session Pooler Configuration (Environment Variables Only)
 const pool = new Pool({
-  host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
+  host: process.env.PGHOST,
   port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
   database: process.env.PGDATABASE || 'postgres',
-  user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
-  password: process.env.PGPASSWORD || 'SPmd1151@@##',
+  user: process.env.PGUSER,
+  password: process.env.PGPASSWORD,
   ssl: { rejectUnauthorized: false }
 });
 
@@ -16,6 +16,17 @@ pool.on('error', (err) => {
 });
 
 let isPgConnected = false;
+
+function normalizeOrderStatusKey(status?: string): string {
+  const s = String(status || '').toLowerCase().trim();
+  if (s === 'pending' || s === 'পেন্ডিং') return 'pending';
+  if (s === 'processing' || s === 'প্রসেসিং') return 'processing';
+  if (s === 'shipped' || s === 'পাঠানো হয়েছে' || s === 'ডেলিভারিতে আছে' || s === 'ডেলিভারিতে পাঠানো হয়েছে' || s === 'অন-ওয়ে' || s === 'অন-ডেলিভারি') return 'shipped';
+  if (s === 'delivered' || s === 'ডেলিভার্ড' || s === 'সম্পন্ন' || s === 'ডেলিভারি সম্পন্ন') return 'delivered';
+  if (s === 'cancelled' || s === 'বাতিল') return 'cancelled';
+  return s || 'pending';
+}
+
 
 export interface CategoryBrand {
   id?: number;
@@ -76,6 +87,8 @@ export interface PaymentMethod {
   number: string;
   instructions_bn: string;
   is_active: boolean;
+  logo_url?: string;
+  logo_delete_url?: string;
 }
 
 export interface DBUser {
@@ -576,8 +589,13 @@ export class DBManager {
           name_en VARCHAR(100) NOT NULL,
           number VARCHAR(50),
           instructions_bn TEXT,
-          is_active BOOLEAN DEFAULT TRUE
+          is_active BOOLEAN DEFAULT TRUE,
+          logo_url TEXT,
+          logo_delete_url TEXT
         );
+
+        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_url TEXT;
+        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_delete_url TEXT;
 
         CREATE TABLE IF NOT EXISTS orders (
           id SERIAL PRIMARY KEY,
@@ -927,7 +945,9 @@ export class DBManager {
           name_en: p.name_en,
           number: p.number || '',
           instructions_bn: p.instructions_bn || '',
-          is_active: p.is_active !== undefined ? p.is_active : true
+          is_active: p.is_active !== undefined ? p.is_active : true,
+          logo_url: p.logo_url || '',
+          logo_delete_url: p.logo_delete_url || ''
         }));
       } else {
         const defaultPaymentMethods = [
@@ -1534,11 +1554,12 @@ export class DBManager {
 
   static async addCategory(cat: any) {
     let newId = Math.max(0, ...this.data.categories.map(c => c.id)) + 1;
+    const deleteUrl = cat.image_delete_url || '';
     if (isPgConnected) {
       try {
         const res = await pool.query(
-          `INSERT INTO categories (group_key, en_name, bn_name, icon) VALUES ($1, $2, $3, $4) RETURNING id`,
-          [cat.group || '', cat.en || '', cat.bn || '', cat.icon || '📦']
+          `INSERT INTO categories (group_key, en_name, bn_name, icon, image_delete_url) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [cat.group || '', cat.en || '', cat.bn || '', cat.icon || '📦', deleteUrl]
         );
         if (res.rows[0]?.id) {
           newId = res.rows[0].id;
@@ -1549,8 +1570,8 @@ export class DBManager {
           // If sequence was collided, sync sequence and retry
           await pool.query(`SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1), true)`);
           const res2 = await pool.query(
-            `INSERT INTO categories (group_key, en_name, bn_name, icon) VALUES ($1, $2, $3, $4) RETURNING id`,
-            [cat.group || '', cat.en || '', cat.bn || '', cat.icon || '📦']
+            `INSERT INTO categories (group_key, en_name, bn_name, icon, image_delete_url) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+            [cat.group || '', cat.en || '', cat.bn || '', cat.icon || '📦', deleteUrl]
           );
           if (res2.rows[0]?.id) {
             newId = res2.rows[0].id;
@@ -1560,8 +1581,8 @@ export class DBManager {
           // Insert with explicit id if auto-increment fails
           try {
             await pool.query(
-              `INSERT INTO categories (id, group_key, en_name, bn_name, icon) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET group_key = EXCLUDED.group_key, en_name = EXCLUDED.en_name, bn_name = EXCLUDED.bn_name, icon = EXCLUDED.icon`,
-              [newId, cat.group || '', cat.en || '', cat.bn || '', cat.icon || '📦']
+              `INSERT INTO categories (id, group_key, en_name, bn_name, icon, image_delete_url) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO UPDATE SET group_key = EXCLUDED.group_key, en_name = EXCLUDED.en_name, bn_name = EXCLUDED.bn_name, icon = EXCLUDED.icon, image_delete_url = EXCLUDED.image_delete_url`,
+              [newId, cat.group || '', cat.en || '', cat.bn || '', cat.icon || '📦', deleteUrl]
             );
           } catch (e3: any) {
             console.warn('PG sync explicit id error (cat add):', e3.message);
@@ -1569,7 +1590,7 @@ export class DBManager {
         }
       }
     }
-    const newCat = { ...cat, id: newId, brands: cat.brands || [] };
+    const newCat = { ...cat, id: newId, image_delete_url: deleteUrl, brands: cat.brands || [] };
     this.data.categories.push(newCat);
     return newCat;
   }
@@ -1743,8 +1764,8 @@ export class DBManager {
 
         if (isPgConnected) {
           pool.query(
-            `UPDATE product_brands SET name = $1, unit = $2, price = $3, cost_price = $4, image_url = $5, stock = $6, force_stock_out = $7 WHERE category_id = $8 AND name = $9`,
-            [cat.brands[bIdx].name, cat.brands[bIdx].unit, cat.brands[bIdx].price, cat.brands[bIdx].cost_price, cat.brands[bIdx].image || '', cat.brands[bIdx].stock, cat.brands[bIdx].force_stock_out, categoryId, brandName]
+            `UPDATE product_brands SET name = $1, unit = $2, price = $3, cost_price = $4, image_url = $5, image_delete_url = $6, stock = $7, force_stock_out = $8 WHERE category_id = $9 AND name = $10`,
+            [cat.brands[bIdx].name, cat.brands[bIdx].unit, cat.brands[bIdx].price, cat.brands[bIdx].cost_price, cat.brands[bIdx].image || '', cat.brands[bIdx].image_delete_url || '', cat.brands[bIdx].stock, cat.brands[bIdx].force_stock_out, categoryId, brandName]
           ).catch((e) => console.warn('PG sync error (brand update):', e.message));
         }
         return cat.brands[bIdx];
@@ -1783,8 +1804,8 @@ export class DBManager {
     return rest;
   }
 
-  static createUser(user: { name: string; phone: string; password?: string; password_hash?: string }) {
-    const newId = Math.max(0, ...this.data.users.map(u => u.id)) + 1;
+  static async createUser(user: { name: string; phone: string; password?: string; password_hash?: string }) {
+    const newId = Math.max(0, ...this.data.users.map(u => u.id || 0)) + 1;
     const passwordHash = user.password_hash || (user.password ? bcrypt.hashSync(user.password, 10) : '');
     const newUser = {
       id: newId,
@@ -1794,13 +1815,21 @@ export class DBManager {
       role: 'user',
       created_at: new Date().toISOString()
     };
-    this.data.users.push(newUser);
     if (isPgConnected) {
-      pool.query(
-        `INSERT INTO users (name, phone, password_hash, role) VALUES ($1, $2, $3, $4)`,
-        [newUser.name, newUser.phone, newUser.password_hash, 'user']
-      ).catch((e) => console.warn('PG sync error (user create):', e.message));
+      try {
+        const res = await pool.query(
+          `INSERT INTO users (name, phone, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *`,
+          [newUser.name, newUser.phone, newUser.password_hash, 'user']
+        );
+        if (res.rows && res.rows[0]) {
+          newUser.id = res.rows[0].id;
+          newUser.created_at = res.rows[0].created_at ? new Date(res.rows[0].created_at).toISOString() : newUser.created_at;
+        }
+      } catch (e: any) {
+        console.warn('PG sync error (user create):', e.message);
+      }
     }
+    this.data.users.push(newUser);
     const { password_hash, ...rest } = newUser;
     return rest;
   }
@@ -1874,8 +1903,8 @@ export class DBManager {
       const current = this.data.paymentMethods[idx];
       if (isPgConnected) {
         pool.query(
-          `UPDATE payment_methods SET name_bn = $1, name_en = $2, number = $3, instructions_bn = $4, is_active = $5 WHERE id = $6 OR code = $7`,
-          [current.name_bn, current.name_en, current.number || '', current.instructions_bn || '', current.is_active !== false, current.id, current.code]
+          `UPDATE payment_methods SET name_bn = $1, name_en = $2, number = $3, instructions_bn = $4, is_active = $5, logo_url = $6, logo_delete_url = $7 WHERE id = $8 OR code = $9`,
+          [current.name_bn, current.name_en, current.number || '', current.instructions_bn || '', current.is_active !== false, current.logo_url || '', current.logo_delete_url || '', current.id, current.code]
         ).catch((e) => console.warn('PG sync error (payment update):', e.message));
       }
       return this.data.paymentMethods[idx];
@@ -1902,15 +1931,17 @@ export class DBManager {
 
       if (isPgConnected) {
         pool.query(
-          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo_url, logo_delete_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
              name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
              instructions_bn = EXCLUDED.instructions_bn,
-             is_active = EXCLUDED.is_active`,
-          [updated.code, updated.name_bn, updated.name_en, updated.number || '', updated.instructions_bn || '', updated.is_active !== undefined ? updated.is_active : true]
+             is_active = EXCLUDED.is_active,
+             logo_url = EXCLUDED.logo_url,
+             logo_delete_url = EXCLUDED.logo_delete_url`,
+          [updated.code, updated.name_bn, updated.name_en, updated.number || '', updated.instructions_bn || '', updated.is_active !== undefined ? updated.is_active : true, updated.logo_url || '', updated.logo_delete_url || '']
         ).catch((e) => console.warn('PG sync error (payment upsert):', e.message));
       }
       return updated;
@@ -1921,23 +1952,27 @@ export class DBManager {
       ...method,
       id: newId,
       code: code || `pm_${Date.now()}`,
-      is_active: method.is_active !== undefined ? method.is_active : true
+      is_active: method.is_active !== undefined ? method.is_active : true,
+      logo_url: method.logo_url || '',
+      logo_delete_url: method.logo_delete_url || ''
     };
     this.data.paymentMethods.push(newMethod);
 
     if (isPgConnected) {
       try {
         const res = await pool.query(
-          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo_url, logo_delete_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
              name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
              instructions_bn = EXCLUDED.instructions_bn,
-             is_active = EXCLUDED.is_active
-           RETURNING *`,
-          [newMethod.code, newMethod.name_bn, newMethod.name_en, newMethod.number || '', newMethod.instructions_bn || '', newMethod.is_active]
+             is_active = EXCLUDED.is_active,
+             logo_url = EXCLUDED.logo_url,
+             logo_delete_url = EXCLUDED.logo_delete_url
+            RETURNING *`,
+          [newMethod.code, newMethod.name_bn, newMethod.name_en, newMethod.number || '', newMethod.instructions_bn || '', newMethod.is_active, newMethod.logo_url, newMethod.logo_delete_url]
         );
         if (res.rows[0]) {
           newMethod.id = res.rows[0].id;
@@ -2019,6 +2054,24 @@ export class DBManager {
     }
 
     return { used: false };
+  }
+
+  static generateUniqueOrderCode(prefix: 'AE' | 'PK'): string {
+    let code = '';
+    let exists = true;
+    let attempts = 0;
+    while (exists && attempts < 100) {
+      attempts++;
+      const randomNum = Math.floor(100000 + Math.random() * 900000);
+      code = `${prefix}-${randomNum}`;
+      const inRegular = (this.data.orders || []).some(o => o.order_code === code);
+      const inPackage = (this.data.package_orders || []).some(o => o.order_code === code);
+      exists = inRegular || inPackage;
+    }
+    if (exists) {
+      code = `${prefix}-${Date.now().toString().slice(-6)}`;
+    }
+    return code;
   }
 
   static getOrders() {
@@ -2109,12 +2162,12 @@ export class DBManager {
     }
 
     const newId = Math.max(0, ...this.data.orders.map(o => o.id || 0)) + 1;
-    const orderCode = 'AE-' + Math.floor(100000 + Math.random() * 900000);
+    const orderCode = this.generateUniqueOrderCode('AE');
     const newOrder = {
       id: newId,
       order_code: orderCode,
       ...order,
-      status: 'পেন্ডিং',
+      status: normalizeOrderStatusKey(order.status || 'pending'),
       payment_status: order.payment_status || (order.payment_method === 'ক্যাশ অন ডেলিভারি' ? 'unpaid' : 'pending'),
       payment_verified_at: order.payment_verified_at || null,
       payment_verified_data: order.payment_verified_data || null,
@@ -2123,7 +2176,7 @@ export class DBManager {
     this.data.orders.unshift(newOrder);
     if (isPgConnected) {
       pool.query(
-        `INSERT INTO orders (order_code, user_id, customer_name, customer_phone, delivery_address, delivery_area, payment_method, sender_number, trx_id, subtotal, delivery_fee, total_amount, items_json, status, payment_status, payment_verified_at, payment_verified_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+        `INSERT INTO orders (order_code, user_id, customer_name, customer_phone, delivery_address, delivery_area, payment_method, sender_number, trx_id, subtotal, delivery_fee, total_amount, items_json, status, payment_status, payment_verified_at, payment_verified_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
         [
           newOrder.order_code,
           newOrder.user_id || null,
@@ -2143,7 +2196,11 @@ export class DBManager {
           newOrder.payment_verified_at,
           newOrder.payment_verified_data ? JSON.stringify(newOrder.payment_verified_data) : null
         ]
-      ).catch((e) => console.warn('PG sync error (order create):', e.message));
+      ).then(res => {
+        if (res.rows && res.rows[0]?.id) {
+          newOrder.id = res.rows[0].id;
+        }
+      }).catch((e) => console.warn('PG sync error (order create):', e.message));
     }
     return newOrder;
   }
@@ -2155,7 +2212,7 @@ export class DBManager {
       const isCurrentlyDelivered = oldStatus === 'delivered' || oldStatus === 'ডেলিভার্ড' || oldStatus === 'সম্পন্ন';
 
       if (status) {
-        order.status = status;
+        order.status = normalizeOrderStatusKey(status);
       }
       
       // If already delivered, rider CANNOT be assigned or changed
@@ -2553,7 +2610,7 @@ export class DBManager {
       throw new Error('এই অর্ডারটি আপনার আইডিতে অ্যাসাইন করা নেই');
     }
 
-    order.status = status;
+    order.status = normalizeOrderStatusKey(status);
     if (note !== undefined) {
       order.delivery_note = note;
     }
@@ -2945,7 +3002,7 @@ export class DBManager {
     }
 
     const newId = Math.max(0, ...this.data.package_orders.map(o => o.id || 0)) + 1;
-    const orderCode = 'PK-' + Math.floor(100000 + Math.random() * 900000);
+    const orderCode = this.generateUniqueOrderCode('PK');
     const newOrder: PackageOrder = {
       id: newId,
       order_code: orderCode,
@@ -3013,7 +3070,7 @@ export class DBManager {
       const isCurrentlyDelivered = oldStatus === 'delivered' || oldStatus === 'ডেলিভার্ড' || oldStatus === 'সম্পন্ন';
 
       if (status) {
-        order.status = status;
+        order.status = normalizeOrderStatusKey(status);
       }
 
       // If already delivered, rider CANNOT be assigned or changed

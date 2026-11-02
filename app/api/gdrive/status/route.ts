@@ -4,8 +4,8 @@ import { authenticateToken } from '../../../lib/auth';
 
 export async function GET(req: NextRequest) {
   const auth = await authenticateToken(req);
-  if (auth.error) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if (auth.error || (auth.user as any)?.role !== 'admin') {
+    return NextResponse.json({ error: auth.error || 'শুধুমাত্র অ্যাডমিন ড্রাইভ স্ট্যাটাস দেখতে পারেন' }, { status: auth.error ? (auth.status || 401) : 403 });
   }
 
   try {

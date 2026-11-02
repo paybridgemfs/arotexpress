@@ -5,9 +5,12 @@ import { uploadImageBufferToDrive } from '@/app/lib/gdrive';
 export async function POST(req: NextRequest) {
   try {
     const authResult = await authenticateToken(req);
-    if (authResult.error || (authResult.user as any)?.role !== 'admin') {
-      return NextResponse.json({ error: 'শুধুমাত্র অ্যাডমিন ছবি আপলোড করতে পারবেন।' }, { status: 401 });
+    if (authResult.error) {
+      return NextResponse.json({ error: 'ছবি আপলোড করতে লগইন করুন।' }, { status: 401 });
     }
+
+    const user = authResult.user as any;
+    const isAdmin = user?.role === 'admin';
 
     const contentType = req.headers.get('content-type') || '';
     let buffer: Buffer;
@@ -33,6 +36,9 @@ export async function POST(req: NextRequest) {
       buffer = Buffer.from(arrayBuffer);
 
       const isProfilePic = incomingForm.get('type') === 'profile' || rawFileName.startsWith('user_') || rawFileName.includes('profile');
+      if (!isAdmin && !isProfilePic) {
+        return NextResponse.json({ error: 'শুধুমাত্র অ্যাডমিন পণ্য ও সাইটের ছবি আপলোড করতে পারবেন।' }, { status: 403 });
+      }
       if (isProfilePic && buffer.length > 1 * 1024 * 1024) {
         return NextResponse.json({ error: 'প্রোফাইল ছবির সাইজ সর্বোচ্চ ১ মেগাবাইট (1MB) হতে পারবে।' }, { status: 400 });
       }
@@ -64,6 +70,14 @@ export async function POST(req: NextRequest) {
         fileName = customName.trim();
       }
       buffer = Buffer.from(base64Data, 'base64');
+
+      const isProfilePic = fileName.startsWith('user_') || fileName.includes('profile');
+      if (!isAdmin && !isProfilePic) {
+        return NextResponse.json({ error: 'শুধুমাত্র অ্যাডমিন পণ্য ও সাইটের ছবি আপলোড করতে পারবেন।' }, { status: 403 });
+      }
+      if (isProfilePic && buffer.length > 1 * 1024 * 1024) {
+        return NextResponse.json({ error: 'প্রোফাইল ছবির সাইজ সর্বোচ্চ ১ মেগাবাইট (1MB) হতে পারবে।' }, { status: 400 });
+      }
     }
 
     const uploadResult = await uploadImageBufferToDrive(buffer, fileName, mimeType);

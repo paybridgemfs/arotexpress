@@ -177,9 +177,11 @@ async function handleTrackingLookup(req: NextRequest, orderId: string, phone: st
     const isPackage = Boolean(order.is_package_order || (order.order_code && order.order_code.startsWith('PK-')));
     const orderPhoneDigits = normalizePhoneDigits(order.customer_phone);
 
-    // Determine ownership: strictly only the customer who owns this order
+    // Determine ownership: strictly only the customer who owns this order (or site admin)
     let isOwner = false;
-    if (authUser && authUser.role !== 'admin') {
+    if (isAdmin) {
+      isOwner = true;
+    } else if (authUser && authUser.role !== 'admin') {
       const authUserPhoneDigits = normalizePhoneDigits(authUser.phone);
       if (order.user_id && authUser.id === order.user_id) {
         isOwner = true;
@@ -192,11 +194,12 @@ async function handleTrackingLookup(req: NextRequest, orderId: string, phone: st
       }
     }
 
-    // A: Logged in owner -> Full UNMASKED details
-    if (isOwner) {
+    // A: Logged in owner or site admin -> Full UNMASKED details
+    if (isAdmin || isOwner) {
       return NextResponse.json({
         verified: true,
-        is_owner: true,
+        is_owner: isOwner,
+        is_admin: isAdmin,
         is_masked: false,
         order: {
           ...order,

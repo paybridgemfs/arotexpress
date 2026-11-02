@@ -72,13 +72,20 @@ export async function PUT(req: NextRequest) {
       const currentUser = DBManager.data.users.find(u => u.id === userPayload.id);
       if (!currentUser) return NextResponse.json({ error: 'ইউজার পাওয়া যায়নি' }, { status: 404 });
 
-      if (password) {
-        const isMatch = await bcrypt.compare(password, currentUser.password_hash);
-        if (!isMatch) return NextResponse.json({ error: 'বর্তমান পাসওয়ার্ড সঠিক নয়' }, { status: 400 });
-      }
+      const newPass = (new_password || '').trim();
+      const currentPass = (current_password || password || '').trim();
 
-      if (new_password && new_password.trim().length < 6) {
-        return NextResponse.json({ error: 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' }, { status: 400 });
+      if (newPass) {
+        if (!currentPass) {
+          return NextResponse.json({ error: 'পাসওয়ার্ড পরিবর্তন করতে বর্তমান পাসওয়ার্ড দিন' }, { status: 400 });
+        }
+        const isMatch = await bcrypt.compare(currentPass, currentUser.password_hash);
+        if (!isMatch) {
+          return NextResponse.json({ error: 'বর্তমান পাসওয়ার্ড সঠিক নয়' }, { status: 400 });
+        }
+        if (newPass.length < 6) {
+          return NextResponse.json({ error: 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' }, { status: 400 });
+        }
       }
 
       const updated = await DBManager.updateUserProfile(userPayload.id, {
