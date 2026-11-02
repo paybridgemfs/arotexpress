@@ -1,45 +1,21 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 
-// Global singletons to prevent state loss on Next.js re-evaluations
-declare global {
-  var _pgPool: Pool | undefined;
-  var _dbData: typeof initialData | undefined;
-  var _pgConnected: boolean | undefined;
-}
+// Clean & Simple Supabase Session Pooler Configuration (Discrete Credentials)
+const pool = new Pool({
+  host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
+  port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
+  database: process.env.PGDATABASE || 'postgres',
+  user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
+  password: process.env.PGPASSWORD || 'SPmd1151@@##',
+  ssl: { rejectUnauthorized: false }
+});
 
-const pool: Pool =
-  globalThis._pgPool ||
-  new Pool({
-    host: process.env.PGHOST || 'aws-0-ap-southeast-2.pooler.supabase.com',
-    port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
-    database: process.env.PGDATABASE || 'postgres',
-    user: process.env.PGUSER || 'postgres.eryerbkuesvnjxozihjm',
-    password: process.env.PGPASSWORD || 'SPmd1151@@##',
-    ssl: { rejectUnauthorized: false },
-    max: 5,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 8000
-  });
+pool.on('error', (err) => {
+  console.warn('⚠️ PostgreSQL pool notice:', err.message);
+});
 
-if (!globalThis._pgPool) {
-  pool.on('error', (err) => {
-    console.warn('⚠️ PostgreSQL pool notice:', err.message);
-  });
-  if (process.env.NODE_ENV !== 'production') {
-    globalThis._pgPool = pool;
-  }
-}
-
-// Persist connection state and data in globalThis
-const getIsPgConnected = () => globalThis._pgConnected || false;
-const setIsPgConnected = (val: boolean) => { globalThis._pgConnected = val; };
-const getDbData = () => {
-  if (!globalThis._dbData) {
-    globalThis._dbData = JSON.parse(JSON.stringify(initialData));
-  }
-  return globalThis._dbData!;
-};
+let isPgConnected = false;
 
 export interface CategoryBrand {
   id?: number;
@@ -96,9 +72,8 @@ export interface PaymentMethod {
   id: number;
   code: string;
   name_bn: string;
+  name_en: string;
   number: string;
-  logo?: string;
-  logo_delete_url?: string;
   instructions_bn: string;
   is_active: boolean;
 }
@@ -451,10 +426,10 @@ export const initialData = {
     }
   ] as Category[],
   paymentMethods: [
-    { id: 1, code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
-    { id: 2, code: 'bkash', name_bn: 'বিকাশ', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন।', is_active: true },
-    { id: 3, code: 'nagad', name_bn: 'নগদ', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন।', is_active: true },
-    { id: 4, code: 'rocket', name_bn: 'রকেট', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন।', is_active: true }
+    { id: 1, code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', name_en: 'Cash on Delivery', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
+    { id: 2, code: 'bkash', name_bn: 'বিকাশ', name_en: 'bKash', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন।', is_active: true },
+    { id: 3, code: 'nagad', name_bn: 'নগদ', name_en: 'Nagad', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন।', is_active: true },
+    { id: 4, code: 'rocket', name_bn: 'রকেট', name_en: 'Rocket', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন।', is_active: true }
   ] as PaymentMethod[],
   users: [] as DBUser[],
   admins: [
@@ -486,12 +461,7 @@ export const initialData = {
 
 // Database Store Manager
 export class DBManager {
-  static get data() {
-    return getDbData();
-  }
-  static set data(val: any) {
-    globalThis._dbData = val;
-  }
+  static data = initialData;
   private static isInitialized = false;
   private static initPromise: Promise<void> | null = null;
 
@@ -505,10 +475,9 @@ export class DBManager {
     }
 
     this.initPromise = (async () => {
-      let client: any = null;
       try {
-        client = await pool.connect();
-        setIsPgConnected(true);
+        const client = await pool.connect();
+        isPgConnected = true;
         console.log('✅ PostgreSQL Database connected successfully!');
 
         // Create Tables if not exist
@@ -604,17 +573,11 @@ export class DBManager {
           id SERIAL PRIMARY KEY,
           code VARCHAR(50) UNIQUE NOT NULL,
           name_bn VARCHAR(100) NOT NULL,
+          name_en VARCHAR(100) NOT NULL,
           number VARCHAR(50),
           instructions_bn TEXT,
-          is_active BOOLEAN DEFAULT TRUE,
-          logo TEXT,
-          logo_delete_url TEXT
+          is_active BOOLEAN DEFAULT TRUE
         );
-
-        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo TEXT;
-        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_delete_url TEXT;
-        ALTER TABLE payment_methods DROP COLUMN IF EXISTS account_type;
-        ALTER TABLE payment_methods DROP COLUMN IF EXISTS name_en;
 
         CREATE TABLE IF NOT EXISTS orders (
           id SERIAL PRIMARY KEY,
@@ -961,23 +924,22 @@ export class DBManager {
           id: p.id,
           code: p.code,
           name_bn: p.name_bn,
+          name_en: p.name_en,
           number: p.number || '',
-          logo: p.logo || '',
-          logo_delete_url: p.logo_delete_url || '',
           instructions_bn: p.instructions_bn || '',
           is_active: p.is_active !== undefined ? p.is_active : true
         }));
       } else {
         const defaultPaymentMethods = [
-          { code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
-          { code: 'bkash', name_bn: 'বিকাশ', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
-          { code: 'nagad', name_bn: 'নগদ', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
-          { code: 'rocket', name_bn: 'রকেট', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true }
+          { code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', name_en: 'Cash on Delivery', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
+          { code: 'bkash', name_bn: 'বিকাশ', name_en: 'bKash', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
+          { code: 'nagad', name_bn: 'নগদ', name_en: 'Nagad', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
+          { code: 'rocket', name_bn: 'রকেট', name_en: 'Rocket', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true }
         ];
         for (const pm of defaultPaymentMethods) {
           await client.query(
-            `INSERT INTO payment_methods (code, name_bn, number, instructions_bn, is_active) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO NOTHING`,
-            [pm.code, pm.name_bn, pm.number, pm.instructions_bn, pm.is_active]
+            `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (code) DO NOTHING`,
+            [pm.code, pm.name_bn, pm.name_en, pm.number, pm.instructions_bn, pm.is_active]
           );
         }
         const recheckPay = await client.query(`SELECT * FROM payment_methods ORDER BY id ASC`);
@@ -985,9 +947,8 @@ export class DBManager {
           id: p.id,
           code: p.code,
           name_bn: p.name_bn,
+          name_en: p.name_en,
           number: p.number || '',
-          logo: p.logo || '',
-          logo_delete_url: p.logo_delete_url || '',
           instructions_bn: p.instructions_bn || '',
           is_active: p.is_active !== undefined ? p.is_active : true
         }));
@@ -1300,18 +1261,12 @@ export class DBManager {
         console.warn('Notice syncing sequences:', seqErr.message);
       }
 
+      client.release();
       this.isInitialized = true;
     } catch (err: any) {
       console.warn('⚠️ PostgreSQL direct connection not active yet, using active high-performance resilient storage:', err.message);
-      setIsPgConnected(false);
+      isPgConnected = false;
     } finally {
-      if (client) {
-        try {
-          client.release();
-        } catch (relErr: any) {
-          console.warn('Notice releasing client to pooler:', relErr.message);
-        }
-      }
       this.initPromise = null;
     }
   })();
@@ -1326,7 +1281,7 @@ export class DBManager {
 
   static updateSettings(newSettings: Partial<typeof initialData.settings>) {
     this.data.settings = { ...this.data.settings, ...newSettings };
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       for (const [key, val] of Object.entries(newSettings)) {
         pool.query(
           `INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -1349,7 +1304,7 @@ export class DBManager {
       ...(this.data.footer_settings || defaultFooterSettings),
       ...newSettings
     };
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       for (const [key, val] of Object.entries(newSettings)) {
         pool.query(
           `INSERT INTO footer_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -1362,7 +1317,7 @@ export class DBManager {
 
   static resetFooterSettings() {
     this.data.footer_settings = JSON.parse(JSON.stringify(defaultFooterSettings));
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(`DELETE FROM footer_settings`).catch((e: any) => console.warn('PG error clearing footer_settings:', e.message));
       for (const [key, val] of Object.entries(defaultFooterSettings)) {
         pool.query(
@@ -1405,7 +1360,7 @@ export class DBManager {
     };
     this.data.newsletter_subscribers.unshift(newSub);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `INSERT INTO newsletter_subscribers (contact, type) VALUES ($1, $2) ON CONFLICT (contact) DO NOTHING`,
         [newSub.contact, newSub.type]
@@ -1417,7 +1372,7 @@ export class DBManager {
   static deleteNewsletterSubscriber(id: number) {
     if (!this.data.newsletter_subscribers) return false;
     this.data.newsletter_subscribers = this.data.newsletter_subscribers.filter((n: any) => n.id !== id);
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(`DELETE FROM newsletter_subscribers WHERE id = $1`, [id]).catch((e: any) => console.warn('PG error deleting newsletter subscriber:', e.message));
     }
     return true;
@@ -1456,7 +1411,7 @@ export class DBManager {
 
     this.data.groups.push(newGroup);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `INSERT INTO groups (key, en, bn, icon, is_active, sort_order) VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (key) DO UPDATE SET en = EXCLUDED.en, bn = EXCLUDED.bn, icon = EXCLUDED.icon, is_active = EXCLUDED.is_active, sort_order = EXCLUDED.sort_order`,
@@ -1495,7 +1450,7 @@ export class DBManager {
       }
     }
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       if (newKey !== oldKey) {
         // Update key in groups and categories
         pool.query(
@@ -1528,7 +1483,7 @@ export class DBManager {
     this.data.groups = this.data.groups.filter(g => g.key !== groupKey);
 
     // 3. Cascade delete in PostgreSQL
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       // Deleting categories will CASCADE to product_brands due to REFERENCES categories(id) ON DELETE CASCADE
       if (catIdsToDelete.length > 0) {
         pool.query(`DELETE FROM categories WHERE group_key = $1`, [groupKey])
@@ -1549,7 +1504,7 @@ export class DBManager {
     const group = this.data.groups.find(g => g.key === groupKey);
     if (group) {
       group.is_active = Boolean(isActive);
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         pool.query(`UPDATE groups SET is_active = $1 WHERE key = $2`, [group.is_active, groupKey])
           .catch((e) => console.warn('PG sync error (group toggle):', e.message));
       }
@@ -1563,7 +1518,7 @@ export class DBManager {
       const g = this.data.groups.find(item => item.key === key);
       if (g) {
         g.sort_order = index + 1;
-        if (getIsPgConnected()) {
+        if (isPgConnected) {
           pool.query(`UPDATE groups SET sort_order = $1 WHERE key = $2`, [g.sort_order, key])
             .catch((e) => console.warn('PG sync error (group reorder):', e.message));
         }
@@ -1579,7 +1534,7 @@ export class DBManager {
 
   static async addCategory(cat: any) {
     let newId = Math.max(0, ...this.data.categories.map(c => c.id)) + 1;
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query(
           `INSERT INTO categories (group_key, en_name, bn_name, icon) VALUES ($1, $2, $3, $4) RETURNING id`,
@@ -1623,7 +1578,7 @@ export class DBManager {
     const idx = this.data.categories.findIndex(c => c.id === id);
     if (idx !== -1) {
       this.data.categories[idx] = { ...this.data.categories[idx], ...updated };
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         pool.query(
           `UPDATE categories SET group_key = $1, en_name = $2, bn_name = $3, icon = $4, image_delete_url = $5 WHERE id = $6`,
           [this.data.categories[idx].group, this.data.categories[idx].en, this.data.categories[idx].bn, this.data.categories[idx].icon, this.data.categories[idx].image_delete_url || '', id]
@@ -1636,7 +1591,7 @@ export class DBManager {
 
   static deleteCategory(id: number) {
     this.data.categories = this.data.categories.filter(c => c.id !== id);
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(`DELETE FROM categories WHERE id = $1`, [id]).catch((e) => console.warn('PG sync error (cat del):', e.message));
     }
     return true;
@@ -1660,7 +1615,7 @@ export class DBManager {
       };
 
       cat.brands.push(newBrand);
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         try {
           // CRITICAL: Ensure parent category exists in Postgres first so foreign key constraint "product_brands_category_id_fkey" is never violated!
           await pool.query(
@@ -1743,7 +1698,7 @@ export class DBManager {
           force_stock_out: updated.force_stock_out !== undefined ? Boolean(updated.force_stock_out) : currentBrand.force_stock_out
         };
 
-        if (getIsPgConnected()) {
+        if (isPgConnected) {
           pool.query(
             `UPDATE product_brands SET name = $1, unit = $2, price = $3, cost_price = $4, image_url = $5, image_delete_url = $6, stock = $7, force_stock_out = $8 WHERE id = $9`,
             [cat.brands[bIdx].name, cat.brands[bIdx].unit, cat.brands[bIdx].price, cat.brands[bIdx].cost_price, cat.brands[bIdx].image || '', cat.brands[bIdx].image_delete_url || '', cat.brands[bIdx].stock, cat.brands[bIdx].force_stock_out, productId]
@@ -1760,7 +1715,7 @@ export class DBManager {
       const bIdx = cat.brands.findIndex(b => b.id === productId);
       if (bIdx !== -1) {
         cat.brands.splice(bIdx, 1);
-        if (getIsPgConnected()) {
+        if (isPgConnected) {
           pool.query(`DELETE FROM product_brands WHERE id = $1`, [productId]).catch((e) => console.warn('PG sync error (brand del by ID):', e.message));
         }
         return true;
@@ -1786,7 +1741,7 @@ export class DBManager {
           force_stock_out: updated.force_stock_out !== undefined ? Boolean(updated.force_stock_out) : currentBrand.force_stock_out
         };
 
-        if (getIsPgConnected()) {
+        if (isPgConnected) {
           pool.query(
             `UPDATE product_brands SET name = $1, unit = $2, price = $3, cost_price = $4, image_url = $5, stock = $6, force_stock_out = $7 WHERE category_id = $8 AND name = $9`,
             [cat.brands[bIdx].name, cat.brands[bIdx].unit, cat.brands[bIdx].price, cat.brands[bIdx].cost_price, cat.brands[bIdx].image || '', cat.brands[bIdx].stock, cat.brands[bIdx].force_stock_out, categoryId, brandName]
@@ -1802,7 +1757,7 @@ export class DBManager {
     const cat = this.data.categories.find(c => c.id === categoryId);
     if (cat) {
       cat.brands = cat.brands.filter(b => b.name !== brandName);
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         pool.query(`DELETE FROM product_brands WHERE category_id = $1 AND name = $2`, [categoryId, brandName]).catch((e) => console.warn('PG sync error (brand del):', e.message));
       }
       return true;
@@ -1840,7 +1795,7 @@ export class DBManager {
       created_at: new Date().toISOString()
     };
     this.data.users.push(newUser);
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `INSERT INTO users (name, phone, password_hash, role) VALUES ($1, $2, $3, $4)`,
         [newUser.name, newUser.phone, newUser.password_hash, 'user']
@@ -1857,7 +1812,7 @@ export class DBManager {
     if (updates.avatar !== undefined) user.avatar = updates.avatar;
     if (updates.avatar_delete_url !== undefined) user.avatar_delete_url = updates.avatar_delete_url;
     if (updates.password) user.password_hash = await bcrypt.hash(updates.password, 10);
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `UPDATE users SET name = $1, password_hash = $2, avatar = $3, avatar_delete_url = $4 WHERE id = $5`,
         [user.name, user.password_hash, user.avatar || '', user.avatar_delete_url || '', user.id]
@@ -1892,7 +1847,7 @@ export class DBManager {
       admin.password_hash = await bcrypt.hash(updates.password.trim(), 10);
     }
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(
           `UPDATE admins SET name = $1, username = $2, password_hash = $3 WHERE id = $4`,
@@ -1911,39 +1866,17 @@ export class DBManager {
     return this.data.paymentMethods;
   }
 
-  static async updatePaymentMethod(id: number | string, update: any) {
+  static updatePaymentMethod(id: number | string, update: any) {
     const numId = typeof id === 'number' ? id : parseInt(String(id), 10);
     const idx = this.data.paymentMethods.findIndex(p => (Number.isInteger(numId) && p.id === numId) || (p.code && p.code === String(id)));
     if (idx !== -1) {
-      const oldMethod = JSON.parse(JSON.stringify(this.data.paymentMethods[idx]));
       this.data.paymentMethods[idx] = { ...this.data.paymentMethods[idx], ...update };
       const current = this.data.paymentMethods[idx];
-      
-      if (getIsPgConnected()) {
-        try {
-          await pool.query(
-            `UPDATE payment_methods SET
-               name_bn = $1,
-               number = $2,
-               instructions_bn = $3,
-               is_active = $4,
-               logo = $5,
-               logo_delete_url = $6
-             WHERE id = $7 OR code = $8`,
-            [
-              current.name_bn,
-              current.number || '',
-              current.instructions_bn || '',
-              current.is_active !== false,
-              current.logo || null,
-              current.logo_delete_url || null,
-              current.id,
-              current.code
-            ]
-          );
-        } catch (e: any) {
-          console.warn('PG sync error (payment update):', e.message);
-        }
+      if (isPgConnected) {
+        pool.query(
+          `UPDATE payment_methods SET name_bn = $1, name_en = $2, number = $3, instructions_bn = $4, is_active = $5 WHERE id = $6 OR code = $7`,
+          [current.name_bn, current.name_en, current.number || '', current.instructions_bn || '', current.is_active !== false, current.id, current.code]
+        ).catch((e) => console.warn('PG sync error (payment update):', e.message));
       }
       return this.data.paymentMethods[idx];
     }
@@ -1967,31 +1900,18 @@ export class DBManager {
       };
       this.data.paymentMethods[existingIndex] = updated;
 
-      if (getIsPgConnected()) {
-        try {
-          await pool.query(
-            `INSERT INTO payment_methods (code, name_bn, number, instructions_bn, is_active, logo, logo_delete_url)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (code) DO UPDATE SET
-               name_bn = EXCLUDED.name_bn,
-               number = EXCLUDED.number,
-               instructions_bn = EXCLUDED.instructions_bn,
-               is_active = EXCLUDED.is_active,
-               logo = EXCLUDED.logo,
-               logo_delete_url = EXCLUDED.logo_delete_url`,
-            [
-              updated.code,
-              updated.name_bn,
-              updated.number || '',
-              updated.instructions_bn || '',
-              updated.is_active !== undefined ? updated.is_active : true,
-              updated.logo || null,
-              updated.logo_delete_url || null
-            ]
-          );
-        } catch (e: any) {
-          console.warn('PG sync error (payment upsert):', e.message);
-        }
+      if (isPgConnected) {
+        pool.query(
+          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (code) DO UPDATE SET
+             name_bn = EXCLUDED.name_bn,
+             name_en = EXCLUDED.name_en,
+             number = EXCLUDED.number,
+             instructions_bn = EXCLUDED.instructions_bn,
+             is_active = EXCLUDED.is_active`,
+          [updated.code, updated.name_bn, updated.name_en, updated.number || '', updated.instructions_bn || '', updated.is_active !== undefined ? updated.is_active : true]
+        ).catch((e) => console.warn('PG sync error (payment upsert):', e.message));
       }
       return updated;
     }
@@ -2005,28 +1925,19 @@ export class DBManager {
     };
     this.data.paymentMethods.push(newMethod);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query(
-          `INSERT INTO payment_methods (code, name_bn, number, instructions_bn, is_active, logo, logo_delete_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
+             name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
              instructions_bn = EXCLUDED.instructions_bn,
-             is_active = EXCLUDED.is_active,
-             logo = EXCLUDED.logo,
-             logo_delete_url = EXCLUDED.logo_delete_url
+             is_active = EXCLUDED.is_active
            RETURNING *`,
-          [
-            newMethod.code,
-            newMethod.name_bn,
-            newMethod.number || '',
-            newMethod.instructions_bn || '',
-            newMethod.is_active,
-            newMethod.logo || null,
-            newMethod.logo_delete_url || null
-          ]
+          [newMethod.code, newMethod.name_bn, newMethod.name_en, newMethod.number || '', newMethod.instructions_bn || '', newMethod.is_active]
         );
         if (res.rows[0]) {
           newMethod.id = res.rows[0].id;
@@ -2036,24 +1947,6 @@ export class DBManager {
       }
     }
     return newMethod;
-  }
-
-  static async deletePaymentMethod(id: number | string) {
-    const numId = typeof id === 'number' ? id : parseInt(String(id), 10);
-    const idx = this.data.paymentMethods.findIndex(p => (Number.isInteger(numId) && p.id === numId) || (p.code && p.code === String(id)));
-    if (idx !== -1) {
-      const deleted = this.data.paymentMethods.splice(idx, 1)[0];
-      if (getIsPgConnected()) {
-        try {
-          await pool.query(`DELETE FROM payment_methods WHERE id = $1 OR code = $2`, [deleted.id, deleted.code]);
-        } catch (e: any) {
-          console.warn('PG sync error (payment delete):', e.message);
-        }
-      }
-      return deleted;
-    }
-    return null;
-    return false;
   }
 
   // Delivery Areas & Charge
@@ -2071,7 +1964,7 @@ export class DBManager {
       is_active: area.is_active !== undefined ? area.is_active : true
     };
     this.data.delivery_areas.push(newArea);
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `INSERT INTO delivery_areas (name, charge, is_active) VALUES ($1, $2, $3)`,
         [newArea.name, newArea.charge, newArea.is_active]
@@ -2085,7 +1978,7 @@ export class DBManager {
     const idx = this.data.delivery_areas.findIndex(a => a.id === id);
     if (idx !== -1) {
       this.data.delivery_areas[idx] = { ...this.data.delivery_areas[idx], ...update };
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         pool.query(
           `UPDATE delivery_areas SET name = $1, charge = $2, is_active = $3 WHERE id = $4`,
           [this.data.delivery_areas[idx].name, this.data.delivery_areas[idx].charge, this.data.delivery_areas[idx].is_active, id]
@@ -2100,128 +1993,32 @@ export class DBManager {
     if (!this.data.delivery_areas) this.data.delivery_areas = [];
     const initialLen = this.data.delivery_areas.length;
     this.data.delivery_areas = this.data.delivery_areas.filter(a => a.id !== id);
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(`DELETE FROM delivery_areas WHERE id = $1`, [id]).catch((e) => console.warn('PG sync error (area del):', e.message));
     }
     return this.data.delivery_areas.length < initialLen;
   }
 
   // Orders
-  static isTrxIdUsed(trxId: string, excludeOrderId?: number, excludeOrderType?: 'orders' | 'package_orders'): { used: boolean; orderType?: 'orders' | 'package_orders'; order?: any } {
+  static isTrxIdUsed(trxId: string): { used: boolean; orderType?: 'orders' | 'package_orders'; order?: any } {
     if (!trxId || !String(trxId).trim()) return { used: false };
     const clean = String(trxId).trim().toUpperCase();
 
     const regularOrder = (this.data.orders || []).find(
-      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean && !(excludeOrderType === 'orders' && o.id === excludeOrderId)
+      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean
     );
     if (regularOrder) {
       return { used: true, orderType: 'orders', order: regularOrder };
     }
 
     const packageOrder = (this.data.package_orders || []).find(
-      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean && !(excludeOrderType === 'package_orders' && o.id === excludeOrderId)
+      (o: any) => o.trx_id && String(o.trx_id).trim().toUpperCase() === clean
     );
     if (packageOrder) {
       return { used: true, orderType: 'package_orders', order: packageOrder };
     }
 
     return { used: false };
-  }
-
-  static getOrderById(orderId: number | string, orderType: 'orders' | 'package_orders' = 'orders') {
-    const numId = typeof orderId === 'number' ? orderId : parseInt(String(orderId), 10);
-    if (orderType === 'package_orders') {
-      return (this.data.package_orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
-    }
-    return (this.data.orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
-  }
-
-  static confirmOrderPayment(
-    orderId: number | string,
-    orderType: 'orders' | 'package_orders',
-    paymentData: {
-      payment_method: string;
-      sender_number: string;
-      trx_id?: string;
-      payment_verified_data?: any;
-    }
-  ) {
-    const numId = typeof orderId === 'number' ? orderId : parseInt(String(orderId), 10);
-    const nowIso = new Date().toISOString();
-
-    if (orderType === 'package_orders') {
-      const pOrder = (this.data.package_orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
-      if (!pOrder) return null;
-
-      pOrder.status = 'confirmed';
-      pOrder.payment_status = 'verified';
-      pOrder.payment_method = paymentData.payment_method;
-      pOrder.sender_number = paymentData.sender_number;
-      pOrder.trx_id = paymentData.trx_id || pOrder.trx_id || '';
-      pOrder.payment_verified_at = nowIso;
-      pOrder.payment_verified_data = paymentData.payment_verified_data || null;
-
-      if (getIsPgConnected()) {
-        pool.query(
-          `UPDATE package_orders SET
-             status = $1,
-             payment_status = $2,
-             payment_method = $3,
-             sender_number = $4,
-             trx_id = $5,
-             payment_verified_at = $6,
-             payment_verified_data = $7
-           WHERE id = $8`,
-          [
-            pOrder.status,
-            pOrder.payment_status,
-            pOrder.payment_method,
-            pOrder.sender_number,
-            pOrder.trx_id,
-            pOrder.payment_verified_at,
-            pOrder.payment_verified_data ? JSON.stringify(pOrder.payment_verified_data) : null,
-            pOrder.id
-          ]
-        ).catch((e) => console.warn('PG sync error (confirm package payment):', e.message));
-      }
-      return pOrder;
-    }
-
-    const order = (this.data.orders || []).find((o: any) => o.id === numId || String(o.order_code) === String(orderId));
-    if (!order) return null;
-
-    order.status = 'confirmed';
-    order.payment_status = 'verified';
-    order.payment_method = paymentData.payment_method;
-    order.sender_number = paymentData.sender_number;
-    order.trx_id = paymentData.trx_id || order.trx_id || '';
-    order.payment_verified_at = nowIso;
-    order.payment_verified_data = paymentData.payment_verified_data || null;
-
-    if (getIsPgConnected()) {
-      pool.query(
-        `UPDATE orders SET
-           status = $1,
-           payment_status = $2,
-           payment_method = $3,
-           sender_number = $4,
-           trx_id = $5,
-           payment_verified_at = $6,
-           payment_verified_data = $7
-         WHERE id = $8`,
-        [
-          order.status,
-          order.payment_status,
-          order.payment_method,
-          order.sender_number,
-          order.trx_id,
-          order.payment_verified_at,
-          order.payment_verified_data ? JSON.stringify(order.payment_verified_data) : null,
-          order.id
-        ]
-      ).catch((e) => console.warn('PG sync error (confirm order payment):', e.message));
-    }
-    return order;
   }
 
   static getOrders() {
@@ -2301,7 +2098,7 @@ export class DBManager {
 
       if (brand && brand.stock !== undefined) {
         brand.stock -= item.qty;
-        if (getIsPgConnected()) {
+        if (isPgConnected) {
           if (brand.id) {
             pool.query(`UPDATE product_brands SET stock = stock - $1 WHERE id = $2`, [item.qty, brand.id]).catch((e: any) => console.warn('PG sync error (stock decrement by id):', e.message));
           } else if (matchedCat) {
@@ -2324,7 +2121,7 @@ export class DBManager {
       created_at: new Date().toISOString()
     };
     this.data.orders.unshift(newOrder);
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `INSERT INTO orders (order_code, user_id, customer_name, customer_phone, delivery_address, delivery_area, payment_method, sender_number, trx_id, subtotal, delivery_fee, total_amount, items_json, status, payment_status, payment_verified_at, payment_verified_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
         [
@@ -2384,7 +2181,7 @@ export class DBManager {
         if (riderInfo.delivery_note !== undefined) order.delivery_note = riderInfo.delivery_note;
       }
 
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         pool.query(
           `UPDATE orders SET status = $1, delivery_rider_id = $2, delivery_rider_name = $3, delivery_rider_phone = $4, delivery_rider_vehicle = $5, delivery_note = $6 WHERE id = $7`,
           [
@@ -2431,7 +2228,7 @@ export class DBManager {
 
           if (brand && brand.stock !== undefined) {
             brand.stock += item.qty;
-            if (getIsPgConnected()) {
+            if (isPgConnected) {
               if (brand.id) {
                 pool.query(`UPDATE product_brands SET stock = stock + $1 WHERE id = $2`, [item.qty, brand.id]).catch((e: any) => console.warn('PG sync error (stock increment by id):', e.message));
               } else if (matchedCat) {
@@ -2472,7 +2269,7 @@ export class DBManager {
 
           if (brand && brand.stock !== undefined) {
             brand.stock -= item.qty;
-            if (getIsPgConnected()) {
+            if (isPgConnected) {
               if (brand.id) {
                 pool.query(`UPDATE product_brands SET stock = stock - $1 WHERE id = $2`, [item.qty, brand.id]).catch((e: any) => console.warn('PG sync error (stock decrement by id):', e.message));
               } else if (matchedCat) {
@@ -2484,60 +2281,6 @@ export class DBManager {
       }
 
       return order;
-    }
-    return null;
-  }
-
-  // Cancel unpaid online order (regular or package)
-  static cancelUnpaidOrder(orderId: number, orderType: 'orders' | 'package_orders' = 'orders') {
-    if (orderType === 'package_orders') {
-      const pkgOrder = (this.data.package_orders || []).find(o => o.id === orderId);
-      if (pkgOrder && pkgOrder.payment_status !== 'verified') {
-        pkgOrder.status = 'বাতিল';
-        pkgOrder.payment_status = 'cancelled';
-        if (getIsPgConnected()) {
-          pool.query(`UPDATE package_orders SET status = 'বাতিল', payment_status = 'cancelled' WHERE id = $1`, [orderId])
-            .catch((e: any) => console.warn('PG sync error (cancel unpaid pkg order):', e.message));
-        }
-        return pkgOrder;
-      }
-    } else {
-      const order = (this.data.orders || []).find(o => o.id === orderId);
-      if (order && order.payment_status !== 'verified') {
-        const oldStatus = order.status;
-        order.status = 'বাতিল';
-        order.payment_status = 'cancelled';
-        if (getIsPgConnected()) {
-          pool.query(`UPDATE orders SET status = 'বাতিল', payment_status = 'cancelled' WHERE id = $1`, [orderId])
-            .catch((e: any) => console.warn('PG sync error (cancel unpaid order):', e.message));
-        }
-        // Restore stock if it was deducted
-        if (oldStatus !== 'বাতিল') {
-          try {
-            const items = typeof order.items_json === 'string' ? JSON.parse(order.items_json) : order.items_json;
-            if (Array.isArray(items)) {
-              for (const item of items) {
-                let brand: any = null;
-                const pId = item.productId || item.product_id || item.id;
-                if (pId) {
-                  for (const cat of this.data.categories) {
-                    const b = cat.brands?.find((b: any) => b.id === pId);
-                    if (b) { brand = b; break; }
-                  }
-                }
-                if (brand && brand.stock !== undefined) {
-                  brand.stock += (item.qty || 1);
-                  if (getIsPgConnected() && brand.id) {
-                    pool.query(`UPDATE product_brands SET stock = stock + $1 WHERE id = $2`, [item.qty || 1, brand.id])
-                      .catch(() => {});
-                  }
-                }
-              }
-            }
-          } catch {}
-        }
-        return order;
-      }
     }
     return null;
   }
@@ -2558,7 +2301,7 @@ export class DBManager {
     order.delivery_rider_phone = rider.phone;
     order.delivery_rider_vehicle = rider.vehicle;
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `UPDATE orders SET delivery_rider_id = $1, delivery_rider_name = $2, delivery_rider_phone = $3, delivery_rider_vehicle = $4 WHERE id = $5`,
         [rider.id, rider.name, rider.phone, rider.vehicle, orderId]
@@ -2672,7 +2415,7 @@ export class DBManager {
       created_at: new Date().toISOString()
     };
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query(
           `INSERT INTO delivery_riders (name, phone, password_hash, vehicle, area, address, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
@@ -2710,7 +2453,7 @@ export class DBManager {
 
     this.data.delivery_riders[index] = updated;
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(
           `UPDATE delivery_riders SET name = $1, phone = $2, password_hash = $3, vehicle = $4, area = $5, address = $6, is_active = $7 WHERE id = $8`,
@@ -2739,7 +2482,7 @@ export class DBManager {
     const newHash = await bcrypt.hash(newPass, 10);
     rider.password_hash = newHash;
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(`UPDATE delivery_riders SET password_hash = $1 WHERE id = $2`, [newHash, id]);
       } catch (err: any) {
@@ -2821,7 +2564,7 @@ export class DBManager {
       }
     }
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const table = isPackage ? 'package_orders' : 'orders';
         await pool.query(
@@ -2841,7 +2584,7 @@ export class DBManager {
 
     this.data.delivery_riders.splice(index, 1);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(`DELETE FROM delivery_riders WHERE id = $1`, [id]);
       } catch (err: any) {
@@ -2869,7 +2612,7 @@ export class DBManager {
       created_at: new Date().toISOString()
     };
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query(
           `INSERT INTO expenses (title, category, amount, expense_date, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -2900,7 +2643,7 @@ export class DBManager {
 
     this.data.expenses[index] = updated;
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(
           `UPDATE expenses SET title = $1, category = $2, amount = $3, expense_date = $4, notes = $5 WHERE id = $6`,
@@ -2919,7 +2662,7 @@ export class DBManager {
 
     this.data.expenses.splice(index, 1);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(`DELETE FROM expenses WHERE id = $1`, [id]);
       } catch (err: any) {
@@ -2988,7 +2731,7 @@ export class DBManager {
           matchedBrand.force_stock_out = Boolean(item.force_stock_out);
         }
 
-        if (getIsPgConnected()) {
+        if (isPgConnected) {
           if (matchedBrand.id) {
             pool.query(
               `UPDATE product_brands SET name = $1, unit = $2, price = $3, cost_price = $4, stock = $5, force_stock_out = $6 WHERE id = $7`,
@@ -3020,7 +2763,7 @@ export class DBManager {
     const safeData = cartData || {};
     this.data.carts[String(userId)] = safeData;
 
-    if (getIsPgConnected() && pool && userId) {
+    if (isPgConnected && pool && userId) {
       pool.query(
         `INSERT INTO user_carts (user_id, cart_json, updated_at) 
          VALUES ($1, $2, CURRENT_TIMESTAMP) 
@@ -3045,7 +2788,7 @@ export class DBManager {
     const safeData = packageCartData || {};
     this.data.package_carts[String(userId)] = safeData;
 
-    if (getIsPgConnected() && pool && userId) {
+    if (isPgConnected && pool && userId) {
       pool.query(
         `INSERT INTO user_package_carts (user_id, package_cart_json, updated_at) 
          VALUES ($1, $2, CURRENT_TIMESTAMP) 
@@ -3097,7 +2840,7 @@ export class DBManager {
       item.slot_number = slot_number;
       item.is_active = data.is_active !== undefined ? Boolean(data.is_active) : true;
 
-      if (getIsPgConnected() && item.id) {
+      if (isPgConnected && item.id) {
         pool.query(
           `UPDATE package_products SET product_id = $1, category_id = $2, category_name = $3, product_name = $4, unit = $5, regular_price = $6, cost_price = $7, discount_amount = $8, final_price = $9, slot_number = $10, is_active = $11 WHERE id = $12`,
           [item.product_id || null, item.category_id || null, item.category_name || '', item.product_name, item.unit, regular_price, cost_price, discount_amount, final_price, slot_number, item.is_active, item.id]
@@ -3123,7 +2866,7 @@ export class DBManager {
       };
       this.data.package_products.push(newItem);
 
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         try {
           const res = await pool.query(
             `INSERT INTO package_products (product_id, category_id, category_name, product_name, unit, regular_price, cost_price, discount_amount, final_price, slot_number, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
@@ -3144,7 +2887,7 @@ export class DBManager {
     if (index !== -1) {
       this.data.package_products.splice(index, 1);
     }
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(`DELETE FROM package_products WHERE id = $1`, [id]).catch((e: any) => console.warn('PG sync error (package product delete):', e.message));
     }
     return true;
@@ -3195,7 +2938,7 @@ export class DBManager {
         items[i].cost_price = brand.cost_price || 0;
         if (brand.id) items[i].productId = brand.id;
         brand.stock = (brand.stock || 100) - item.qty;
-        if (getIsPgConnected() && brand.id) {
+        if (isPgConnected && brand.id) {
           pool.query(`UPDATE product_brands SET stock = stock - $1 WHERE id = $2`, [item.qty, brand.id]).catch((e: any) => console.warn('PG sync error (package stock decrement):', e.message));
         }
       }
@@ -3228,7 +2971,7 @@ export class DBManager {
 
     this.data.package_orders.unshift(newOrder);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query(
           `INSERT INTO package_orders (order_code, user_id, customer_name, customer_phone, delivery_address, delivery_area, payment_method, sender_number, trx_id, subtotal, discount_total, delivery_fee, total_amount, items_json, status, payment_status, payment_verified_at, payment_verified_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id`,
@@ -3286,7 +3029,7 @@ export class DBManager {
         if (order.payment_status === 'unpaid') order.payment_status = 'paid';
       }
 
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         pool.query(
           `UPDATE package_orders SET status = $1, delivery_rider_id = $2, delivery_rider_name = $3, delivery_rider_phone = $4, delivery_rider_vehicle = $5, delivery_note = $6, delivered_at = $7, payment_status = $8 WHERE id = $9`,
           [order.status, order.delivery_rider_id || null, order.delivery_rider_name || null, order.delivery_rider_phone || null, order.delivery_rider_phone || null, order.delivery_note || null, order.delivered_at || null, order.payment_status, order.id]
@@ -3315,7 +3058,7 @@ export class DBManager {
     order.delivery_rider_vehicle = rider.vehicle;
     if (order.status === 'পেন্ডিং') order.status = 'প্রসেসিং';
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       pool.query(
         `UPDATE package_orders SET delivery_rider_id = $1, delivery_rider_name = $2, delivery_rider_phone = $3, delivery_rider_vehicle = $4, status = $5 WHERE id = $6`,
         [rider.id, rider.name, rider.phone, rider.vehicle, order.status, order.id]
@@ -3342,7 +3085,7 @@ export class DBManager {
 
   // Google Drive Config Management
   static async getGDriveConfig(): Promise<GDriveConfig | null> {
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query('SELECT * FROM gdrive_config WHERE id = 1 LIMIT 1');
         if (res.rows && res.rows.length > 0) {
@@ -3382,7 +3125,7 @@ export class DBManager {
       updated_at: new Date().toISOString()
     };
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(
           `INSERT INTO gdrive_config (id, account_email, account_name, account_picture, access_token, refresh_token, token_expiry, folder_id, is_connected, updated_at)
@@ -3416,7 +3159,7 @@ export class DBManager {
   }
 
   static async disconnectGDrive(): Promise<boolean> {
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(
           `UPDATE gdrive_config SET 
@@ -3476,7 +3219,7 @@ export class DBManager {
 
     this.data.admin_sessions.unshift(newSession);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query(
           `INSERT INTO admin_sessions (admin_id, session_token, device_name, device_type, browser, os, ip_address, location, last_active, created_at)
@@ -3511,7 +3254,7 @@ export class DBManager {
       this.data.admin_sessions.splice(index, 1);
     }
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(`DELETE FROM admin_sessions WHERE session_token = $1`, [sessionToken]);
         return true;
@@ -3526,7 +3269,7 @@ export class DBManager {
     if (!this.data.admin_sessions) this.data.admin_sessions = [];
     this.data.admin_sessions = this.data.admin_sessions.filter((s) => s.admin_id !== adminId);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(`DELETE FROM admin_sessions WHERE admin_id = $1`, [adminId]);
         return true;
@@ -3543,7 +3286,7 @@ export class DBManager {
       (s) => s.admin_id !== adminId || s.session_token === keepSessionToken
     );
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         await pool.query(`DELETE FROM admin_sessions WHERE admin_id = $1 AND session_token != $2`, [
           adminId,
@@ -3590,7 +3333,7 @@ export class DBManager {
     const session = this.data.admin_sessions.find((s) => s.session_token === sessionToken);
     if (session) {
       session.last_active = new Date().toISOString();
-      if (getIsPgConnected()) {
+      if (isPgConnected) {
         pool
           .query(`UPDATE admin_sessions SET last_active = NOW() WHERE session_token = $1`, [sessionToken])
           .catch(() => {});
@@ -3609,7 +3352,7 @@ export class DBManager {
       (r: any) => String(r.product_id) === String(productId) && String(r.category_id) === String(categoryId)
     );
 
-    if (getIsPgConnected() && reviews.length === 0) {
+    if (isPgConnected && reviews.length === 0) {
       try {
         const res = await pool.query(
           `SELECT * FROM product_reviews WHERE product_id = $1 AND category_id = $2 ORDER BY created_at DESC`,
@@ -3661,7 +3404,7 @@ export class DBManager {
 
     this.data.product_reviews.unshift(newReview);
 
-    if (getIsPgConnected()) {
+    if (isPgConnected) {
       try {
         const res = await pool.query(
           `INSERT INTO product_reviews (product_id, category_id, user_name, rating, comment, created_at)

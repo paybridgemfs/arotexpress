@@ -85,7 +85,6 @@ export default function AdminOrders({
   const stats = useMemo(() => {
     const counts = {
       all: orders.length,
-      pending_payment: 0,
       pending: 0,
       processing: 0,
       shipped: 0,
@@ -98,9 +97,7 @@ export default function AdminOrders({
     orders.forEach((o) => {
       const amount = Number(o.total_amount) || 0;
       const norm = normalizeOrderStatus(o.status);
-      if (norm === 'pending_payment') {
-        counts.pending_payment++;
-      } else if (norm === 'pending') {
+      if (norm === 'pending') {
         counts.pending++;
         pendingRevenue += amount;
       } else if (norm === 'processing') {
@@ -272,16 +269,6 @@ export default function AdminOrders({
             <Clock size={14} />
             <span>পেন্ডিং ({toBengaliNumber(stats.counts.pending)})</span>
           </button>
-          {stats.counts.pending_payment > 0 && (
-            <button
-              type="button"
-              className={`admin-filter-pill ${statusFilter === 'pending_payment' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('pending_payment')}
-            >
-              <Clock size={14} />
-              <span>পেমেন্ট বাকি ({toBengaliNumber(stats.counts.pending_payment)})</span>
-            </button>
-          )}
           <button
             type="button"
             className={`admin-filter-pill ${statusFilter === 'processing' ? 'active' : ''}`}

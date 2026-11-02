@@ -1886,9 +1886,9 @@ img.cat-logo-image {
 /* CHECKOUT FORM & PAYMENT METHODS (M3 INPUTS)       */
 /* ================================================= */
 .checkout-grid {
-  display: block;
-  max-width: 680px;
-  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 28px;
 }
 
 .co-summary {
@@ -2382,7 +2382,6 @@ img.cat-logo-image {
 }
 
 .status-pending { background: #FEF3C7; color: #92400E; }
-.status-pending-payment { background: #FFEDD5; color: #C2410C; }
 .status-processing { background: #DBEAFE; color: #1E40AF; }
 .status-shipped { background: #E0E7FF; color: #4338CA; }
 .status-delivered { background: #D1FAE5; color: #065F46; }
@@ -6264,13 +6263,5 @@ html, body {
 .lang-toggle-pill:hover {
   transform: translateY(-0.5px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-/* Pending Payment Badge for Unpaid Online Checkouts */
-.status-badge.status-pending_payment,
-.status-pending_payment {
-  background: #FFFBEB !important;
-  color: #B45309 !important;
-  border: 1px solid #FDE68A !important;
 }
 
