@@ -277,6 +277,7 @@ export default function AdminPanel({ onNavigateHome }) {
   const [editingArea, setEditingArea] = useState(null);
   const [areaForm, setAreaForm] = useState({ name: '', charge: '', is_active: true });
   const [savingFee, setSavingFee] = useState(false);
+  const [savingArea, setSavingArea] = useState(false);
 
   // Payment Verification Gateway state
   const [paymentVerifyConfig, setPaymentVerifyConfig] = useState({
@@ -1186,6 +1187,7 @@ export default function AdminPanel({ onNavigateHome }) {
     e.preventDefault();
     if (!areaForm.name.trim()) return;
 
+    setSavingArea(true);
     try {
       const payload = {
         name: areaForm.name.trim(),
@@ -1229,6 +1231,8 @@ export default function AdminPanel({ onNavigateHome }) {
       }
     } catch (err) {
       showToast('এলাকা সংরক্ষণে ত্রুটি হয়েছে');
+    } finally {
+      setSavingArea(false);
     }
   };
 
@@ -2624,10 +2628,11 @@ export default function AdminPanel({ onNavigateHome }) {
                         </div>
                       </div>
 
-                                            <div className="admin-modal-footer">
+                      <div className="admin-modal-footer">
                         <button
                           type="button"
                           className="admin-btn"
+                          disabled={savingCategory}
                           onClick={() => setCategoryModalOpen(false)}
                         >
                           বাতিল
@@ -2635,12 +2640,19 @@ export default function AdminPanel({ onNavigateHome }) {
                         <motion.button
                           type="submit"
                           className="admin-btn primary"
-                          style={{ padding: '8px 20px', fontWeight: 700 }}
+                          style={{ padding: '8px 20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                           disabled={savingCategory}
                           whileHover={savingCategory ? {} : { scale: 1.02 }}
                           whileTap={savingCategory ? {} : { scale: 0.98 }}
                         >
-                          {savingCategory ? 'আপলোড ও সংরক্ষণ হচ্ছে...' : (editingCategory ? 'আপডেট করুন' : 'সংরক্ষণ করুন')}
+                          {savingCategory ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              <span>আপলোড ও সংরক্ষণ হচ্ছে...</span>
+                            </>
+                          ) : (
+                            editingCategory ? 'আপডেট করুন' : 'সংরক্ষণ করুন'
+                          )}
                         </motion.button>
                       </div>
                     </form>
@@ -2844,6 +2856,7 @@ export default function AdminPanel({ onNavigateHome }) {
                         <button
                           type="button"
                           className="admin-btn"
+                          disabled={savingBrand}
                           onClick={() => {
                             setProductModalOpen(false);
                             setSelectedCatForBrand(null);
@@ -2855,12 +2868,19 @@ export default function AdminPanel({ onNavigateHome }) {
                         <motion.button
                           type="submit"
                           className="admin-btn primary"
-                          style={{ padding: '8px 20px', fontWeight: 700 }}
+                          style={{ padding: '8px 20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                           disabled={savingBrand}
                           whileHover={savingBrand ? {} : { scale: 1.02 }}
                           whileTap={savingBrand ? {} : { scale: 0.98 }}
                         >
-                          {savingBrand ? 'আপলোড ও সংরক্ষণ হচ্ছে...' : (editingBrand ? 'আপডেট করুন' : 'পণ্য যোগ করুন')}
+                          {savingBrand ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              <span>আপলোড ও সংরক্ষণ হচ্ছে...</span>
+                            </>
+                          ) : (
+                            editingBrand ? 'আপডেট করুন' : 'পণ্য যোগ করুন'
+                          )}
                         </motion.button>
                       </div>
                     </form>
@@ -3259,6 +3279,7 @@ export default function AdminPanel({ onNavigateHome }) {
                         <button
                           type="button"
                           className="admin-btn secondary"
+                          disabled={savingPayment}
                           onClick={() => {
                             setIsPaymentModalOpen(false);
                             setEditingPayment(null);
@@ -3266,8 +3287,20 @@ export default function AdminPanel({ onNavigateHome }) {
                         >
                           বাতিল
                         </button>
-                        <button type="submit" className="admin-btn primary">
-                          {editingPayment ? 'আপডেট করুন' : 'যোগ করুন'}
+                        <button
+                          type="submit"
+                          className="admin-btn primary"
+                          disabled={savingPayment}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          {savingPayment ? (
+                            <>
+                              <Loader2 size={15} className="animate-spin" />
+                              <span>সংরক্ষণ হচ্ছে...</span>
+                            </>
+                          ) : (
+                            editingPayment ? 'আপডেট করুন' : 'যোগ করুন'
+                          )}
                         </button>
                       </div>
                     </form>
@@ -3291,7 +3324,36 @@ export default function AdminPanel({ onNavigateHome }) {
                 <tbody>
                   {paymentMethods.map((p) => (
                     <tr key={p.id || p.code}>
-                      <td><strong>{p.name_bn}</strong></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--rule)',
+                              background: '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden',
+                              flexShrink: 0
+                            }}
+                          >
+                            {(p.logo_url || p.logo) ? (
+                              <img
+                                src={p.logo_url || p.logo}
+                                alt={p.name_bn}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : (
+                              <CreditCard size={16} color="var(--muted)" />
+                            )}
+                          </div>
+                          <strong>{p.name_bn}</strong>
+                        </div>
+                      </td>
                       <td className="mono">{p.code}</td>
                       <td className="mono">{p.number || '—'}</td>
                       <td style={{ fontSize: '12px' }}>{p.instructions || p.instructions_bn || '—'}</td>
@@ -3497,6 +3559,7 @@ export default function AdminPanel({ onNavigateHome }) {
                         <button
                           type="button"
                           className="admin-btn secondary"
+                          disabled={savingArea}
                           onClick={() => {
                             setIsAreaModalOpen(false);
                             setEditingArea(null);
@@ -3504,8 +3567,20 @@ export default function AdminPanel({ onNavigateHome }) {
                         >
                           বাতিল
                         </button>
-                        <button type="submit" className="admin-btn primary">
-                          {editingArea ? 'আপডেট করুন' : 'যোগ করুন'}
+                        <button
+                          type="submit"
+                          className="admin-btn primary"
+                          disabled={savingArea}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          {savingArea ? (
+                            <>
+                              <Loader2 size={15} className="animate-spin" />
+                              <span>সংরক্ষণ হচ্ছে...</span>
+                            </>
+                          ) : (
+                            editingArea ? 'আপডেট করুন' : 'যোগ করুন'
+                          )}
                         </button>
                       </div>
                     </form>
@@ -4610,6 +4685,7 @@ export default function AdminPanel({ onNavigateHome }) {
                   <button
                     type="button"
                     className="admin-btn"
+                    disabled={savingStock}
                     onClick={() => setStockModal(null)}
                   >
                     বাতিল
@@ -4617,12 +4693,19 @@ export default function AdminPanel({ onNavigateHome }) {
                   <motion.button
                     type="submit"
                     className="admin-btn primary"
-                    style={{ padding: '8px 20px', fontWeight: 700 }}
+                    style={{ padding: '8px 20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                     disabled={savingStock}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={savingStock ? {} : { scale: 1.02 }}
+                    whileTap={savingStock ? {} : { scale: 0.98 }}
                   >
-                    {savingStock ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                    {savingStock ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>সংরক্ষণ হচ্ছে...</span>
+                      </>
+                    ) : (
+                      'সংরক্ষণ করুন'
+                    )}
                   </motion.button>
                 </div>
               </form>

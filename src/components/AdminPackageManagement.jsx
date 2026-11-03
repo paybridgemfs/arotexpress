@@ -18,7 +18,8 @@ import {
   X,
   Check,
   Search,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import { toBengaliNumber } from '../utils/bengali.js';
 import { useCart } from '../context/CartContext.jsx';
@@ -816,6 +817,7 @@ export default function AdminPackageManagement({
                     type="button"
                     onClick={() => setModalOpen(false)}
                     className="admin-btn secondary"
+                    disabled={submitting}
                     style={{ padding: '9px 18px' }}
                   >
                     বাতিল
@@ -832,7 +834,14 @@ export default function AdminPackageManagement({
                       fontWeight: '600'
                     }}
                   >
-                    {submitting ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                    {submitting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>সংরক্ষণ হচ্ছে...</span>
+                      </>
+                    ) : (
+                      'সংরক্ষণ করুন'
+                    )}
                   </button>
                 </div>
               </form>

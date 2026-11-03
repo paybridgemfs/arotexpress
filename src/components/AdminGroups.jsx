@@ -16,7 +16,8 @@ import {
   EyeOff,
   FolderTree,
   Package,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { toBengaliNumber } from '../utils/bengali.js';
 
@@ -540,8 +541,16 @@ export default function AdminGroups({
                     type="submit"
                     className="admin-btn primary"
                     disabled={saving}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    {saving ? 'সংরক্ষণ হচ্ছে...' : editingGroup ? 'আপডেট করুন' : 'যুক্ত করুন'}
+                    {saving ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>সংরক্ষণ হচ্ছে...</span>
+                      </>
+                    ) : (
+                      editingGroup ? 'আপডেট করুন' : 'যুক্ত করুন'
+                    )}
                   </button>
                 </div>
               </form>

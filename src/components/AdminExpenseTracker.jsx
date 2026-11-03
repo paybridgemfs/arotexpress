@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
-import { Receipt, Plus, Search, Calendar, Filter, Trash2, Edit2, Download, Printer, TrendingUp, TrendingDown, DollarSign, Wallet, FileText, Check, X, RefreshCw, Layers, AlertTriangle } from 'lucide-react';
+import { Receipt, Plus, Search, Calendar, Filter, Trash2, Edit2, Download, Printer, TrendingUp, TrendingDown, DollarSign, Wallet, FileText, Check, X, RefreshCw, Layers, AlertTriangle, Loader2 } from 'lucide-react';
 import { toBengaliNumber } from '../utils/bengali.js';
 import { printElement } from '../utils/printHelper.js';
 import { useStoreData } from '../context/StoreDataContext';
@@ -664,12 +664,20 @@ export default function AdminExpenseTracker({ adminToken, orders = [], categorie
                   </button>
                   <motion.button
                     type="submit"
-                    className="admin-btn"
+                    className="admin-btn primary"
                     disabled={submitting}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={submitting ? {} : { scale: 1.02 }}
+                    whileTap={submitting ? {} : { scale: 0.98 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    {submitting ? 'সংরক্ষণ হচ্ছে...' : (editingExpense ? 'আপডেট করুন' : 'খরচ যুক্ত করুন')}
+                    {submitting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>সংরক্ষণ হচ্ছে...</span>
+                      </>
+                    ) : (
+                      editingExpense ? 'আপডেট করুন' : 'খরচ যুক্ত করুন'
+                    )}
                   </motion.button>
                 </div>
               </form>

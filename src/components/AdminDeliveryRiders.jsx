@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Truck, Plus, Search, Edit2, Trash2, Phone, PhoneCall, Check, X, MapPin, User, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import { Truck, Plus, Search, Edit2, Trash2, Phone, PhoneCall, Check, X, MapPin, User, ShieldCheck, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { toBengaliNumber } from '../utils/bengali.js';
 
 export default function AdminDeliveryRiders({ adminToken, orders = [], packageOrders = [], deliveryAreas: propAreas = [], showToast }) {
@@ -640,12 +640,20 @@ export default function AdminDeliveryRiders({ adminToken, orders = [], packageOr
                   </button>
                   <motion.button
                     type="submit"
-                    className="admin-btn"
+                    className="admin-btn primary"
                     disabled={submitting}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={submitting ? {} : { scale: 1.02 }}
+                    whileTap={submitting ? {} : { scale: 0.98 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    {submitting ? 'সংরক্ষণ হচ্ছে...' : (editingRider ? 'আপডেট করুন' : 'নিবন্ধন সম্পন্ন করুন')}
+                    {submitting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>সংরক্ষণ হচ্ছে...</span>
+                      </>
+                    ) : (
+                      editingRider ? 'আপডেট করুন' : 'নিবন্ধন সম্পন্ন করুন'
+                    )}
                   </motion.button>
                 </div>
               </form>
