@@ -95,17 +95,76 @@ export default async function CategoryDetailPage({
   const categoryIdParam = resolvedParams.id;
   const numId = parseInt(categoryIdParam, 10);
 
+  const siteUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arot-express.com';
   let category: any = null;
+  let settings: any = {};
   try {
     const DBManager = await getDB();
     const categories = DBManager.getCategories() || [];
+    settings = DBManager.getSettings() || {};
     category = categories.find((c: any) => c.id === numId || String(c.id) === String(categoryIdParam));
   } catch (err) {
     console.error('SSR Category fetch error:', err);
   }
+  const siteName = (settings.site_name || 'Arot Express').trim();
+
+  // JSON-LD for Breadcrumbs and ItemList
+  const jsonLd = category ? {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          {
+            '@type': 'ListItem',
+            'position': 1,
+            'name': 'Home',
+            'item': siteUrl
+          },
+          {
+            '@type': 'ListItem',
+            'position': 2,
+            'name': category.bn,
+            'item': `${siteUrl.replace(/\/+$/, '')}/category/${category.id}`
+          }
+        ]
+      },
+      {
+        '@type': 'ItemList',
+        'name': category.bn,
+        'description': `${category.bn} এর সকল পণ্য তালিকা`,
+        'itemListElement': (category.brands || []).map((b: any, index: number) => ({
+          '@type': 'ListItem',
+          'position': index + 1,
+          'item': {
+            '@type': 'Product',
+            'name': b.name,
+            'image': b.image ? resolveAbsoluteUrl(b.image, siteUrl) : undefined,
+            'description': `${b.name} (${b.unit}) - ৳${b.price}`,
+            'brand': {
+              '@type': 'Brand',
+              'name': siteName
+            },
+            'offers': {
+              '@type': 'Offer',
+              'priceCurrency': 'BDT',
+              'price': b.price,
+              'availability': (b.stock === undefined || b.stock > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+            }
+          }
+        }))
+      }
+    ]
+  } : null;
 
   return (
     <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       {/* 
         Server-Pre-rendered SEO semantic information:
         Instant crawlability for Gemini, Google, and bots

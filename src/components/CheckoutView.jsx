@@ -577,7 +577,7 @@ export default function CheckoutView({
                 <div className="payment-instructions">
                   <p>
                     <strong>{currentPaymentMethod.name_bn}:</strong>{' '}
-                    {currentPaymentMethod.instructions_bn}
+                    {currentPaymentMethod.instructions || currentPaymentMethod.instructions_bn}
                   </p>
                   {currentPaymentMethod.number && (
                     <p style={{ marginTop: '4px', fontWeight: 600 }}>

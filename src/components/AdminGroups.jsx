@@ -33,7 +33,6 @@ export default function AdminGroups({
     bn: '',
     en: '',
     key: '',
-    icon: '',
     is_active: true
   });
   const [saving, setSaving] = useState(false);
@@ -63,7 +62,6 @@ export default function AdminGroups({
       bn: '',
       en: '',
       key: '',
-      icon: '',
       is_active: true
     });
     setModalOpen(true);
@@ -76,7 +74,6 @@ export default function AdminGroups({
       bn: g.bn || '',
       en: g.en || '',
       key: g.key || '',
-      icon: g.icon || '',
       is_active: g.is_active !== false
     });
     setModalOpen(true);

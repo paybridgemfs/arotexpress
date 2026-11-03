@@ -208,6 +208,33 @@ export default async function RootLayout({
         }
       },
       {
+        '@type': 'Organization',
+        '@id': `${siteUrl}/#organization`,
+        name: initialData?.settings?.site_name || 'Arot Express',
+        url: siteUrl,
+        logo: {
+          '@type': 'ImageObject',
+          url: ogImageUrl || faviconUrl,
+          width: 512,
+          height: 512
+        },
+        contactPoint: {
+          '@type': 'ContactPoint',
+          telephone: initialData?.settings?.site_helpline || '+8801712345678',
+          contactType: 'customer service',
+          areaServed: 'BD',
+          availableLanguage: ['Bengali', 'English']
+        },
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: initialData?.settings?.site_address || 'Dhaka',
+          addressLocality: 'Dhaka',
+          addressRegion: 'Dhaka',
+          postalCode: '1200',
+          addressCountry: 'BD'
+        }
+      },
+      {
         '@type': 'OnlineStore',
         '@id': `${siteUrl}/#store`,
         name: initialData?.settings?.site_name || 'Arot Express',
@@ -221,13 +248,13 @@ export default async function RootLayout({
         hasOfferCatalog: {
           '@type': 'OfferCatalog',
           name: 'মুদি পণ্যের তালিকা (Grocery Catalog)',
-          itemListElement: (initialData?.categories || []).map((cat: any) => ({
+          itemListElement: (initialData?.categories || []).slice(0, 10).map((cat: any) => ({
             '@type': 'OfferCatalog',
             name: `${cat.bn} (${cat.en})`,
             url: `${siteUrl}/category/${cat.id}`,
             itemListOrder: 'https://schema.org/ItemListOrderAscending',
             numberOfItems: (cat.brands || []).length,
-            itemListElement: (cat.brands || []).map((b: any) => ({
+            itemListElement: (cat.brands || []).slice(0, 5).map((b: any) => ({
               '@type': 'Offer',
               itemOffered: {
                 '@type': 'Product',
@@ -244,6 +271,20 @@ export default async function RootLayout({
             }))
           }))
         }
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${siteUrl}/#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            item: {
+              '@id': siteUrl,
+              name: 'Home'
+            }
+          }
+        ]
       },
       {
         '@type': 'ItemList',

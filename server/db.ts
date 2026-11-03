@@ -83,9 +83,10 @@ export interface PaymentMethod {
   id: number;
   code: string;
   name_bn: string;
-  name_en: string;
+  name_en?: string;
   number: string;
-  instructions_bn: string;
+  instructions?: string;
+  instructions_bn?: string;
   is_active: boolean;
   logo_url?: string;
   logo_delete_url?: string;
@@ -494,6 +495,7 @@ export class DBManager {
         console.log('✅ PostgreSQL Database connected successfully!');
 
         // Create Tables if not exist
+        // Create Core Tables
         await client.query(`
           CREATE TABLE IF NOT EXISTS site_settings (
             id SERIAL PRIMARY KEY,
@@ -514,270 +516,275 @@ export class DBManager {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
 
-        -- Separate Table for Dedicated Admins
-        CREATE TABLE IF NOT EXISTS admins (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(150) NOT NULL,
-          username VARCHAR(50) UNIQUE NOT NULL,
-          password_hash VARCHAR(255) NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS admins (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        -- Customer Users Table (Standard customers only)
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(150) NOT NULL,
-          phone VARCHAR(50) UNIQUE NOT NULL,
-          password_hash VARCHAR(255) NOT NULL,
-          role VARCHAR(20) DEFAULT 'user',
-          avatar TEXT DEFAULT '',
-          avatar_delete_url TEXT DEFAULT '',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            phone VARCHAR(50) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            role VARCHAR(20) DEFAULT 'user',
+            avatar TEXT DEFAULT '',
+            avatar_delete_url TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS groups (
-          id SERIAL PRIMARY KEY,
-          key VARCHAR(50) UNIQUE NOT NULL,
-          en VARCHAR(100) NOT NULL,
-          bn VARCHAR(100) NOT NULL,
-          icon VARCHAR(255) DEFAULT '',
-          is_active BOOLEAN DEFAULT TRUE,
-          sort_order INT DEFAULT 0,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS groups (
+            id SERIAL PRIMARY KEY,
+            key VARCHAR(50) UNIQUE NOT NULL,
+            en VARCHAR(100) NOT NULL,
+            bn VARCHAR(100) NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS categories (
-          id SERIAL PRIMARY KEY,
-          group_key VARCHAR(150) NOT NULL,
-          en_name VARCHAR(150) NOT NULL,
-          bn_name VARCHAR(150) NOT NULL,
-          icon TEXT NOT NULL
-        );
+          ALTER TABLE groups DROP COLUMN IF EXISTS icon;
+          ALTER TABLE groups DROP COLUMN IF EXISTS image_delete_url;
 
-        CREATE TABLE IF NOT EXISTS product_brands (
-          id SERIAL PRIMARY KEY,
-          category_id INT REFERENCES categories(id) ON DELETE CASCADE,
-          name VARCHAR(150) NOT NULL,
-          unit VARCHAR(100) NOT NULL,
-          price NUMERIC(10, 2) NOT NULL,
-          image_url TEXT,
-          stock INT DEFAULT 100,
-          force_stock_out BOOLEAN DEFAULT FALSE
-        );
+          CREATE TABLE IF NOT EXISTS categories (
+            id SERIAL PRIMARY KEY,
+            group_key VARCHAR(150) NOT NULL,
+            en_name VARCHAR(150) NOT NULL,
+            bn_name VARCHAR(150) NOT NULL,
+            icon TEXT NOT NULL,
+            image_delete_url TEXT
+          );
 
-        ALTER TABLE product_brands DROP COLUMN IF EXISTS weekly_prices;
-        ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS stock INT DEFAULT 100;
-        ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS force_stock_out BOOLEAN DEFAULT FALSE;
-        ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2) DEFAULT 0;
-        ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
-        ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
-        ALTER TABLE groups ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
-        ALTER TABLE package_products ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
-        DROP TABLE IF EXISTS weekly_prices, daily_prices, price_snapshots, daily_price_history CASCADE;
-        DELETE FROM site_settings WHERE key = 'featured_products';
+          CREATE TABLE IF NOT EXISTS product_brands (
+            id SERIAL PRIMARY KEY,
+            category_id INT REFERENCES categories(id) ON DELETE CASCADE,
+            name VARCHAR(150) NOT NULL,
+            unit VARCHAR(100) NOT NULL,
+            price NUMERIC(10, 2) NOT NULL,
+            cost_price NUMERIC(10, 2) DEFAULT 0,
+            image_url TEXT,
+            image_delete_url TEXT,
+            stock INT DEFAULT 100,
+            force_stock_out BOOLEAN DEFAULT FALSE
+          );
 
-        -- Alter existing columns to avoid value too long error for categories
-        ALTER TABLE categories ALTER COLUMN icon TYPE TEXT;
-        ALTER TABLE categories ALTER COLUMN group_key TYPE VARCHAR(150);
-        ALTER TABLE categories ALTER COLUMN en_name TYPE VARCHAR(150);
-        ALTER TABLE categories ALTER COLUMN bn_name TYPE VARCHAR(150);
+          CREATE TABLE IF NOT EXISTS payment_methods (
+            id SERIAL PRIMARY KEY,
+            code VARCHAR(50) UNIQUE NOT NULL,
+            name_bn VARCHAR(100) NOT NULL,
+            number VARCHAR(50),
+            instructions TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            logo_url TEXT,
+            logo_delete_url TEXT
+          );
 
-        CREATE TABLE IF NOT EXISTS payment_methods (
-          id SERIAL PRIMARY KEY,
-          code VARCHAR(50) UNIQUE NOT NULL,
-          name_bn VARCHAR(100) NOT NULL,
-          name_en VARCHAR(100) NOT NULL,
-          number VARCHAR(50),
-          instructions_bn TEXT,
-          is_active BOOLEAN DEFAULT TRUE,
-          logo_url TEXT,
-          logo_delete_url TEXT
-        );
+          ALTER TABLE payment_methods DROP COLUMN IF EXISTS name_en;
+          ALTER TABLE payment_methods DROP COLUMN IF EXISTS instructions_bn;
+          ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS instructions TEXT;
+          ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_url TEXT;
+          ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_delete_url TEXT;
 
-        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_url TEXT;
-        ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_delete_url TEXT;
+          CREATE TABLE IF NOT EXISTS orders (
+            id SERIAL PRIMARY KEY,
+            order_code VARCHAR(50) UNIQUE NOT NULL,
+            user_id INT,
+            customer_name VARCHAR(150) NOT NULL,
+            customer_phone VARCHAR(50) NOT NULL,
+            delivery_address TEXT NOT NULL,
+            delivery_area VARCHAR(100) NOT NULL,
+            payment_method VARCHAR(50) NOT NULL,
+            sender_number VARCHAR(50),
+            trx_id VARCHAR(100),
+            subtotal NUMERIC(10, 2) NOT NULL,
+            delivery_fee NUMERIC(10, 2) NOT NULL,
+            total_amount NUMERIC(10, 2) NOT NULL,
+            items_json JSONB NOT NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            payment_status VARCHAR(50) DEFAULT 'unverified',
+            payment_verified_at TIMESTAMP,
+            payment_verified_data JSONB,
+            delivery_rider_id INT,
+            delivery_rider_name VARCHAR(150),
+            delivery_rider_phone VARCHAR(50),
+            delivery_rider_vehicle VARCHAR(50),
+            delivery_note TEXT,
+            delivered_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS orders (
-          id SERIAL PRIMARY KEY,
-          order_code VARCHAR(50) UNIQUE NOT NULL,
-          user_id INT,
-          customer_name VARCHAR(150) NOT NULL,
-          customer_phone VARCHAR(50) NOT NULL,
-          delivery_address TEXT NOT NULL,
-          delivery_area VARCHAR(100) NOT NULL,
-          payment_method VARCHAR(50) NOT NULL,
-          sender_number VARCHAR(50),
-          trx_id VARCHAR(100),
-          subtotal NUMERIC(10, 2) NOT NULL,
-          delivery_fee NUMERIC(10, 2) NOT NULL,
-          total_amount NUMERIC(10, 2) NOT NULL,
-          items_json JSONB NOT NULL,
-          status VARCHAR(50) DEFAULT 'পেন্ডিং',
-          payment_status VARCHAR(50) DEFAULT 'unverified',
-          payment_verified_at TIMESTAMP,
-          payment_verified_data JSONB,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS user_carts (
+            id SERIAL PRIMARY KEY,
+            user_id INT UNIQUE NOT NULL,
+            cart_json JSONB NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unverified';
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_verified_at TIMESTAMP;
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_verified_data JSONB;
+          CREATE TABLE IF NOT EXISTS user_package_carts (
+            id SERIAL PRIMARY KEY,
+            user_id INT UNIQUE NOT NULL,
+            package_cart_json JSONB NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS user_carts (
-          id SERIAL PRIMARY KEY,
-          user_id INT UNIQUE NOT NULL,
-          cart_json JSONB NOT NULL,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS delivery_areas (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            charge NUMERIC(10, 2) DEFAULT 60,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS user_package_carts (
-          id SERIAL PRIMARY KEY,
-          user_id INT UNIQUE NOT NULL,
-          package_cart_json JSONB NOT NULL,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS delivery_riders (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            phone VARCHAR(50) NOT NULL,
+            password_hash TEXT,
+            vehicle VARCHAR(50) DEFAULT 'মোটরসাইকেল',
+            area VARCHAR(100) DEFAULT 'ঢাকা',
+            address TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS delivery_areas (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(150) NOT NULL,
-          charge NUMERIC(10, 2) DEFAULT 60,
-          is_active BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS expenses (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(200) NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            amount NUMERIC(10, 2) NOT NULL,
+            expense_date DATE DEFAULT CURRENT_DATE,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS delivery_riders (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(150) NOT NULL,
-          phone VARCHAR(50) NOT NULL,
-          password_hash TEXT,
-          vehicle VARCHAR(50) DEFAULT 'মোটরসাইকেল',
-          area VARCHAR(100) DEFAULT 'ঢাকা',
-          address TEXT,
-          is_active BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS gdrive_config (
+            id INT PRIMARY KEY DEFAULT 1,
+            account_email VARCHAR(255),
+            account_name VARCHAR(255),
+            account_picture TEXT,
+            access_token TEXT,
+            refresh_token TEXT,
+            token_expiry BIGINT,
+            folder_id VARCHAR(255),
+            is_connected BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS expenses (
-          id SERIAL PRIMARY KEY,
-          title VARCHAR(200) NOT NULL,
-          category VARCHAR(100) NOT NULL,
-          amount NUMERIC(10, 2) NOT NULL,
-          expense_date DATE DEFAULT CURRENT_DATE,
-          notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS package_products (
+            id SERIAL PRIMARY KEY,
+            product_id INT,
+            category_id INT,
+            category_name VARCHAR(150),
+            product_name VARCHAR(150) NOT NULL,
+            unit VARCHAR(100) NOT NULL,
+            regular_price NUMERIC(10, 2) NOT NULL,
+            cost_price NUMERIC(10, 2) DEFAULT 0,
+            discount_amount NUMERIC(10, 2) DEFAULT 0,
+            final_price NUMERIC(10, 2) NOT NULL,
+            slot_number INT DEFAULT 1,
+            is_active BOOLEAN DEFAULT TRUE,
+            image_delete_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        ALTER TABLE delivery_riders ADD COLUMN IF NOT EXISTS password_hash TEXT;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_delete_url TEXT DEFAULT '';
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_id INT;
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_name VARCHAR(150);
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_phone VARCHAR(50);
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_vehicle VARCHAR(50);
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT;
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
+          CREATE TABLE IF NOT EXISTS package_orders (
+            id SERIAL PRIMARY KEY,
+            order_code VARCHAR(50) UNIQUE NOT NULL,
+            user_id INT,
+            customer_name VARCHAR(150) NOT NULL,
+            customer_phone VARCHAR(50) NOT NULL,
+            delivery_address TEXT NOT NULL,
+            delivery_area VARCHAR(100) NOT NULL,
+            payment_method VARCHAR(50) NOT NULL,
+            sender_number VARCHAR(50),
+            trx_id VARCHAR(100),
+            subtotal NUMERIC(10, 2) NOT NULL,
+            discount_total NUMERIC(10, 2) DEFAULT 0,
+            delivery_fee NUMERIC(10, 2) NOT NULL,
+            total_amount NUMERIC(10, 2) NOT NULL,
+            items_json JSONB NOT NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            payment_status VARCHAR(50) DEFAULT 'unverified',
+            payment_verified_at TIMESTAMP,
+            payment_verified_data JSONB,
+            delivery_rider_id INT,
+            delivery_rider_name VARCHAR(150),
+            delivery_rider_phone VARCHAR(50),
+            delivery_rider_vehicle VARCHAR(50),
+            delivery_note TEXT,
+            delivered_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS gdrive_config (
-          id INT PRIMARY KEY DEFAULT 1,
-          account_email VARCHAR(255),
-          account_name VARCHAR(255),
-          account_picture TEXT,
-          access_token TEXT,
-          refresh_token TEXT,
-          token_expiry BIGINT,
-          folder_id VARCHAR(255),
-          is_connected BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS admin_sessions (
+            id SERIAL PRIMARY KEY,
+            admin_id INT REFERENCES admins(id) ON DELETE CASCADE,
+            session_token VARCHAR(255) UNIQUE NOT NULL,
+            device_name VARCHAR(255) NOT NULL,
+            device_type VARCHAR(50) DEFAULT 'desktop',
+            browser VARCHAR(100) NOT NULL,
+            os VARCHAR(100) NOT NULL,
+            ip_address VARCHAR(100) NOT NULL,
+            location VARCHAR(100) DEFAULT 'Dhaka, Bangladesh',
+            last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
 
-        CREATE TABLE IF NOT EXISTS package_products (
-          id SERIAL PRIMARY KEY,
-          product_id INT,
-          category_id INT,
-          category_name VARCHAR(150),
-          product_name VARCHAR(150) NOT NULL,
-          unit VARCHAR(100) NOT NULL,
-          regular_price NUMERIC(10, 2) NOT NULL,
-          cost_price NUMERIC(10, 2) DEFAULT 0,
-          discount_amount NUMERIC(10, 2) DEFAULT 0,
-          final_price NUMERIC(10, 2) NOT NULL,
-          slot_number INT DEFAULT 1,
-          is_active BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+          CREATE TABLE IF NOT EXISTS product_reviews (
+            id SERIAL PRIMARY KEY,
+            product_id VARCHAR(150) NOT NULL,
+            category_id VARCHAR(150) NOT NULL,
+            user_name VARCHAR(150) NOT NULL,
+            rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+            comment TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
 
-        CREATE TABLE IF NOT EXISTS package_orders (
-          id SERIAL PRIMARY KEY,
-          order_code VARCHAR(50) UNIQUE NOT NULL,
-          user_id INT,
-          customer_name VARCHAR(150) NOT NULL,
-          customer_phone VARCHAR(50) NOT NULL,
-          delivery_address TEXT NOT NULL,
-          delivery_area VARCHAR(100) NOT NULL,
-          payment_method VARCHAR(50) NOT NULL,
-          sender_number VARCHAR(50),
-          trx_id VARCHAR(100),
-          subtotal NUMERIC(10, 2) NOT NULL,
-          discount_total NUMERIC(10, 2) DEFAULT 0,
-          delivery_fee NUMERIC(10, 2) NOT NULL,
-          total_amount NUMERIC(10, 2) NOT NULL,
-          items_json JSONB NOT NULL,
-          status VARCHAR(50) DEFAULT 'পেন্ডিং',
-          payment_status VARCHAR(50) DEFAULT 'unverified',
-          payment_verified_at TIMESTAMP,
-          payment_verified_data JSONB,
-          delivery_rider_id INT,
-          delivery_rider_name VARCHAR(150),
-          delivery_rider_phone VARCHAR(50),
-          delivery_rider_vehicle VARCHAR(50),
-          delivery_note TEXT,
-          delivered_at TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+        // Migration & Robust Alterations
+        try {
+          await client.query(`
+            ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS stock INT DEFAULT 100;
+            ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS force_stock_out BOOLEAN DEFAULT FALSE;
+            ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2) DEFAULT 0;
+            ALTER TABLE product_brands ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
+            ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
+            ALTER TABLE groups ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
+            ALTER TABLE package_products ADD COLUMN IF NOT EXISTS image_delete_url TEXT;
+            ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_url TEXT;
+            ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS logo_delete_url TEXT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unverified';
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_verified_at TIMESTAMP;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_verified_data JSONB;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_id INT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_name VARCHAR(150);
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_phone VARCHAR(50);
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_rider_vehicle VARCHAR(50);
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_note TEXT;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;
+            ALTER TABLE delivery_riders ADD COLUMN IF NOT EXISTS password_hash TEXT;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_delete_url TEXT DEFAULT '';
+          `);
+        } catch (alterErr) {
+          console.warn('Notice during schema migration:', alterErr.message);
+        }
 
-        -- Performance Indexes on orders and package_orders
-        CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
-        CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-        CREATE INDEX IF NOT EXISTS idx_orders_trx_id ON orders(trx_id);
-        CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
-
-        CREATE INDEX IF NOT EXISTS idx_package_orders_user_id ON package_orders(user_id);
-        CREATE INDEX IF NOT EXISTS idx_package_orders_status ON package_orders(status);
-        CREATE INDEX IF NOT EXISTS idx_package_orders_trx_id ON package_orders(trx_id);
-        CREATE INDEX IF NOT EXISTS idx_package_orders_created_at ON package_orders(created_at DESC);
-
-        -- Admin Multi-Device Sessions Table (Enforces max 3 devices and remote revocation)
-        CREATE TABLE IF NOT EXISTS admin_sessions (
-          id SERIAL PRIMARY KEY,
-          admin_id INT REFERENCES admins(id) ON DELETE CASCADE,
-          session_token VARCHAR(255) UNIQUE NOT NULL,
-          device_name VARCHAR(255) NOT NULL,
-          device_type VARCHAR(50) DEFAULT 'desktop',
-          browser VARCHAR(100) NOT NULL,
-          os VARCHAR(100) NOT NULL,
-          ip_address VARCHAR(100) NOT NULL,
-          location VARCHAR(100) DEFAULT 'Dhaka, Bangladesh',
-          last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        ALTER TABLE admin_sessions ADD COLUMN IF NOT EXISTS device_type VARCHAR(50) DEFAULT 'desktop';
-        ALTER TABLE admin_sessions ADD COLUMN IF NOT EXISTS location VARCHAR(100) DEFAULT 'Dhaka, Bangladesh';
-        CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
-        CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(session_token);
-
-        -- Product Reviews Table
-        CREATE TABLE IF NOT EXISTS product_reviews (
-          id SERIAL PRIMARY KEY,
-          product_id VARCHAR(150) NOT NULL,
-          category_id VARCHAR(150) NOT NULL,
-          user_name VARCHAR(150) NOT NULL,
-          rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
-          comment TEXT NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS idx_product_reviews_prod ON product_reviews(product_id, category_id);
-      `);
+        // Core Indexes
+        await client.query(`
+          CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+          CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+          CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+          CREATE INDEX IF NOT EXISTS idx_package_orders_user_id ON package_orders(user_id);
+          CREATE INDEX IF NOT EXISTS idx_package_orders_status ON package_orders(status);
+          CREATE INDEX IF NOT EXISTS idx_package_orders_created_at ON package_orders(created_at DESC);
+          CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
+          CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(session_token);
+          CREATE INDEX IF NOT EXISTS idx_product_reviews_prod ON product_reviews(product_id, category_id);
+        `);
 
       // Ensure default super admin exists in admins table only if no admin exists
       const adminCountRes = await client.query(`SELECT COUNT(*) as count FROM admins`);
@@ -812,7 +819,6 @@ export class DBManager {
           key: g.key,
           en: g.en,
           bn: g.bn,
-          icon: g.icon || '',
           is_active: g.is_active !== undefined ? g.is_active : true,
           sort_order: g.sort_order || 0
         }));
@@ -821,8 +827,8 @@ export class DBManager {
         for (let i = 0; i < DBManager.data.groups.length; i++) {
           const g = DBManager.data.groups[i];
           await client.query(
-            `INSERT INTO groups (key, en, bn, icon, is_active, sort_order) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (key) DO NOTHING`,
-            [g.key, g.en, g.bn, g.icon || '', g.is_active !== false, g.sort_order || (i + 1)]
+            `INSERT INTO groups (key, en, bn, is_active, sort_order) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO NOTHING`,
+            [g.key, g.en, g.bn, g.is_active !== false, g.sort_order || (i + 1)]
           );
         }
         console.log(`🌱 Seeded ${DBManager.data.groups.length} default groups to PostgreSQL.`);
@@ -942,24 +948,24 @@ export class DBManager {
           id: p.id,
           code: p.code,
           name_bn: p.name_bn,
-          name_en: p.name_en,
           number: p.number || '',
-          instructions_bn: p.instructions_bn || '',
+          instructions: p.instructions || '',
+          instructions_bn: p.instructions || '',
           is_active: p.is_active !== undefined ? p.is_active : true,
-          logo_url: p.logo_url || '',
+          logo_url: p.logo_url || p.logo || '',
           logo_delete_url: p.logo_delete_url || ''
         }));
       } else {
         const defaultPaymentMethods = [
-          { code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', name_en: 'Cash on Delivery', number: '', instructions_bn: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
-          { code: 'bkash', name_bn: 'বিকাশ', name_en: 'bKash', number: '01711000000', instructions_bn: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
-          { code: 'nagad', name_bn: 'নগদ', name_en: 'Nagad', number: '01811000000', instructions_bn: 'নগদ নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
-          { code: 'rocket', name_bn: 'রকেট', name_en: 'Rocket', number: '01911000000', instructions_bn: 'রকেট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true }
+          { code: 'cod', name_bn: 'ক্যাশ অন ডেলিভারি', number: '', instructions: 'পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।', is_active: true },
+          { code: 'bkash', name_bn: 'বিকাশ', number: '01711000000', instructions: 'বিকাশ পার্সোনাল/মার্চেন্ট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
+          { code: 'nagad', name_bn: 'নগদ', number: '01811000000', instructions: 'নগদ নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true },
+          { code: 'rocket', name_bn: 'রকেট', number: '01911000000', instructions: 'রকেট নম্বরে সেন্ড মানি করুন এবং ট্রানজেকশন আইডি দিন।', is_active: true }
         ];
         for (const pm of defaultPaymentMethods) {
           await client.query(
-            `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (code) DO NOTHING`,
-            [pm.code, pm.name_bn, pm.name_en, pm.number, pm.instructions_bn, pm.is_active]
+            `INSERT INTO payment_methods (code, name_bn, number, instructions, is_active) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO NOTHING`,
+            [pm.code, pm.name_bn, pm.number, pm.instructions, pm.is_active]
           );
         }
         const recheckPay = await client.query(`SELECT * FROM payment_methods ORDER BY id ASC`);
@@ -967,10 +973,12 @@ export class DBManager {
           id: p.id,
           code: p.code,
           name_bn: p.name_bn,
-          name_en: p.name_en,
           number: p.number || '',
-          instructions_bn: p.instructions_bn || '',
-          is_active: p.is_active !== undefined ? p.is_active : true
+          instructions: p.instructions || '',
+          instructions_bn: p.instructions || '',
+          is_active: p.is_active !== undefined ? p.is_active : true,
+          logo_url: p.logo_url || p.logo || '',
+          logo_delete_url: p.logo_delete_url || ''
         }));
         console.log(`🌱 Seeded ${DBManager.data.paymentMethods.length} default payment methods to PostgreSQL.`);
       }
@@ -1405,7 +1413,7 @@ export class DBManager {
     return [...this.data.groups].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }
 
-  static addGroup(groupData: { key?: string; en: string; bn: string; icon?: string; is_active?: boolean }) {
+  static addGroup(groupData: { key?: string; en: string; bn: string; is_active?: boolean }) {
     // Generate clean slug key if not given
     let key = (groupData.key || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
     if (!key) {
@@ -1424,7 +1432,6 @@ export class DBManager {
       key: finalKey,
       en: groupData.en.trim(),
       bn: groupData.bn.trim(),
-      icon: groupData.icon ? groupData.icon.trim() : '',
       is_active: groupData.is_active !== undefined ? Boolean(groupData.is_active) : true,
       sort_order: maxSort + 1
     };
@@ -1433,16 +1440,16 @@ export class DBManager {
 
     if (isPgConnected) {
       pool.query(
-        `INSERT INTO groups (key, en, bn, icon, is_active, sort_order) VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (key) DO UPDATE SET en = EXCLUDED.en, bn = EXCLUDED.bn, icon = EXCLUDED.icon, is_active = EXCLUDED.is_active, sort_order = EXCLUDED.sort_order`,
-        [newGroup.key, newGroup.en, newGroup.bn, newGroup.icon, newGroup.is_active, newGroup.sort_order]
+        `INSERT INTO groups (key, en, bn, is_active, sort_order) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (key) DO UPDATE SET en = EXCLUDED.en, bn = EXCLUDED.bn, is_active = EXCLUDED.is_active, sort_order = EXCLUDED.sort_order`,
+        [newGroup.key, newGroup.en, newGroup.bn, newGroup.is_active, newGroup.sort_order]
       ).catch((e) => console.warn('PG sync error (group add):', e.message));
     }
 
     return newGroup;
   }
 
-  static updateGroup(oldKey: string, updates: { key?: string; en?: string; bn?: string; icon?: string; is_active?: boolean; sort_order?: number }) {
+  static updateGroup(oldKey: string, updates: { key?: string; en?: string; bn?: string; is_active?: boolean; sort_order?: number }) {
     const idx = this.data.groups.findIndex(g => g.key === oldKey);
     if (idx === -1) return null;
 
@@ -1454,7 +1461,6 @@ export class DBManager {
       key: newKey,
       en: updates.en !== undefined ? updates.en.trim() : currentGroup.en,
       bn: updates.bn !== undefined ? updates.bn.trim() : currentGroup.bn,
-      icon: updates.icon !== undefined ? updates.icon.trim() : (currentGroup.icon || ''),
       is_active: updates.is_active !== undefined ? Boolean(updates.is_active) : currentGroup.is_active,
       sort_order: updates.sort_order !== undefined ? Number(updates.sort_order) : currentGroup.sort_order
     };
@@ -1474,8 +1480,8 @@ export class DBManager {
       if (newKey !== oldKey) {
         // Update key in groups and categories
         pool.query(
-          `UPDATE groups SET key = $1, en = $2, bn = $3, icon = $4, is_active = $5, sort_order = $6 WHERE key = $7`,
-          [updatedGroup.key, updatedGroup.en, updatedGroup.bn, updatedGroup.icon, updatedGroup.is_active, updatedGroup.sort_order, oldKey]
+          `UPDATE groups SET key = $1, en = $2, bn = $3, is_active = $4, sort_order = $5 WHERE key = $6`,
+          [updatedGroup.key, updatedGroup.en, updatedGroup.bn, updatedGroup.is_active, updatedGroup.sort_order, oldKey]
         ).catch((e) => console.warn('PG sync error (group update key):', e.message));
 
         pool.query(
@@ -1484,8 +1490,8 @@ export class DBManager {
         ).catch((e) => console.warn('PG sync error (cat group_key update):', e.message));
       } else {
         pool.query(
-          `UPDATE groups SET en = $1, bn = $2, icon = $3, is_active = $4, sort_order = $5 WHERE key = $6`,
-          [updatedGroup.en, updatedGroup.bn, updatedGroup.icon, updatedGroup.is_active, updatedGroup.sort_order, oldKey]
+          `UPDATE groups SET en = $1, bn = $2, is_active = $3, sort_order = $4 WHERE key = $5`,
+          [updatedGroup.en, updatedGroup.bn, updatedGroup.is_active, updatedGroup.sort_order, oldKey]
         ).catch((e) => console.warn('PG sync error (group update):', e.message));
       }
     }
@@ -1899,12 +1905,18 @@ export class DBManager {
     const numId = typeof id === 'number' ? id : parseInt(String(id), 10);
     const idx = this.data.paymentMethods.findIndex(p => (Number.isInteger(numId) && p.id === numId) || (p.code && p.code === String(id)));
     if (idx !== -1) {
-      this.data.paymentMethods[idx] = { ...this.data.paymentMethods[idx], ...update };
+      const instr = update.instructions !== undefined ? update.instructions : (update.instructions_bn !== undefined ? update.instructions_bn : (this.data.paymentMethods[idx].instructions || this.data.paymentMethods[idx].instructions_bn || ''));
+      this.data.paymentMethods[idx] = {
+        ...this.data.paymentMethods[idx],
+        ...update,
+        instructions: instr,
+        instructions_bn: instr
+      };
       const current = this.data.paymentMethods[idx];
       if (isPgConnected) {
         pool.query(
-          `UPDATE payment_methods SET name_bn = $1, name_en = $2, number = $3, instructions_bn = $4, is_active = $5, logo_url = $6, logo_delete_url = $7 WHERE id = $8 OR code = $9`,
-          [current.name_bn, current.name_en, current.number || '', current.instructions_bn || '', current.is_active !== false, current.logo_url || '', current.logo_delete_url || '', current.id, current.code]
+          `UPDATE payment_methods SET name_bn = $1, number = $2, instructions = $3, is_active = $4, logo_url = $5, logo_delete_url = $6 WHERE id = $7 OR code = $8`,
+          [current.name_bn, current.number || '', current.instructions || '', current.is_active !== false, current.logo_url || '', current.logo_delete_url || '', current.id, current.code]
         ).catch((e) => console.warn('PG sync error (payment update):', e.message));
       }
       return this.data.paymentMethods[idx];
@@ -1914,6 +1926,7 @@ export class DBManager {
 
   static async addPaymentMethod(method: any) {
     const code = (method.code || '').trim().toLowerCase();
+    const instr = method.instructions !== undefined ? method.instructions : (method.instructions_bn || '');
     // Check if a payment method with this code or id already exists in memory
     const existingIndex = this.data.paymentMethods.findIndex(
       p => (code && p.code.toLowerCase() === code) || (method.id && p.id === method.id)
@@ -1924,6 +1937,8 @@ export class DBManager {
       const updated = {
         ...existing,
         ...method,
+        instructions: instr,
+        instructions_bn: instr,
         id: existing.id,
         code: existing.code
       };
@@ -1931,17 +1946,16 @@ export class DBManager {
 
       if (isPgConnected) {
         pool.query(
-          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo_url, logo_delete_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO payment_methods (code, name_bn, number, instructions, is_active, logo_url, logo_delete_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
-             name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
-             instructions_bn = EXCLUDED.instructions_bn,
+             instructions = EXCLUDED.instructions,
              is_active = EXCLUDED.is_active,
              logo_url = EXCLUDED.logo_url,
              logo_delete_url = EXCLUDED.logo_delete_url`,
-          [updated.code, updated.name_bn, updated.name_en, updated.number || '', updated.instructions_bn || '', updated.is_active !== undefined ? updated.is_active : true, updated.logo_url || '', updated.logo_delete_url || '']
+          [updated.code, updated.name_bn, updated.number || '', updated.instructions || '', updated.is_active !== undefined ? updated.is_active : true, updated.logo_url || '', updated.logo_delete_url || '']
         ).catch((e) => console.warn('PG sync error (payment upsert):', e.message));
       }
       return updated;
@@ -1952,6 +1966,8 @@ export class DBManager {
       ...method,
       id: newId,
       code: code || `pm_${Date.now()}`,
+      instructions: instr,
+      instructions_bn: instr,
       is_active: method.is_active !== undefined ? method.is_active : true,
       logo_url: method.logo_url || '',
       logo_delete_url: method.logo_delete_url || ''
@@ -1961,18 +1977,17 @@ export class DBManager {
     if (isPgConnected) {
       try {
         const res = await pool.query(
-          `INSERT INTO payment_methods (code, name_bn, name_en, number, instructions_bn, is_active, logo_url, logo_delete_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO payment_methods (code, name_bn, number, instructions, is_active, logo_url, logo_delete_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (code) DO UPDATE SET
              name_bn = EXCLUDED.name_bn,
-             name_en = EXCLUDED.name_en,
              number = EXCLUDED.number,
-             instructions_bn = EXCLUDED.instructions_bn,
+             instructions = EXCLUDED.instructions,
              is_active = EXCLUDED.is_active,
              logo_url = EXCLUDED.logo_url,
              logo_delete_url = EXCLUDED.logo_delete_url
             RETURNING *`,
-          [newMethod.code, newMethod.name_bn, newMethod.name_en, newMethod.number || '', newMethod.instructions_bn || '', newMethod.is_active, newMethod.logo_url, newMethod.logo_delete_url]
+          [newMethod.code, newMethod.name_bn, newMethod.number || '', newMethod.instructions || '', newMethod.is_active, newMethod.logo_url, newMethod.logo_delete_url]
         );
         if (res.rows[0]) {
           newMethod.id = res.rows[0].id;
@@ -3089,7 +3104,7 @@ export class DBManager {
       if (isPgConnected) {
         pool.query(
           `UPDATE package_orders SET status = $1, delivery_rider_id = $2, delivery_rider_name = $3, delivery_rider_phone = $4, delivery_rider_vehicle = $5, delivery_note = $6, delivered_at = $7, payment_status = $8 WHERE id = $9`,
-          [order.status, order.delivery_rider_id || null, order.delivery_rider_name || null, order.delivery_rider_phone || null, order.delivery_rider_phone || null, order.delivery_note || null, order.delivered_at || null, order.payment_status, order.id]
+          [order.status, order.delivery_rider_id || null, order.delivery_rider_name || null, order.delivery_rider_phone || null, order.delivery_rider_vehicle || null, order.delivery_note || null, order.delivered_at || null, order.payment_status, order.id]
         ).catch((e: any) => console.warn('PG sync error (package order status):', e.message));
       }
       return order;

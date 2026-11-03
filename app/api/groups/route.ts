@@ -15,11 +15,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const DBManager = await getDB();
-    const { en, bn, key, icon, is_active } = await req.json();
+    const { en, bn, key, is_active } = await req.json();
     if (!bn || !en) {
       return NextResponse.json({ error: 'গ্রুপের বাংলা ও ইংরেজি নাম আবশ্যক' }, { status: 400 });
     }
-    const newGroup = DBManager.addGroup({ en, bn, key, icon, is_active });
+    const newGroup = DBManager.addGroup({ en, bn, key, is_active });
     return NextResponse.json(newGroup);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

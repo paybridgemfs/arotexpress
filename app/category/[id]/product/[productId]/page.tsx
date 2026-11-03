@@ -116,28 +116,55 @@ export default async function ProductDetailPage({
 
   const jsonLd = product ? {
     '@context': 'https://schema.org/',
-    '@type': 'Product',
-    name: `${product.name} (${product.unit})`,
-    image: absoluteImageUrl ? [absoluteImageUrl] : [],
-    description: `${product.name} (${product.unit}) আড়ত মূল্যে কিনুন ৳${product.price} টাকায়। ${category?.bn || ''} ক্যাটাগরির তাজা পণ্য।`,
-    sku: product.id ? String(product.id) : undefined,
-    brand: {
-      '@type': 'Brand',
-      name: siteName
-    },
-    offers: {
-      '@type': 'Offer',
-      url: `${siteUrl.replace(/\/+$/, '')}/category/${category?.id || categoryId}/product/${product.id || product.name}`,
-      priceCurrency: 'BDT',
-      price: product.price,
-      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      itemCondition: 'https://schema.org/NewCondition',
-      availability: product.force_stock_out || product.stock === 0 ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
-      seller: {
-        '@type': 'Organization',
-        name: siteName
+    '@graph': [
+      {
+        '@type': 'Product',
+        name: `${product.name} (${product.unit})`,
+        image: absoluteImageUrl ? [absoluteImageUrl] : [],
+        description: `${product.name} (${product.unit}) আড়ত মূল্যে কিনুন ৳${product.price} টাকায়। ${category?.bn || ''} ক্যাটাগরির তাজা পণ্য।`,
+        sku: product.id ? String(product.id) : undefined,
+        brand: {
+          '@type': 'Brand',
+          name: siteName
+        },
+        offers: {
+          '@type': 'Offer',
+          url: `${siteUrl.replace(/\/+$/, '')}/category/${category?.id || categoryId}/product/${product.id || product.name}`,
+          priceCurrency: 'BDT',
+          price: product.price,
+          priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          itemCondition: 'https://schema.org/NewCondition',
+          availability: product.force_stock_out || product.stock === 0 ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+          seller: {
+            '@type': 'Organization',
+            name: siteName
+          }
+        }
+      },
+      {
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          {
+            '@type': 'ListItem',
+            'position': 1,
+            'name': 'Home',
+            'item': siteUrl
+          },
+          {
+            '@type': 'ListItem',
+            'position': 2,
+            'name': category?.bn || 'Category',
+            'item': `${siteUrl.replace(/\/+$/, '')}/category/${category?.id || categoryId}`
+          },
+          {
+            '@type': 'ListItem',
+            'position': 3,
+            'name': product.name,
+            'item': `${siteUrl.replace(/\/+$/, '')}/category/${category?.id || categoryId}/product/${product.id || product.name}`
+          }
+        ]
       }
-    }
+    ]
   } : null;
 
   return (

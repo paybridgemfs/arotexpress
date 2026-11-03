@@ -30,7 +30,6 @@ export interface Group {
   key: string;
   en: string;
   bn: string;
-  icon?: string;
   is_active?: boolean;
   sort_order?: number;
 }
@@ -39,10 +38,14 @@ export interface PaymentMethod {
   id: number;
   code: string;
   name_bn: string;
-  name_en: string;
+  name_en?: string;
   number: string;
-  instructions_bn: string;
+  instructions?: string;
+  instructions_bn?: string;
   is_active: boolean;
+  logo?: string;
+  logo_url?: string;
+  logo_delete_url?: string;
 }
 
 export interface CartItem {

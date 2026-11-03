@@ -268,7 +268,7 @@ export default function AdminPanel({ onNavigateHome }) {
   // Payments / Delivery state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
-  const [newPayment, setNewPayment] = useState({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
+  const [newPayment, setNewPayment] = useState({ code: '', name_bn: '', number: '', instructions: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
   const [paymentLogoFile, setPaymentLogoFile] = useState(null);
   const [paymentLogoPreview, setPaymentLogoPreview] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
@@ -1062,7 +1062,7 @@ export default function AdminPanel({ onNavigateHome }) {
           showToast('নতুন পেমেন্ট মেথড যোগ হয়েছে');
         }
         setEditingPayment(null);
-        setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
+        setNewPayment({ code: '', name_bn: '', number: '', instructions: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
         setPaymentLogoFile(null);
         setPaymentLogoPreview('');
         setIsPaymentModalOpen(false);
@@ -3117,7 +3117,7 @@ export default function AdminPanel({ onNavigateHome }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => {
                   setEditingPayment(null);
-                  setNewPayment({ code: '', name_bn: '', name_en: '', number: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
+                  setNewPayment({ code: '', name_bn: '', number: '', instructions: '', instructions_bn: '', is_active: true, logo_url: '', logo_delete_url: '' });
                   setPaymentLogoFile(null);
                   setPaymentLogoPreview('');
                   setIsPaymentModalOpen(true);
@@ -3189,8 +3189,8 @@ export default function AdminPanel({ onNavigateHome }) {
                           <label>নির্দেশনা (Instructions)</label>
                           <textarea
                             placeholder="Send money করুন এবং TrxID দিন..."
-                            value={newPayment.instructions_bn}
-                            onChange={(e) => setNewPayment({ ...newPayment, instructions_bn: e.target.value })}
+                            value={newPayment.instructions !== undefined ? newPayment.instructions : (newPayment.instructions_bn || '')}
+                            onChange={(e) => setNewPayment({ ...newPayment, instructions: e.target.value, instructions_bn: e.target.value })}
                             rows={2}
                             style={{ width: '100%', padding: '10px', border: '1.5px solid var(--rule)', borderRadius: 'var(--radius-md)', background: '#F8FAF9', fontSize: '14px', resize: 'vertical' }}
                           />
@@ -3294,7 +3294,7 @@ export default function AdminPanel({ onNavigateHome }) {
                       <td><strong>{p.name_bn}</strong></td>
                       <td className="mono">{p.code}</td>
                       <td className="mono">{p.number || '—'}</td>
-                      <td style={{ fontSize: '12px' }}>{p.instructions_bn}</td>
+                      <td style={{ fontSize: '12px' }}>{p.instructions || p.instructions_bn || '—'}</td>
                       <td>
                         <button
                           type="button"
@@ -3333,7 +3333,12 @@ export default function AdminPanel({ onNavigateHome }) {
                           className="admin-btn"
                           onClick={() => {
                             setEditingPayment(p);
-                            setNewPayment({ ...p });
+                            const inst = p.instructions || p.instructions_bn || '';
+                            setNewPayment({
+                              ...p,
+                              instructions: inst,
+                              instructions_bn: inst
+                            });
                             setPaymentLogoFile(null);
                             setPaymentLogoPreview(p.logo_url || '');
                             setIsPaymentModalOpen(true);
