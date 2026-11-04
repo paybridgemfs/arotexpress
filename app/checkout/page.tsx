@@ -36,6 +36,7 @@ export default function CheckoutPage() {
         paymentMethods={paymentMethods}
         deliveryAreas={deliveryAreas}
         defaultDeliveryFee={defaultDeliveryFee}
+        settings={settings}
         onBackToShop={() => router.push('/')}
         onOrderSuccess={(order: any) => {
           setLastOrder(order);

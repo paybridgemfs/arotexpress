@@ -58,6 +58,7 @@ import { useCart } from '../context/CartContext.jsx';
 import { useStoreData } from '../context/StoreDataContext.tsx';
 import { useConfirm } from '../context/ConfirmContext.jsx';
 import { toBengaliNumber, formatStockDisplay } from '../utils/bengali.js';
+import { getPaymentMethodLogo } from '../utils/paymentLogos.js';
 import AdminDashboard from './AdminDashboard.jsx';
 import AdminOrders from './AdminOrders.jsx';
 import AdminGroups from './AdminGroups.jsx';
@@ -3340,16 +3341,14 @@ export default function AdminPanel({ onNavigateHome }) {
                               flexShrink: 0
                             }}
                           >
-                            {(p.logo_url || p.logo) ? (
-                              <img
-                                src={p.logo_url || p.logo}
-                                alt={p.name_bn}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                              />
-                            ) : (
-                              <CreditCard size={16} color="var(--muted)" />
-                            )}
+                            <img
+                              src={getPaymentMethodLogo(p)}
+                              alt={p.name_bn}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
                           </div>
                           <strong>{p.name_bn}</strong>
                         </div>

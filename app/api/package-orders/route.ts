@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/app/lib/db';
 import { authenticateToken } from '@/app/lib/auth';
-import { verifyPaymentWithRetry, normalizePaymentSender } from '@/server/paymentVerification';
+import {
+  verifyPaymentWithRetry,
+  normalizePaymentSender,
+  DEFAULT_PAYMENT_VERIFY_API_URL,
+  DEFAULT_PAYMENT_VERIFY_API_KEY
+} from '@/server/paymentVerification';
 
 export async function GET(req: NextRequest) {
   const authResult = await authenticateToken(req);
@@ -104,8 +109,11 @@ export async function POST(req: NextRequest) {
     let payment_verified_at: string | null = null;
     let payment_verified_data: any = null;
 
+    const payment_verified = Boolean(body.payment_verified);
+    const verified_payment_data = body.verified_payment_data || null;
+
     if (!isCod) {
-      const cleanTrx = String(trx_id || '').trim();
+      const cleanTrx = String(trx_id || verified_payment_data?.trxId || '').trim();
 
       // Check if trx_id is already used in any regular or package order in the database
       if (cleanTrx) {
@@ -120,30 +128,25 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const isAutoVerifyActive = Boolean(
-        settings.payment_verify_enabled &&
-        settings.payment_verify_api_url &&
-        settings.payment_verify_api_key
-      );
+      const senderKey = normalizePaymentSender(payment_method);
 
-      if (isAutoVerifyActive) {
-        const senderKey = normalizePaymentSender(payment_method);
-
-        if (!cleanTrx) {
-          return NextResponse.json({
-            error: 'অনলাইন পেমেন্টের ক্ষেত্রে ট্রানজেকশন আইডি (TrxID) দেওয়া বাধ্যতামূলক।',
-            verified: false,
-            code: 'TRX_REQUIRED'
-          }, { status: 400 });
-        }
+      if (payment_verified && verified_payment_data) {
+        console.log(`[PackageOrderPayment] Package order authorized via live verified payment session for ${customer_phone} (${senderKey})`);
+        payment_status = 'verified';
+        payment_verified_at = new Date().toISOString();
+        payment_verified_data = verified_payment_data;
+      } else {
+        const apiUrl = (settings.payment_verify_api_url || DEFAULT_PAYMENT_VERIFY_API_URL).trim();
+        const apiKey = (settings.payment_verify_api_key || DEFAULT_PAYMENT_VERIFY_API_KEY).trim();
 
         const verifyResult = await verifyPaymentWithRetry({
-          apiUrl: settings.payment_verify_api_url,
-          apiKey: settings.payment_verify_api_key,
-          trxId: cleanTrx,
+          apiUrl,
+          apiKey,
+          trxId: cleanTrx || undefined,
           sender: senderKey,
           number: String(sender_number || '').trim(),
-          amount: calculatedTotal
+          amount: calculatedTotal,
+          maxAttempts: 3
         });
 
         if (!verifyResult || verifyResult.verified !== true || verifyResult.code !== 'VERIFIED_SUCCESS') {

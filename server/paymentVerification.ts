@@ -5,12 +5,13 @@
  */
 
 export interface PaymentVerificationParams {
-  apiUrl: string;
-  apiKey: string;
-  trxId: string;
-  sender: 'bkash' | 'nagad' | '16216' | string;
-  number: string;
+  apiUrl?: string;
+  apiKey?: string;
+  trxId?: string;
+  sender: 'bkash' | 'nagad' | '16216' | 'rocket' | 'upay' | string;
+  number?: string;
   amount: number;
+  maxAttempts?: number;
 }
 
 export interface PaymentVerificationResult {
@@ -28,6 +29,7 @@ export interface PaymentVerificationResult {
  * - bkash -> "bkash"
  * - nagad -> "nagad"
  * - rocket -> "16216" (as explicitly specified: "rocket hole 16216 jabe")
+ * - upay -> "upay"
  */
 export function normalizePaymentSender(methodCodeOrName: string): string {
   const str = (methodCodeOrName || '').toLowerCase().trim();
@@ -37,8 +39,17 @@ export function normalizePaymentSender(methodCodeOrName: string): string {
   if (str.includes('nagad') || str.includes('নগদ')) {
     return 'nagad';
   }
+  if (str.includes('upay') || str.includes('উপায়')) {
+    return 'upay';
+  }
   return 'bkash';
 }
+
+/**
+ * Default fallback credentials if not provided in DB or env
+ */
+export const DEFAULT_PAYMENT_VERIFY_API_URL = 'https://online-3gfd.onrender.com/api/verify-payment';
+export const DEFAULT_PAYMENT_VERIFY_API_KEY = 'pay_live_cff299bf5ce51e06170fa843b135246ca702';
 
 /**
  * Executes a single HTTP POST request to the external verification server
@@ -46,8 +57,8 @@ export function normalizePaymentSender(methodCodeOrName: string): string {
 async function callVerificationApi(
   apiUrl: string,
   apiKey: string,
-  payload: { trxId: string; sender: string; number: string; amount: number },
-  timeoutMs: number = 8000
+  payload: { sender: string; amount: number; number?: string; trxId?: string },
+  timeoutMs: number = 7000
 ): Promise<{ status: number; ok: boolean; data: any }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -80,15 +91,31 @@ async function callVerificationApi(
 }
 
 /**
- * Verifies payment with up to 3 retries for pending/not-found states.
- * Fails fast on definitive errors like ALREADY_VERIFIED or AMOUNT_MISMATCH.
+ * Verifies payment against the live gateway engine.
+ * Supports polling checks (1 attempt) or retrying for final order confirmation.
+ * Follows the API specification:
+ * 200: VERIFIED_SUCCESS
+ * 404: TRANSACTION_NOT_FOUND
+ * 409: ALREADY_VERIFIED
+ * 422: AMOUNT_MISMATCH
  */
 export async function verifyPaymentWithRetry(
   params: PaymentVerificationParams
 ): Promise<PaymentVerificationResult> {
-  const { apiUrl, apiKey, trxId, sender, number, amount } = params;
+  const {
+    apiUrl = DEFAULT_PAYMENT_VERIFY_API_URL,
+    apiKey = DEFAULT_PAYMENT_VERIFY_API_KEY,
+    trxId,
+    sender,
+    number,
+    amount,
+    maxAttempts = 1
+  } = params;
 
-  if (!apiUrl || !apiUrl.trim()) {
+  const targetApiUrl = (apiUrl || DEFAULT_PAYMENT_VERIFY_API_URL).trim();
+  const targetApiKey = (apiKey || DEFAULT_PAYMENT_VERIFY_API_KEY).trim();
+
+  if (!targetApiUrl) {
     return {
       success: false,
       verified: false,
@@ -97,7 +124,7 @@ export async function verifyPaymentWithRetry(
     };
   }
 
-  if (!apiKey || !apiKey.trim()) {
+  if (!targetApiKey) {
     return {
       success: false,
       verified: false,
@@ -111,65 +138,71 @@ export async function verifyPaymentWithRetry(
   const cleanSender = normalizePaymentSender(sender);
   const numAmount = Math.round(Number(amount) || 0);
 
-  if (!cleanTrxId) {
+  // Per API doc: number: Required (or TrxID)
+  if (!cleanNumber && !cleanTrxId) {
     return {
       success: false,
       verified: false,
-      code: 'INVALID_TRX_ID',
-      message: 'ট্রানজেকশন আইডি (TrxID) প্রদান করুন।'
+      code: 'MISSING_PAYMENT_IDENTIFIER',
+      message: 'গ্রাহকের প্রেরক মোবাইল নম্বর অথবা TrxID প্রদান করুন।'
     };
   }
 
-  const payload = {
-    trxId: cleanTrxId,
+  const payload: { sender: string; amount: number; number?: string; trxId?: string } = {
     sender: cleanSender,
-    number: cleanNumber,
     amount: numAmount
   };
 
-  const MAX_ATTEMPTS = 3;
+  if (cleanNumber) {
+    payload.number = cleanNumber;
+  }
+  if (cleanTrxId) {
+    payload.trxId = cleanTrxId;
+  }
+
+  const attemptsToRun = Math.max(1, maxAttempts);
   let lastResponse: any = null;
   let attemptsMade = 0;
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= attemptsToRun; attempt++) {
     attemptsMade = attempt;
     try {
-      console.log(`[PaymentVerify] Attempt ${attempt}/${MAX_ATTEMPTS} for TrxID: ${cleanTrxId}, Sender: ${cleanSender}, Amount: ${numAmount}`);
-      const res = await callVerificationApi(apiUrl.trim(), apiKey.trim(), payload);
+      console.log(`[PaymentVerify] Check ${attempt}/${attemptsToRun} - Sender: ${cleanSender}, Number: ${cleanNumber || 'N/A'}, TrxID: ${cleanTrxId || 'N/A'}, Amount: ${numAmount}`);
+      const res = await callVerificationApi(targetApiUrl, targetApiKey, payload);
       lastResponse = res.data;
 
-      const responseCode = String(res.data?.code || '').trim();
+      const responseCode = String(res.data?.code || (res.status === 200 ? 'VERIFIED_SUCCESS' : '')).trim();
 
-      // 1. STRICT SUCCESS CASE: ONLY when response code is strictly "VERIFIED_SUCCESS"
-      if (responseCode === 'VERIFIED_SUCCESS') {
-        console.log(`[PaymentVerify] ✅ Verified successfully with VERIFIED_SUCCESS on attempt ${attempt}:`, res.data);
+      // 1. STRICT SUCCESS CASE: ONLY when response code is strictly "VERIFIED_SUCCESS" (HTTP 200)
+      if (responseCode === 'VERIFIED_SUCCESS' || res.status === 200) {
+        console.log(`[PaymentVerify] ✅ Verified successfully with VERIFIED_SUCCESS:`, res.data);
         return {
           success: true,
           verified: true,
           code: 'VERIFIED_SUCCESS',
-          message: res.data.message || 'পেমেন্ট সফলভাবে যাচাই হয়েছে।',
-          data: res.data.data,
+          message: res.data?.message || 'পেমেন্ট সফলভাবে যাচাই হয়েছে।',
+          data: res.data?.data || res.data,
           raw: res.data,
           attemptsMade
         };
       }
 
-      // 2. Fatal Rejection: ALREADY_VERIFIED (under NO circumstances can this place an order)
-      if (responseCode.toUpperCase() === 'ALREADY_VERIFIED') {
+      // 2. Fatal Rejection: ALREADY_VERIFIED (HTTP 409)
+      if (res.status === 409 || responseCode.toUpperCase() === 'ALREADY_VERIFIED') {
         console.warn(`[PaymentVerify] 🚫 Transaction already verified (code: ${responseCode}):`, res.data);
         return {
           success: false,
           verified: false,
           code: 'ALREADY_VERIFIED',
-          message: 'এই TrxID টি ইতিমধ্যে পূর্বে ব্যবহার বা ভেরিফাই করা হয়েছে! এই TrxID দিয়ে কোনোভাবেই অর্ডার সম্পন্ন হবে না। অনুগ্রহ করে নতুন লেনদেনের TrxID দিন।',
+          message: 'এই লেনদেনটি ইতিমধ্যে পূর্বে ব্যবহার বা ভেরিফাই করা হয়েছে! নতুন লেনদেন করুন।',
           data: res.data?.data,
           raw: res.data,
           attemptsMade
         };
       }
 
-      // 3. Fatal Rejection: AMOUNT_MISMATCH
-      if (responseCode.toUpperCase() === 'AMOUNT_MISMATCH') {
+      // 3. Fatal Rejection: AMOUNT_MISMATCH (HTTP 422)
+      if (res.status === 422 || responseCode.toUpperCase() === 'AMOUNT_MISMATCH') {
         console.warn(`[PaymentVerify] ⚠️ Amount mismatch (code: ${responseCode}):`, res.data);
         const exp = res.data?.data?.expectedAmount || numAmount;
         const act = res.data?.data?.actualAmount;
@@ -184,42 +217,54 @@ export async function verifyPaymentWithRetry(
         };
       }
 
-      // If Unauthorized or Forbidden
-      if (res.status === 401 || res.status === 403) {
+      // 4. Pending / Not found yet (HTTP 404 or TRANSACTION_NOT_FOUND)
+      if (res.status === 404 || responseCode.toUpperCase() === 'TRANSACTION_NOT_FOUND') {
+        // Return not found for this polling tick
         return {
           success: false,
           verified: false,
-          code: 'UNAUTHORIZED_API_KEY',
-          message: 'পেমেন্ট ভেরিফিকেশন API কি (x-api-key) অকার্যকর বা অনুমোদনহীন। অ্যাডমিন সেটিংস চেক করুন।',
+          code: 'TRANSACTION_NOT_FOUND',
+          message: 'কোনো লেনদেন এখনও খুঁজে পাওয়া যায়নি। এসএমএস বা পেমেন্টের জন্য অপেক্ষা করা হচ্ছে...',
+          data: res.data?.data,
           raw: res.data,
           attemptsMade
         };
       }
 
-      // 3. Retryable condition: TRANSACTION_NOT_FOUND or temporary issue
-      console.warn(`[PaymentVerify] Attempt ${attempt} result: ${responseCode || res.status}. Retrying if attempts remain...`);
+      // Unauthorized (HTTP 401 / 403)
+      if (res.status === 401 || res.status === 403) {
+        return {
+          success: false,
+          verified: false,
+          code: 'UNAUTHORIZED_API_KEY',
+          message: 'পেমেন্ট ভেরিফিকেশন API কি (x-api-key) অকার্যকর বা অনুমোদনহীন।',
+          raw: res.data,
+          attemptsMade
+        };
+      }
 
+      // If we got an unexpected response, record and check if retry is needed
     } catch (netErr: any) {
       console.warn(`[PaymentVerify] Attempt ${attempt} network error:`, netErr.message);
       lastResponse = { error: netErr.message };
     }
 
     // Delay before next attempt if remaining
-    if (attempt < MAX_ATTEMPTS) {
+    if (attempt < attemptsToRun) {
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
   }
 
-  // All 3 attempts exhausted or non-VERIFIED_SUCCESS
+  // All attempts exhausted or non-VERIFIED_SUCCESS
   const finalCode = lastResponse?.code || 'TRANSACTION_NOT_FOUND';
-  let bengaliMessage = 'পেমেন্ট যাচাইকরণ ব্যর্থ হয়েছে। শুধুমাত্র সফল ভেরিফিকেশন (VERIFIED_SUCCESS) পেলেই অর্ডার সম্পন্ন হবে।';
+  let bengaliMessage = 'পেমেন্ট এখনও মেলেনি। এসএমএস বা পেমেন্টের জন্য অপেক্ষা করা হচ্ছে...';
 
   if (String(finalCode).toUpperCase() === 'ALREADY_VERIFIED') {
-    bengaliMessage = 'এই TrxID টি ইতিমধ্যে পূর্বে ব্যবহার করা হয়েছে! এই TrxID দিয়ে কোনোভাবেই অর্ডার সম্পন্ন হবে না।';
+    bengaliMessage = 'এই লেনদেনটি ইতিমধ্যে পূর্বে ব্যবহার করা হয়েছে!';
   } else if (String(finalCode).toUpperCase() === 'AMOUNT_MISMATCH') {
-    bengaliMessage = 'টাকার পরিমাণের অমিল পাওয়া গেছে! অনুগ্রহ করে অর্ডারের সম্পূর্ণ টাকা পরিশোধ করে সঠিক TrxID দিন।';
+    bengaliMessage = 'টাকার পরিমাণের অমিল পাওয়া গেছে! অনুগ্রহ করে অর্ডারের সম্পূর্ণ টাকা পরিশোধ করুন।';
   } else if (String(finalCode).toUpperCase() === 'TRANSACTION_NOT_FOUND') {
-    bengaliMessage = `TrxID "${cleanTrxId}" এর কোনো লেনদেন খুঁজে পাওয়া যায়নি। অনুগ্রহ করে আপনার TrxID এবং প্রেরক নম্বর সঠিকভাবে চেক করুন। (৩ বার অনুসন্ধান করা হয়েছে)`;
+    bengaliMessage = 'কোনো লেনদেন এখনও খুঁজে পাওয়া যায়নি। অনুগ্রহ করে পেমেন্ট সম্পূর্ণ করুন।';
   }
 
   return {

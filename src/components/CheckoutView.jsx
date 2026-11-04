@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -14,18 +14,25 @@ import {
   ShieldCheck,
   Loader2,
   Package,
-  ShoppingCart
+  ShoppingCart,
+  Copy,
+  Clock,
+  RefreshCw,
+  PhoneCall,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
+import { getPaymentMethodLogo } from '../utils/paymentLogos.js';
 
 export default function CheckoutView({
   onBackToShop,
   onOrderSuccess,
-  paymentMethods,
+  paymentMethods = [],
   deliveryAreas: propDeliveryAreas,
-  defaultDeliveryFee: propDefaultDeliveryFee
+  defaultDeliveryFee: propDefaultDeliveryFee,
+  settings: propSettings
 }) {
   const { user, token, openAuthModal } = useAuth();
   const { cart, subtotal: cartSubtotal, clearCart, showToast } = useCart();
@@ -62,13 +69,33 @@ export default function CheckoutView({
 
   const isPackageOrder = Boolean(packageOrderData && packageOrderData.items && packageOrderData.items.length > 0);
 
+  // Customer Form Fields
   const [name, setName] = useState(user ? user.name : '');
   const [phone, setPhone] = useState(user ? user.phone : '');
   const [address, setAddress] = useState('');
   const [area, setArea] = useState('');
-  const [selectedPaymentCode, setSelectedPaymentCode] = useState('cod');
-  const [senderNumber, setSenderNumber] = useState('');
-  const [trxId, setTrxId] = useState('');
+
+  // 1. COD vs Online Payment choice
+  // 'cod' = Cash on Delivery | 'online' = Online Payments (bKash, Nagad, Rocket, etc.)
+  const [paymentChoice, setPaymentChoice] = useState('cod');
+
+  // Online Payment selection modal & countdown session states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedOnlineMethod, setSelectedOnlineMethod] = useState(null);
+  const [customerSenderNumber, setCustomerSenderNumber] = useState('');
+  const [senderNumberError, setSenderNumberError] = useState('');
+
+  // 5-Minute Countdown Session State
+  const [isCountdownSessionOpen, setIsCountdownSessionOpen] = useState(false);
+  const [sessionEndTime, setSessionEndTime] = useState(null);
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState(300); // 5 minutes
+  const [sessionReferenceId, setSessionReferenceId] = useState('');
+  const [sessionOptionalTrx, setSessionOptionalTrx] = useState('');
+  const [pollingStatusText, setPollingStatusText] = useState('পেমেন্ট অপেক্ষা করছে...');
+  const [sessionErrorMsg, setSessionErrorMsg] = useState(null);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
+  const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
+  const [copiedNumber, setCopiedNumber] = useState(false);
 
   const [deliveryAreas, setDeliveryAreas] = useState(propDeliveryAreas || []);
   const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(propDefaultDeliveryFee || 60);
@@ -124,22 +151,20 @@ export default function CheckoutView({
 
   const totalAmount = subtotal + deliveryFee;
 
-  const currentPaymentMethod = paymentMethods.find(
-    (p) => p.code === selectedPaymentCode
-  ) || paymentMethods[0];
+  // Active online payment methods (excluding COD)
+  const onlinePaymentMethods = paymentMethods.filter(
+    (p) => p.is_active !== false && p.code !== 'cod'
+  );
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-
-    // Check if user is logged in
-    if (!user) {
-      showToast('অর্ডার নিশ্চিত করতে প্রথমে আপনার অ্যাকাউন্ট খুলুন বা লগইন করুন');
-      openAuthModal('register', () => {
-        showToast('লগইন সম্পন্ন হয়েছে, এখন অর্ডার কনফার্ম করুন');
-      });
-      return;
+  // Pre-select first online method if none selected
+  useEffect(() => {
+    if (!selectedOnlineMethod && onlinePaymentMethods.length > 0) {
+      setSelectedOnlineMethod(onlinePaymentMethods[0]);
     }
+  }, [paymentMethods]);
 
+  // Validation function for shipping form
+  const validateForm = () => {
     const newErrors = {};
     if (!name.trim() || name.trim().length < 2) newErrors.name = 'নাম আবশ্যক';
     if (!phone.trim() || !/^01[0-9]{9}$/.test(phone.trim())) {
@@ -150,24 +175,30 @@ export default function CheckoutView({
     }
     if (!area) newErrors.area = 'এলাকা বেছে নিন';
 
-    if (selectedPaymentCode !== 'cod') {
-      if (!senderNumber.trim()) {
-        newErrors.senderNumber = 'যে নম্বর থেকে টাকা পাঠিয়েছেন তা দিন';
-      }
-      if (!trxId.trim()) {
-        newErrors.trxId = 'TrxID ট্রানজেকশন কোড দিন';
-      }
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       showToast('অনুগ্রহ করে সব তথ্য সঠিকভাবে দিন');
+      return false;
+    }
+    return true;
+  };
+
+  // -------------------------------------------------------------
+  // 1. CASH ON DELIVERY ORDER HANDLER (Directly Confirm Order)
+  // -------------------------------------------------------------
+  const handleCashOnDeliverySubmit = async () => {
+    if (!user) {
+      showToast('অর্ডার নিশ্চিত করতে প্রথমে আপনার অ্যাকাউন্ট খুলুন বা লগইন করুন');
+      openAuthModal('register', () => {
+        showToast('লগইন সম্পন্ন হয়েছে, এখন অর্ডার কনফার্ম করুন');
+      });
       return;
     }
 
+    if (!validateForm()) return;
+
     setSubmitting(true);
     try {
-      // If this is a package order
       if (isPackageOrder) {
         const res = await fetch('/api/package-orders', {
           method: 'POST',
@@ -180,9 +211,9 @@ export default function CheckoutView({
             customer_phone: phone.trim(),
             delivery_address: address.trim(),
             delivery_area: area,
-            payment_method: selectedPaymentCode === 'cod' ? 'ক্যাশ অন ডেলিভারি' : (currentPaymentMethod ? currentPaymentMethod.name_bn : 'ক্যাশ অন ডেলিভারি'),
-            sender_number: senderNumber.trim() || null,
-            trx_id: trxId.trim() || null,
+            payment_method: 'ক্যাশ অন ডেলিভারি',
+            sender_number: null,
+            trx_id: null,
             items: packageOrderData.items,
             subtotal: packageRegularTotal,
             discount_total: discountTotal,
@@ -192,9 +223,7 @@ export default function CheckoutView({
         });
 
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || 'প্যাকেজ অর্ডার করতে সমস্যা হয়েছে');
-        }
+        if (!res.ok) throw new Error(data.error || 'প্যাকেজ অর্ডার করতে সমস্যা হয়েছে');
 
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('package_order_data');
@@ -231,9 +260,9 @@ export default function CheckoutView({
           customer_phone: phone.trim(),
           delivery_address: address.trim(),
           delivery_area: area,
-          payment_method: currentPaymentMethod ? currentPaymentMethod.name_bn : 'ক্যাশ অন ডেলিভারি',
-          sender_number: senderNumber.trim(),
-          trx_id: trxId.trim(),
+          payment_method: 'ক্যাশ অন ডেলিভারি',
+          sender_number: '',
+          trx_id: '',
           items,
           subtotal,
           delivery_fee: deliveryFee,
@@ -242,18 +271,7 @@ export default function CheckoutView({
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        if (data.code || data.verified === false) {
-          setVerificationErrorModal({
-            code: data.code || 'VERIFICATION_FAILED',
-            message: data.error || data.message || 'পেমেন্ট যাচাইকরণ ব্যর্থ হয়েছে',
-            details: data.details || null,
-            attemptsMade: data.attemptsMade || 3
-          });
-          return;
-        }
-        throw new Error(data.error || 'অর্ডার করতে সমস্যা হয়েছে');
-      }
+      if (!res.ok) throw new Error(data.error || 'অর্ডার করতে সমস্যা হয়েছে');
 
       try {
         sessionStorage.removeItem('package_order_data');
@@ -270,6 +288,7 @@ export default function CheckoutView({
       if (!isPackageOrder) {
         clearCart();
       }
+      showToast('আপনার অর্ডার সফলভাবে সম্পন্ন হয়েছে!');
       onOrderSuccess(data);
     } catch (err) {
       showToast(err.message || 'অর্ডার করতে সমস্যা হয়েছে');
@@ -278,7 +297,284 @@ export default function CheckoutView({
     }
   };
 
-  // Dedicated empty cart screen when cart has no items and user is not in package mode
+  // -------------------------------------------------------------
+  // 2. ONLINE PAYMENT BUTTON CLICK (Open Payment Modal)
+  // -------------------------------------------------------------
+  const handleOnlinePaymentClick = () => {
+    if (!user) {
+      showToast('পেমেন্ট শুরু করতে প্রথমে আপনার অ্যাকাউন্ট খুলুন বা লগইন করুন');
+      openAuthModal('register', () => {
+        showToast('লগইন সম্পন্ন হয়েছে, এখন পেমেন্ট করুন');
+      });
+      return;
+    }
+
+    if (!validateForm()) return;
+
+    if (!customerSenderNumber && phone) {
+      setCustomerSenderNumber(phone);
+    }
+    setSenderNumberError('');
+    setIsPaymentModalOpen(true);
+  };
+
+  // -------------------------------------------------------------
+  // 3. START 5-MINUTE COUNTDOWN SESSION
+  // -------------------------------------------------------------
+  const handleStartCountdownSession = () => {
+    const cleanNum = (customerSenderNumber || '').trim().replace(/[^0-9]/g, '');
+    if (!cleanNum || cleanNum.length < 10) {
+      setSenderNumberError('সঠিক মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)');
+      return;
+    }
+
+    const refCode = `PAY-${Math.floor(100000 + Math.random() * 900000)}`;
+    const endTime = Date.now() + 5 * 60 * 1000; // Exact 5 minutes
+
+    setSessionReferenceId(refCode);
+    setSessionEndTime(endTime);
+    setTimeLeftSeconds(300);
+    setIsSessionExpired(false);
+    setSessionErrorMsg(null);
+    setPollingStatusText('পেমেন্ট অনুসন্ধান করা হচ্ছে...');
+    setIsPaymentModalOpen(false);
+    setIsCountdownSessionOpen(true);
+  };
+
+  // -------------------------------------------------------------
+  // 4. REAL COUNTDOWN TIMER (Based on Date.now())
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (!isCountdownSessionOpen || !sessionEndTime) return;
+
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((sessionEndTime - now) / 1000));
+      setTimeLeftSeconds(diff);
+
+      if (diff <= 0) {
+        setIsSessionExpired(true);
+        setPollingStatusText('৫ মিনিটের সময়সীমা শেষ হয়েছে।');
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [isCountdownSessionOpen, sessionEndTime]);
+
+  // -------------------------------------------------------------
+  // 5. 3-SECOND AUTOMATIC BACKEND POLLING FOR VERIFIED PAYMENT
+  // -------------------------------------------------------------
+  const isPollingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isCountdownSessionOpen || isSessionExpired || isVerifyingOrder) return;
+
+    const pollVerification = async () => {
+      if (isPollingRef.current) return;
+      isPollingRef.current = true;
+
+      try {
+        const methodCode = selectedOnlineMethod?.code || 'bkash';
+        const numAmount = totalAmount;
+        const sNumber = customerSenderNumber.trim();
+        const tId = sessionOptionalTrx.trim() || undefined;
+
+        console.log(`[AutoVerify Poll] Checking payment via ${methodCode} for ৳${numAmount}, number: ${sNumber}`);
+
+        const res = await fetch('/api/payment/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            payment_method: methodCode,
+            sender_number: sNumber,
+            amount: numAmount,
+            trx_id: tId
+          })
+        });
+
+        const data = await res.json();
+
+        // 1. SUCCESS: 200 VERIFIED_SUCCESS -> Complete Order Atomically!
+        if (res.ok && data.verified === true && data.code === 'VERIFIED_SUCCESS') {
+          console.log('[AutoVerify Poll] 🎉 Payment matched and claimed atomically! Finalizing order...', data);
+          setIsVerifyingOrder(true);
+          setPollingStatusText('পেমেন্ট সফলভাবে যাচাই হয়েছে! অর্ডার সম্পন্ন হচ্ছে...');
+          await finalizeVerifiedOrder(data);
+          return;
+        }
+
+        // 2. Fatal Error: ALREADY_VERIFIED or AMOUNT_MISMATCH
+        if (data.code === 'ALREADY_VERIFIED' || data.code === 'AMOUNT_MISMATCH') {
+          setSessionErrorMsg(data.message || 'পেমেন্ট যাচাইয়ের সময় অসঙ্গতি পাওয়া গেছে');
+        } else {
+          setSessionErrorMsg(null);
+          setPollingStatusText('স্বয়ংক্রিয় অনুসন্ধান চলছে (প্রতি ৩ সেকেন্ডে)...');
+        }
+      } catch (err) {
+        console.warn('[AutoVerify Poll] Transient check notice:', err.message);
+      } finally {
+        isPollingRef.current = false;
+      }
+    };
+
+    // Immediate first check
+    pollVerification();
+
+    // Repeat every 3 seconds
+    const pollInterval = setInterval(pollVerification, 3000);
+    return () => clearInterval(pollInterval);
+  }, [
+    isCountdownSessionOpen,
+    isSessionExpired,
+    isVerifyingOrder,
+    selectedOnlineMethod,
+    customerSenderNumber,
+    sessionOptionalTrx,
+    totalAmount,
+    token
+  ]);
+
+  // -------------------------------------------------------------
+  // 6. FINALIZE VERIFIED ORDER (Database Insertion)
+  // -------------------------------------------------------------
+  const finalizeVerifiedOrder = async (verifiedResponse) => {
+    try {
+      const verifiedData = verifiedResponse.data || {};
+      const verifiedTrxId = verifiedData.trxId || verifiedResponse.data?.trx_id || sessionOptionalTrx.trim() || `VER-${Date.now()}`;
+      const methodName = selectedOnlineMethod ? selectedOnlineMethod.name_bn : 'অনলাইন পেমেন্ট';
+
+      if (isPackageOrder) {
+        const res = await fetch('/api/package-orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            customer_name: name.trim(),
+            customer_phone: phone.trim(),
+            delivery_address: address.trim(),
+            delivery_area: area,
+            payment_method: methodName,
+            sender_number: customerSenderNumber.trim(),
+            trx_id: verifiedTrxId,
+            payment_verified: true,
+            verified_payment_data: verifiedData,
+            items: packageOrderData.items,
+            subtotal: packageRegularTotal,
+            discount_total: discountTotal,
+            delivery_fee: deliveryFee,
+            total_amount: totalAmount
+          })
+        });
+
+        const orderData = await res.json();
+        if (!res.ok) throw new Error(orderData.error || 'প্যাকেজ অর্ডার কনফার্মেশনে সমস্যা হয়েছে');
+
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('package_order_data');
+          sessionStorage.setItem('arot_last_placed_order', JSON.stringify(orderData));
+        }
+
+        setIsCountdownSessionOpen(false);
+        showToast('পেমেন্ট ও প্যাকেজ অর্ডার সফলভাবে সম্পন্ন হয়েছে!');
+        onOrderSuccess(orderData);
+        return;
+      }
+
+      // Standard Cart Order
+      const items = cartEntries.map(([key, item]) => ({
+        key,
+        productId: item.productId || item.brandId || item.id || null,
+        brandId: item.brandId || item.productId || item.id || null,
+        catId: item.catId,
+        catEn: item.catEn,
+        catBn: item.catBn,
+        brand: item.brand,
+        unit: item.unit,
+        price: item.price,
+        qty: item.qty,
+        total: item.price * item.qty
+      }));
+
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          customer_name: name.trim(),
+          customer_phone: phone.trim(),
+          delivery_address: address.trim(),
+          delivery_area: area,
+          payment_method: methodName,
+          sender_number: customerSenderNumber.trim(),
+          trx_id: verifiedTrxId,
+          payment_verified: true,
+          verified_payment_data: verifiedData,
+          items,
+          subtotal,
+          delivery_fee: deliveryFee,
+          total_amount: totalAmount
+        })
+      });
+
+      const orderData = await res.json();
+      if (!res.ok) throw new Error(orderData.error || 'অর্ডার কনফার্মেশনে সমস্যা হয়েছে');
+
+      try {
+        sessionStorage.removeItem('package_order_data');
+        localStorage.removeItem('arot_active_package_order');
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('arot_last_placed_order', JSON.stringify(orderData));
+        }
+      } catch (e) {}
+
+      clearCart();
+      setIsCountdownSessionOpen(false);
+      showToast('পেমেন্ট যাচাই সফল! আপনার অর্ডার নিশ্চিত করা হয়েছে।');
+      onOrderSuccess(orderData);
+    } catch (err) {
+      console.error('Finalize order error:', err);
+      showToast(err.message || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে');
+      setIsVerifyingOrder(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // 7. CANCEL COUNTDOWN SESSION (No Order Placed)
+  // -------------------------------------------------------------
+  const handleCancelCountdownSession = () => {
+    setIsCountdownSessionOpen(false);
+    setSessionEndTime(null);
+    setIsVerifyingOrder(false);
+    setSessionErrorMsg(null);
+    showToast('পেমেন্ট সেশন বাতিল করা হয়েছে। কোনো অর্ডার প্লেস করা হয়নি।');
+  };
+
+  // Format seconds into MM:SS with Bengali digits
+  const formatCountdown = (totalSecs) => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
+    return `${toBengaliNumber(pad(mins))}:${toBengaliNumber(pad(secs))}`;
+  };
+
+  const handleCopyReceiverNumber = (num) => {
+    if (!num) return;
+    navigator.clipboard.writeText(num);
+    setCopiedNumber(true);
+    showToast(`নম্বর কপি করা হয়েছে: ${num}`);
+    setTimeout(() => setCopiedNumber(false), 2500);
+  };
+
+  // Empty cart screen
   if (cartEntries.length === 0 && !isPackageOrder) {
     return (
       <motion.div
@@ -301,66 +597,46 @@ export default function CheckoutView({
           </motion.button>
 
           <div
+            className="empty-cart-view"
             style={{
-              background: '#FFFFFF',
-              border: '1px solid var(--rule)',
-              borderRadius: 'var(--radius-xl)',
-              padding: '60px 24px',
+              padding: '60px 20px',
               textAlign: 'center',
-              maxWidth: '560px',
-              margin: '30px auto',
-              boxShadow: 'var(--shadow-sm)'
+              background: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid var(--rule)',
+              marginTop: '20px',
+              maxWidth: '480px',
+              margin: '20px auto'
             }}
           >
             <div
               style={{
-                width: '76px',
-                height: '76px',
+                width: '72px',
+                height: '72px',
                 borderRadius: '50%',
-                background: '#F1F5F3',
-                display: 'inline-flex',
+                background: '#f1f5f9',
+                display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--green)',
-                marginBottom: '18px'
+                margin: '0 auto 16px',
+                color: 'var(--muted)'
               }}
             >
-              <ShoppingCart size={38} />
+              <ShoppingCart size={36} />
             </div>
-
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text)', margin: '0 0 10px 0' }}>
-              আপনার কার্ট বর্তমানে খালি!
-            </h2>
-
-            <p style={{ fontSize: '14px', color: 'var(--muted)', margin: '0 0 24px 0', lineHeight: 1.5 }}>
-              চেকআউট করতে এবং অর্ডার সম্পন্ন করতে অনুগ্রহ করে প্রথমে আপনার প্রয়োজনীয় পণ্যগুলো কার্টে যোগ করুন।
+            <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>
+              আপনার ব্যাগ খালি
+            </h3>
+            <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '24px' }}>
+              চেকআউট করতে প্রথমে কিছু তাজা পণ্য ব্যাগে যোগ করুন।
             </p>
-
-            <motion.button
-              type="button"
-              className="cta"
+            <button
               onClick={onBackToShop}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '13px 28px',
-                fontSize: '14.5px',
-                fontWeight: 700,
-                borderRadius: 'var(--radius-pill)',
-                cursor: 'pointer',
-                background: 'var(--green, #006C4C)',
-                color: '#FFFFFF',
-                border: 'none',
-                boxShadow: 'var(--shadow-green, 0 4px 14px rgba(0, 108, 76, 0.3))'
-              }}
+              className="place-order-btn"
+              style={{ maxWidth: '220px', margin: '0 auto', padding: '12px 24px' }}
             >
-              <ShoppingCart size={18} />
-              <span>পণ্য বাছাই করুন ও কেনাকাটা শুরু করুন</span>
-            </motion.button>
+              কেনাকাটা শুরু করুন
+            </button>
           </div>
         </section>
       </motion.div>
@@ -384,90 +660,31 @@ export default function CheckoutView({
           whileTap={{ scale: 0.96 }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
-          <ArrowLeft size={16} /> <span>কেনাকাটা চালিয়ে যান</span>
+          <ArrowLeft size={16} /> <span>দোকানে ফিরে যান</span>
         </motion.button>
 
-        <div className="steps">
-          <div className="step done">
-            <span className="dot" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Check size={12} />
-            </span>{' '}
-            কার্ট
-          </div>
-          <div className="step-line"></div>
-          <div className="step active">
-            <span className="dot">২</span> ডেলিভারি তথ্য
-          </div>
-          <div className="step-line"></div>
-          <div className="step">
-            <span className="dot">৩</span> নিশ্চিতকরণ
-          </div>
-        </div>
-
-        <div className="checkout-grid">
-          <form id="checkout-form" onSubmit={handleFormSubmit} noValidate>
-            <h2 style={{ fontSize: '22px', margin: '0 0 16px' }}>
-              ডেলিভারি ও পেমেন্ট তথ্য
-            </h2>
-
-            {!user && (
-              <div
-                style={{
-                  background: 'var(--md-tertiary-container)',
-                  border: '1px solid #FCD34D',
-                  padding: '14px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  marginBottom: '18px',
-                  fontSize: '13.5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  color: '#78350F'
-                }}
-              >
-                <Info size={18} style={{ flexShrink: 0, color: 'var(--gold-dark)' }} />
-                <div>
-                  অর্ডার সম্পন্ন করতে আপনার একটি একাউন্ট প্রয়োজন হবে।{' '}
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('register')}
-                    style={{
-                      color: 'var(--green)',
-                      fontWeight: 700,
-                      textDecoration: 'underline',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    একাউন্ট তৈরি করুন
-                  </button>{' '}
-                  বা{' '}
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('login')}
-                    style={{
-                      color: 'var(--green)',
-                      fontWeight: 700,
-                      textDecoration: 'underline',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    লগইন করুন
-                  </button>
-                </div>
-              </div>
-            )}
+        <div className="co-grid">
+          {/* Left: Customer Info & Payment Method Choice */}
+          <form
+            className="co-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (paymentChoice === 'cod') {
+                handleCashOnDeliverySubmit();
+              } else {
+                handleOnlinePaymentClick();
+              }
+            }}
+          >
+            <h2>ডেলিভারি ও পেমেন্ট তথ্য</h2>
 
             <div className="field-row">
               <div className={`field ${errors.name ? 'error' : ''}`}>
-                <label htmlFor="in-name">পুরো নাম</label>
+                <label htmlFor="in-name">আপনার নাম</label>
                 <input
                   id="in-name"
                   type="text"
-                  placeholder="যেমন: রহিম উদ্দিন"
+                  placeholder="আপনার নাম লিখুন"
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
@@ -494,9 +711,9 @@ export default function CheckoutView({
             </div>
 
             <div className={`field ${errors.address ? 'error' : ''}`}>
-              <label htmlFor="in-address">ঠিকানা</label>
+              <label htmlFor="in-addr">ডেলিভারির পূর্ণ ঠিকানা</label>
               <textarea
-                id="in-address"
+                id="in-addr"
                 rows="3"
                 placeholder="বাসা/হোল্ডিং নম্বর, রোড, এলাকা"
                 value={address}
@@ -539,140 +756,222 @@ export default function CheckoutView({
               {errors.area && <div className="err-msg">{errors.area}</div>}
             </div>
 
-            {/* Payment Methods Section */}
-            <div className="payment-method-box">
-              <label style={{ fontSize: '13px', fontWeight: 700 }}>
-                পেমেন্ট পদ্ধতি বেছে নিন:
+            {/* -------------------------------------------------------- */}
+            {/* Payment Choice Section: 1. COD | 2. Online Payments       */}
+            {/* -------------------------------------------------------- */}
+            <div className="payment-method-box" style={{ marginTop: '20px' }}>
+              <label style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink)', marginBottom: '10px', display: 'block' }}>
+                পেমেন্ট অপশন নির্বাচন করুন:
               </label>
-              <div className="payment-method-grid">
-                {paymentMethods
-                  .filter((p) => p.is_active)
-                  .map((method) => (
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                {/* 1. Cash On Delivery Card */}
+                <div
+                  onClick={() => setPaymentChoice('cod')}
+                  style={{
+                    border: paymentChoice === 'cod' ? '2px solid var(--primary)' : '1px solid var(--rule)',
+                    background: paymentChoice === 'cod' ? 'var(--primary-dim)' : '#ffffff',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                     <div
-                      key={method.id}
-                      className={`payment-pill ${
-                        selectedPaymentCode === method.code ? 'selected' : ''
-                      }`}
-                      onClick={() => setSelectedPaymentCode(method.code)}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: paymentChoice === 'cod' ? 'var(--primary)' : '#f1f5f9',
+                        color: paymentChoice === 'cod' ? '#ffffff' : 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
                     >
-                      {method.name_bn}
+                      <Banknote size={20} />
                     </div>
-                  ))}
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--ink)' }}>
+                        ক্যাশ অন ডেলিভারি
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
+                        Cash On Delivery
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
+                    পণ্য হাতে পেয়ে ডেলিভারি ম্যানকে মূল্য পরিশোধ করুন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই।
+                  </p>
+                  {paymentChoice === 'cod' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Check size={12} strokeWidth={3} />
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Online Payments Card */}
+                <div
+                  onClick={() => setPaymentChoice('online')}
+                  style={{
+                    border: paymentChoice === 'online' ? '2px solid var(--primary)' : '1px solid var(--rule)',
+                    background: paymentChoice === 'online' ? 'var(--primary-dim)' : '#ffffff',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: paymentChoice === 'online' ? 'var(--primary)' : '#f1f5f9',
+                        color: paymentChoice === 'online' ? '#ffffff' : 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <CreditCard size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--ink)' }}>
+                        অনলাইন পেমেন্ট
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
+                        বিকাশ, নগদ, রকেট ইত্যাদি
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
+                    মোবাইল ব্যাংকিংয়ের মাধ্যমে ৫ মিনিটের স্বয়ংক্রিয় ভেরিফিকেশন সেশনে তাৎক্ষণিক নিরাপদ পেমেন্ট।
+                  </p>
+                  {paymentChoice === 'online' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Check size={12} strokeWidth={3} />
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* COD Instruction */}
-              {selectedPaymentCode === 'cod' && (
-                <div className="payment-instructions" style={{ background: '#f8fafc', borderColor: '#cbd5e1' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, fontSize: '13px', color: 'var(--ink)' }}>
-                    <Banknote size={18} style={{ color: 'var(--green)', flexShrink: 0 }} />
-                    <div>
-                      <strong>ক্যাশ অন ডেলিভারি:</strong> পণ্য বুঝে পেয়ে ডেলিভারি ম্যানকে সর্বমোট <strong>৳{totalAmount}</strong> পরিশোধ করুন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই।
-                    </div>
-                  </div>
+              {/* Dynamic Note based on selected choice */}
+              {paymentChoice === 'cod' ? (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    padding: '10px 14px',
+                    background: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '12.5px',
+                    color: '#334155',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                  <span>
+                    নিচের <strong>"অর্ডার নিশ্চিত করুন"</strong> বাটনে চাপ দিলে সরাসরি অর্ডার কনফার্ম হবে।
+                  </span>
                 </div>
-              )}
-
-              {/* Online/Mobile Payment Instructions & TrxID inputs */}
-              {currentPaymentMethod && selectedPaymentCode !== 'cod' && (
-                <div className="payment-instructions">
-                  <p>
-                    <strong>{currentPaymentMethod.name_bn}:</strong>{' '}
-                    {currentPaymentMethod.instructions || currentPaymentMethod.instructions_bn}
-                  </p>
-                  {currentPaymentMethod.number && (
-                    <p style={{ marginTop: '4px', fontWeight: 600 }}>
-                      নম্বর:{' '}
-                      <span className="mono" style={{ color: 'var(--green)' }}>
-                        {currentPaymentMethod.number}
-                      </span>
-                    </p>
-                  )}
-
-                  <div className="field-row" style={{ marginTop: '10px' }}>
-                    <div
-                      className={`field ${errors.senderNumber ? 'error' : ''}`}
-                    >
-                      <label style={{ fontSize: '11.5px' }}>
-                        আপনার যে নম্বর থেকে টাকা পাঠিয়েছেন:
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="01XXXXXXXXX"
-                        value={senderNumber}
-                        onChange={(e) => {
-                          setSenderNumber(e.target.value);
-                          if (errors.senderNumber) setErrors({ ...errors, senderNumber: '' });
-                        }}
-                      />
-                      {errors.senderNumber && (
-                        <div className="err-msg">{errors.senderNumber}</div>
-                      )}
-                    </div>
-                    <div className={`field ${errors.trxId ? 'error' : ''}`}>
-                      <label style={{ fontSize: '11.5px' }}>
-                        ট্রানজেকশন আইডি (TrxID):
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="যেমন: 8N7A6D5E"
-                        value={trxId}
-                        onChange={(e) => {
-                          setTrxId(e.target.value);
-                          if (errors.trxId) setErrors({ ...errors, trxId: '' });
-                        }}
-                      />
-                      {errors.trxId && (
-                        <div className="err-msg">{errors.trxId}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Automated Verification on Order Submit Note */}
-                  <div
-                    style={{
-                      marginTop: '14px',
-                      background: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
-                      borderRadius: '8px',
-                      padding: '10px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      fontSize: '12.5px',
-                      color: '#15803d'
-                    }}
-                  >
-                    <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
-                    <span style={{ lineHeight: 1.4 }}>
-                      সঠিক প্রেরক নম্বর ও TrxID লিখে নিচের <strong>"অর্ডার নিশ্চিত করুন"</strong> বাটনে চাপ দিন। সার্ভার স্বয়ংক্রিয়ভাবে পেমেন্ট যাচাই করে অর্ডার সম্পন্ন করবে।
-                    </span>
-                  </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    padding: '10px 14px',
+                    background: '#ecfdf5',
+                    borderRadius: '8px',
+                    border: '1px solid #a7f3d0',
+                    fontSize: '12.5px',
+                    color: '#065f46',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Sparkles size={16} style={{ color: '#059669', flexShrink: 0 }} />
+                  <span>
+                    নিচের <strong>"পেমেন্ট করুন"</strong> বাটনে চাপ দিলে বিকাশ, নগদ, রকেট লোগো সহ পেমেন্ট উইন্ডো খুলবে।
+                  </span>
                 </div>
               )}
             </div>
 
+            {/* Bottom Dynamic Submit Button */}
             <motion.button
               type="submit"
               className="place-order-btn"
               disabled={submitting}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              whileHover={{ scale: submitting ? 1 : 1.01 }}
+              whileTap={{ scale: submitting ? 1 : 0.98 }}
+              style={{
+                marginTop: '20px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                background: paymentChoice === 'online' ? 'var(--primary)' : 'var(--primary)',
+                opacity: submitting ? 0.75 : 1,
+                cursor: submitting ? 'not-allowed' : 'pointer'
+              }}
             >
               {submitting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  <span>{selectedPaymentCode !== 'cod' ? 'পেমেন্ট যাচাই ও অর্ডার সম্পন্ন হচ্ছে...' : 'অর্ডার জমা হচ্ছে...'}</span>
+                  <span>অর্ডার প্রসেসিং হচ্ছে...</span>
                 </>
-              ) : (
+              ) : paymentChoice === 'cod' ? (
                 <>
                   <CheckCircle2 size={18} />
                   <span>অর্ডার নিশ্চিত করুন</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard size={18} />
+                  <span>পেমেন্ট করুন</span>
                 </>
               )}
             </motion.button>
           </form>
 
+          {/* Right: Order Summary */}
           <div className="co-summary">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ margin: 0 }}>অর্ডার সামারি</h3>
@@ -787,7 +1086,730 @@ export default function CheckoutView({
         </div>
       </section>
 
-      {/* Payment Verification Failure Modal Popup */}
+      {/* ======================================================== */}
+      {/* MODAL 1: ONLINE PAYMENT METHOD SELECTION MODAL           */}
+      {/* Responsive minimum 3-column grid showing ONLY logos      */}
+      {/* Logo size max-width: 128px, height: 68px               */}
+      {/* ======================================================== */}
+      <AnimatePresence>
+        {isPaymentModalOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.7)',
+              backdropFilter: 'blur(5px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px'
+            }}
+            onClick={() => setIsPaymentModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.22 }}
+              style={{
+                background: '#ffffff',
+                borderRadius: '20px',
+                maxWidth: '540px',
+                width: '100%',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid var(--rule)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: '20px 24px',
+                  borderBottom: '1px solid var(--rule)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: '#f8fafc'
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>
+                    পেমেন্ট মেথড নির্বাচন করুন
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '13px', color: 'var(--muted)' }}>
+                    পরিশোধযোগ্য মোট টাকা: <strong style={{ color: 'var(--primary)' }}>৳{toBengaliNumber(totalAmount)}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--muted)',
+                    cursor: 'pointer',
+                    padding: '6px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: '24px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '10px' }}>
+                    যেকোনো একটি পেমেন্ট গেটওয়ে বেছে নিন:
+                  </label>
+
+                  {/* Responsive Min 3 Grid Layout - ONLY Logos */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                      gap: '12px',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {onlinePaymentMethods.map((method) => {
+                      const isSelected = selectedOnlineMethod?.id === method.id || selectedOnlineMethod?.code === method.code;
+                      const logoSrc = getPaymentMethodLogo(method);
+
+                      return (
+                        <div
+                          key={method.id || method.code}
+                          onClick={() => {
+                            setSelectedOnlineMethod(method);
+                            setSenderNumberError('');
+                          }}
+                          style={{
+                            border: isSelected ? '2.5px solid var(--primary)' : '1.5px solid #e2e8f0',
+                            borderRadius: '14px',
+                            background: isSelected ? '#f0fdf4' : '#ffffff',
+                            padding: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                            transition: 'all 0.18s ease',
+                            boxShadow: isSelected ? '0 4px 12px rgba(0, 108, 76, 0.15)' : 'none',
+                            transform: isSelected ? 'translateY(-2px)' : 'none'
+                          }}
+                        >
+                          {/* Image container strictly respecting max width 128px and height 68px */}
+                          <div
+                            style={{
+                              width: '100%',
+                              maxWidth: '128px',
+                              height: '68px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden'
+                            }}
+                          >
+                            <img
+                              src={logoSrc}
+                              alt={method.name_bn || method.name_en || 'Payment Logo'}
+                              style={{
+                                maxWidth: '128px',
+                                maxHeight: '68px',
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain'
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+
+                          {/* Selected Check Badge */}
+                          {isSelected && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: '-6px',
+                                right: '-6px',
+                                background: 'var(--primary)',
+                                color: '#ffffff',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                              }}
+                            >
+                              <Check size={12} strokeWidth={3} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Sender Number Input Section (Reveals for selected method) */}
+                {selectedOnlineMethod && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{
+                      background: '#f8fafc',
+                      borderRadius: '14px',
+                      padding: '16px',
+                      border: '1px solid #e2e8f0',
+                      marginTop: '16px'
+                    }}
+                  >
+                    <div style={{ marginBottom: '12px' }}>
+                      <label
+                        htmlFor="sender-num-input"
+                        style={{
+                          fontSize: '13.5px',
+                          fontWeight: 700,
+                          color: 'var(--ink)',
+                          display: 'block',
+                          marginBottom: '6px'
+                        }}
+                      >
+                        আপনার {selectedOnlineMethod.name_bn} নম্বর দিন:
+                      </label>
+                      <input
+                        id="sender-num-input"
+                        type="tel"
+                        placeholder="01XXXXXXXXX"
+                        value={customerSenderNumber}
+                        onChange={(e) => {
+                          setCustomerSenderNumber(e.target.value);
+                          if (senderNumberError) setSenderNumberError('');
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: senderNumberError ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          fontSize: '15px',
+                          fontWeight: 600,
+                          fontFamily: 'monospace',
+                          letterSpacing: '0.5px'
+                        }}
+                      />
+                      {senderNumberError && (
+                        <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
+                          {senderNumberError}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Store Receiver Number info */}
+                    {selectedOnlineMethod.number && (
+                      <div
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '10px',
+                          padding: '10px 12px',
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          marginBottom: '10px'
+                        }}
+                      >
+                        <div style={{ fontSize: '12.5px', color: '#475569' }}>
+                          এই নম্বরে সেন্ড মানি করুন:{' '}
+                          <span className="mono" style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '14px' }}>
+                            {selectedOnlineMethod.number}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyReceiverNumber(selectedOnlineMethod.number)}
+                          style={{
+                            background: copiedNumber ? '#dcfce7' : '#f1f5f9',
+                            color: copiedNumber ? '#15803d' : '#334155',
+                            border: 'none',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          {copiedNumber ? <Check size={12} /> : <Copy size={12} />}
+                          <span>{copiedNumber ? 'কপি হয়েছে' : 'কপি'}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Payment Instruction */}
+                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                      {selectedOnlineMethod.instructions || selectedOnlineMethod.instructions_bn || 'টাকা পাঠিয়ে পেমেন্ট সেশন শুরু করুন।'}
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* Modal Actions */}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentModalOpen(false)}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#475569',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    বন্ধ করুন
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleStartCountdownSession}
+                    disabled={!selectedOnlineMethod || !customerSenderNumber}
+                    style={{
+                      flex: 2,
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      background: 'var(--primary)',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '14.5px',
+                      cursor: (!selectedOnlineMethod || !customerSenderNumber) ? 'not-allowed' : 'pointer',
+                      opacity: (!selectedOnlineMethod || !customerSenderNumber) ? 0.6 : 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Clock size={16} />
+                    <span>পেমেন্ট সেশন শুরু করুন</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ======================================================== */}
+      {/* MODAL 2: 5-MINUTE COUNTDOWN & REAL-TIME POLLING SESSION  */}
+      {/* Real timestamp countdown with 3-sec backend verify poll  */}
+      {/* Displays order id, site name, logo, payment logo, etc.   */}
+      {/* Includes cancel button to halt polling without placing   */}
+      {/* ======================================================== */}
+      <AnimatePresence>
+        {isCountdownSessionOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.8)',
+              backdropFilter: 'blur(6px)',
+              zIndex: 10000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px'
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 15 }}
+              transition={{ duration: 0.25 }}
+              style={{
+                background: '#ffffff',
+                borderRadius: '24px',
+                maxWidth: '520px',
+                width: '100%',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+                border: '1.5px solid #cbd5e1'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header: Website Name & Logo */}
+              <div
+                style={{
+                  padding: '16px 20px',
+                  background: 'var(--primary)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {propSettings?.logo_image_url ? (
+                    <img
+                      src={propSettings.logo_image_url}
+                      alt={propSettings?.site_name || 'Logo'}
+                      style={{ height: '28px', maxWidth: '100px', objectFit: 'contain' }}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '8px',
+                        background: 'rgba(255,255,255,0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Sparkles size={16} />
+                    </div>
+                  )}
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#ffffff' }}>
+                      {propSettings?.site_name || propSettings?.logo_text_bn || 'আড়ৎ এক্সপ্রেস'}
+                    </h4>
+                    <span style={{ fontSize: '11px', opacity: 0.85 }}>নিরাপদ অনলাইন পেমেন্ট সেশন</span>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    background: 'rgba(255,255,255,0.15)',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    fontWeight: 700
+                  }}
+                >
+                  {sessionReferenceId}
+                </div>
+              </div>
+
+              {/* Main Session Content */}
+              <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                {/* Payment Method Logo & Name */}
+                <div
+                  style={{
+                    width: '100%',
+                    maxWidth: '128px',
+                    height: '68px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '12px'
+                  }}
+                >
+                  <img
+                    src={getPaymentMethodLogo(selectedOnlineMethod)}
+                    alt={selectedOnlineMethod?.name_bn || 'Payment Method'}
+                    style={{
+                      maxWidth: '128px',
+                      maxHeight: '68px',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+
+                {/* Amount to Pay */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 600 }}>
+                    পরিশোধযোগ্য মোট টাকা
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--primary)', fontFamily: 'monospace' }}>
+                    ৳{toBengaliNumber(totalAmount)}
+                  </div>
+                </div>
+
+                {/* Countdown Dial / Progress */}
+                <div
+                  style={{
+                    width: '100%',
+                    background: isSessionExpired ? '#fef2f2' : '#f0fdf4',
+                    border: isSessionExpired ? '1px solid #fecaca' : '1px solid #bbf7d0',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    marginBottom: '18px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <Clock size={20} style={{ color: isSessionExpired ? '#dc2626' : 'var(--primary)' }} />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: isSessionExpired ? '#dc2626' : '#166534' }}>
+                      {isSessionExpired ? 'সময় শেষ হয়েছে' : 'পেমেন্ট যাচাইয়ের অবশিষ্ট সময়'}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '34px',
+                      fontWeight: 900,
+                      color: isSessionExpired ? '#dc2626' : 'var(--primary)',
+                      fontFamily: 'monospace',
+                      letterSpacing: '2px',
+                      lineHeight: 1
+                    }}
+                  >
+                    {formatCountdown(timeLeftSeconds)}
+                  </div>
+
+                  {/* Visual Progress Bar */}
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '6px',
+                      background: isSessionExpired ? '#fee2e2' : '#dcfce7',
+                      borderRadius: '999px',
+                      marginTop: '12px',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${Math.max(0, Math.min(100, (timeLeftSeconds / 300) * 100))}%`,
+                        background: isSessionExpired ? '#dc2626' : 'var(--primary)',
+                        transition: 'width 1s linear',
+                        borderRadius: '999px'
+                      }}
+                    ></div>
+                  </div>
+
+                  {/* 3-Second Real-time Polling Status */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      marginTop: '12px',
+                      fontSize: '12px',
+                      color: isSessionExpired ? '#991b1b' : '#15803d',
+                      fontWeight: 600
+                    }}
+                  >
+                    {!isSessionExpired && (
+                      <span
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: '#22c55e',
+                          display: 'inline-block',
+                          animation: 'pulse 1.5s infinite'
+                        }}
+                      ></span>
+                    )}
+                    <span>{pollingStatusText}</span>
+                  </div>
+                </div>
+
+                {/* Receiver Info & Payment Details Card */}
+                <div
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    borderRadius: '14px',
+                    padding: '14px',
+                    border: '1px solid #e2e8f0',
+                    textAlign: 'left',
+                    fontSize: '13px',
+                    marginBottom: '16px'
+                  }}
+                >
+                  {/* Receiver Number with 1-Click Copy */}
+                  {selectedOnlineMethod?.number && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingBottom: '10px',
+                        borderBottom: '1px dashed #cbd5e1',
+                        marginBottom: '10px'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
+                          {selectedOnlineMethod.name_bn} প্রাপক নম্বর (মার্চেন্ট/পার্সোনাল):
+                        </div>
+                        <div className="mono" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)' }}>
+                          {selectedOnlineMethod.number}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyReceiverNumber(selectedOnlineMethod.number)}
+                        style={{
+                          background: copiedNumber ? '#dcfce7' : 'var(--primary)',
+                          color: copiedNumber ? '#15803d' : '#ffffff',
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        {copiedNumber ? <Check size={14} /> : <Copy size={14} />}
+                        <span>{copiedNumber ? 'কপি হয়েছে' : 'নম্বর কপি'}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Customer Sender Number */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--muted)' }}>আপনার প্রেরক নম্বর:</span>
+                    <strong className="mono" style={{ color: 'var(--ink)' }}>{customerSenderNumber}</strong>
+                  </div>
+
+                  {/* Instructions */}
+                  <div style={{ marginTop: '8px', color: '#475569', fontSize: '12px', lineHeight: 1.45 }}>
+                    <strong>নির্দেশনা:</strong> {selectedOnlineMethod?.instructions || selectedOnlineMethod?.instructions_bn || 'আপনার মোবাইল ব্যাংকিং অ্যাপ বা USSD ডায়াল করে টাকা পাঠান।'}
+                  </div>
+                </div>
+
+                {/* Optional TrxID Input for faster matching */}
+                <div style={{ width: '100%', marginBottom: '16px', textAlign: 'left' }}>
+                  <label htmlFor="session-trx-input" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+                    এসএমএস বা অ্যাপ থেকে পাওয়া TrxID (ঐচ্ছিক):
+                  </label>
+                  <input
+                    id="session-trx-input"
+                    type="text"
+                    placeholder="যেমন: 8N7A6D5E (যদি পেয়ে থাকেন)"
+                    value={sessionOptionalTrx}
+                    onChange={(e) => setSessionOptionalTrx(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                </div>
+
+                {/* Error Banner inside modal */}
+                {sessionErrorMsg && (
+                  <div
+                    style={{
+                      width: '100%',
+                      background: '#fef2f2',
+                      border: '1px solid #fee2e2',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      fontSize: '12.5px',
+                      color: '#b91c1c',
+                      marginBottom: '16px',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                    <span>{sessionErrorMsg}</span>
+                  </div>
+                )}
+
+                {/* Cancel Button (Explicitly requested by user) */}
+                <div style={{ width: '100%', display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelCountdownSession}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #ef4444',
+                      background: '#fff5f5',
+                      color: '#dc2626',
+                      fontWeight: 800,
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <X size={16} />
+                    <span>পেমেন্ট বাতিল করুন</span>
+                  </button>
+
+                  {isSessionExpired && (
+                    <button
+                      type="button"
+                      onClick={handleStartCountdownSession}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <RefreshCw size={16} />
+                      <span>আবার চেষ্টা করুন</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Note */}
+                <div style={{ marginTop: '12px', fontSize: '11px', color: '#64748b' }}>
+                  পেমেন্ট বাতিল করলে কোনো অর্ডার প্লেস হবে না। সফল ভেরিফিকেশন পাওয়ার পরই কেবল অর্ডার নিশ্চিত হবে।
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Verification Failure Details Modal */}
       <AnimatePresence>
         {verificationErrorModal && (
           <div
@@ -823,7 +1845,6 @@ export default function CheckoutView({
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
               <div
                 style={{
                   background: '#fef2f2',
@@ -853,22 +1874,9 @@ export default function CheckoutView({
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#991b1b' }}>
                       পেমেন্ট যাচাইকরণ ব্যর্থ হয়েছে
                     </h3>
-                    <span
-                      style={{
-                        background: '#fee2e2',
-                        color: '#b91c1c',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontFamily: 'monospace'
-                      }}
-                    >
-                      {verificationErrorModal.code}
-                    </span>
                   </div>
                   <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#b91c1c' }}>
-                    সার্ভারে স্বয়ংক্রিয়ভাবে ৩ বার অনুসন্ধান করেও পেমেন্ট নিশ্চিত করা যায়নি।
+                    {verificationErrorModal.message}
                   </p>
                 </div>
                 <button
@@ -886,109 +1894,23 @@ export default function CheckoutView({
                 </button>
               </div>
 
-              {/* Body */}
-              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Specific Error Rendering */}
-                {String(verificationErrorModal.code || '').toUpperCase() === 'AMOUNT_MISMATCH' ? (
-                  <div
-                    style={{
-                      background: '#fffbeb',
-                      border: '1px solid #fde68a',
-                      borderRadius: '10px',
-                      padding: '14px',
-                      fontSize: '13.5px',
-                      color: '#92400e'
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, marginBottom: '6px', color: '#b45309' }}>
-                      ⚠️ টাকার পরিমাণের অমিল পাওয়া গেছে!
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
-                      <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #fef3c7' }}>
-                        <div style={{ fontSize: '11px', color: '#78350f' }}>অর্ডারের মোট বিল</div>
-                        <div style={{ fontSize: '16px', fontWeight: 800, color: '#166534' }}>
-                          ৳{toBengaliNumber(totalAmount)}
-                        </div>
-                      </div>
-                      <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #fef3c7' }}>
-                        <div style={{ fontSize: '11px', color: '#78350f' }}>পেমেন্টে পাওয়া গেছে</div>
-                        <div style={{ fontSize: '16px', fontWeight: 800, color: '#dc2626' }}>
-                          ৳{toBengaliNumber(verificationErrorModal.details?.actualAmount ?? 0)}
-                        </div>
-                      </div>
-                    </div>
-                    <p style={{ margin: '10px 0 0', fontSize: '12px' }}>
-                      অনুগ্রহ করে অর্ডারের জন্য নির্ধারিত সম্পূর্ণ টাকা প্রদান করে সঠিক TrxID দিন।
-                    </p>
-                  </div>
-                ) : String(verificationErrorModal.code || '').toUpperCase() === 'ALREADY_VERIFIED' ? (
-                  <div
-                    style={{
-                      background: '#fff1f2',
-                      border: '1px solid #fecdd3',
-                      borderRadius: '10px',
-                      padding: '14px',
-                      fontSize: '13.5px',
-                      color: '#9f1239'
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, marginBottom: '4px' }}>
-                      🚫 এই ট্রানজেকশন আইডি ইতিমধ্যে ব্যবহৃত!
-                    </div>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', lineHeight: 1.5 }}>
-                      TrxID <strong>"{trxId}"</strong> পূর্বে অন্য কোনো অর্ডারে ভেরিফাই করা হয়ে গেছে। একটি ট্রানজেকশন আইডি কেবল একবারই ব্যবহারযোগ্য। দয়া করে নতুন লেনদেন সম্পন্ন করে নতুন TrxID দিন।
-                    </p>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '10px',
-                      padding: '14px',
-                      fontSize: '13.5px',
-                      color: 'var(--ink)'
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, color: '#dc2626', marginBottom: '4px' }}>
-                      {verificationErrorModal.message}
-                    </div>
-                    <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
-                      <p style={{ margin: '0 0 6px 0', fontWeight: 600 }}>অনুগ্রহ করে নিচের বিষয়গুলো নিশ্চিত করুন:</p>
-                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                        <li>যে মোবাইল নম্বর থেকে টাকা পাঠিয়েছেন তা সঠিকভাবে টাইপ করেছেন (বর্তমানে: <strong>{senderNumber || 'দেওয়া হয়নি'}</strong>)।</li>
-                        <li>বিকাশ/নগদ/রকেট অ্যাপের স্টেটমেন্ট থেকে TrxID হুবহু কপি করেছেন (বর্তমানে: <strong>{trxId || 'দেওয়া হয়নি'}</strong>)।</li>
-                        <li>টাকা পাঠানোর সাথে সাথে ট্রাই করলে কখনো কখনো SMS আসতে ১ মিনিট সময় লাগতে পারে। একটু পর আবার চেষ্টা করুন।</li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
-
-                {/* Footer action button */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVerificationErrorModal(null);
-                    }}
-                    style={{
-                      background: 'var(--primary)',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '10px 20px',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Check size={16} />
-                    <span>তথ্য সংশোধন করব</span>
-                  </button>
-                </div>
+              <div style={{ padding: '20px 24px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setVerificationErrorModal(null)}
+                  style={{
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ঠিক আছে
+                </button>
               </div>
             </motion.div>
           </div>

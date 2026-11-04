@@ -304,9 +304,9 @@ export const initialData = {
     footer_text: '© 2026 Arot Express — আপনার আড়ৎ, এক ক্লিকে।',
     footer_address: 'ঢাকা, বাংলাদেশ',
     default_delivery_fee: 60,
-    payment_verify_enabled: false,
-    payment_verify_api_url: '',
-    payment_verify_api_key: '',
+    payment_verify_enabled: true,
+    payment_verify_api_url: 'https://online-3gfd.onrender.com/api/verify-payment',
+    payment_verify_api_key: 'pay_live_cff299bf5ce51e06170fa843b135246ca702',
     banner_url: '',
     favicon_image_url: '',
     logo_type: 'text',
@@ -995,6 +995,29 @@ export class DBManager {
         }
         DBManager.data.settings = { ...DBManager.data.settings, ...loadedSettings };
         console.log(`⚙️ Loaded site settings from PostgreSQL.`);
+      }
+
+      // Ensure payment verification credentials exist in site_settings in PostgreSQL
+      if (!DBManager.data.settings.payment_verify_api_url) {
+        DBManager.data.settings.payment_verify_api_url = 'https://online-3gfd.onrender.com/api/verify-payment';
+        await client.query(
+          `INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+          ['payment_verify_api_url', JSON.stringify('https://online-3gfd.onrender.com/api/verify-payment')]
+        );
+      }
+      if (!DBManager.data.settings.payment_verify_api_key) {
+        DBManager.data.settings.payment_verify_api_key = 'pay_live_cff299bf5ce51e06170fa843b135246ca702';
+        await client.query(
+          `INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+          ['payment_verify_api_key', JSON.stringify('pay_live_cff299bf5ce51e06170fa843b135246ca702')]
+        );
+      }
+      if (DBManager.data.settings.payment_verify_enabled === undefined || DBManager.data.settings.payment_verify_enabled === null) {
+        DBManager.data.settings.payment_verify_enabled = true;
+        await client.query(
+          `INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+          ['payment_verify_enabled', JSON.stringify(true)]
+        );
       }
 
       // Hydrate footer settings
