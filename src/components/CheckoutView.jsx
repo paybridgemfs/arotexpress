@@ -906,7 +906,7 @@ export default function CheckoutView({
                     <div
                       onClick={() => setPaymentChoice('cod')}
                       style={{
-                        border: paymentChoice === 'cod' ? '2px solid var(--primary)' : '1px solid var(--rule)',
+                        border: paymentChoice === 'cod' ? '1px solid var(--primary)' : '1px solid var(--rule)',
                         background: paymentChoice === 'cod' ? 'var(--primary-dim)' : '#ffffff',
                         borderRadius: '12px',
                         padding: '14px',
@@ -922,12 +922,10 @@ export default function CheckoutView({
                             height: '36px',
                             borderRadius: '8px',
                             overflow: 'hidden',
-                            background: '#006C4C',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0,
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                           }}
                         >
                           <img
@@ -975,7 +973,7 @@ export default function CheckoutView({
                 <div
                   onClick={() => setPaymentChoice('online')}
                   style={{
-                    border: paymentChoice === 'online' ? '2px solid var(--primary)' : '1px solid var(--rule)',
+                    border: paymentChoice === 'online' ? '1px solid var(--primary)' : '1px solid var(--rule)',
                     background: paymentChoice === 'online' ? 'var(--primary-dim)' : '#ffffff',
                     borderRadius: '12px',
                     padding: '14px',
@@ -1229,7 +1227,7 @@ export default function CheckoutView({
                             setSenderNumberError('');
                           }}
                           style={{
-                            border: isSelected ? '2px solid var(--primary)' : '1.5px solid #e2e8f0',
+                            border: isSelected ? '1px solid var(--primary)' : '1px solid #e2e8f0',
                             borderRadius: '10px',
                             background: isSelected ? '#f0fdf4' : '#ffffff',
                             padding: '6px 4px',
