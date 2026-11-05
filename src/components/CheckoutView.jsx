@@ -24,7 +24,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { toBengaliNumber } from '../utils/bengali.js';
-import { getPaymentMethodLogo } from '../utils/paymentLogos.js';
+import { getPaymentMethodLogo, COD_SVG } from '../utils/paymentLogos.js';
 
 export default function CheckoutView({
   onBackToShop,
@@ -311,9 +311,6 @@ export default function CheckoutView({
 
     if (!validateForm()) return;
 
-    if (!customerSenderNumber && phone) {
-      setCustomerSenderNumber(phone);
-    }
     setSenderNumberError('');
     setIsPaymentModalOpen(true);
   };
@@ -574,6 +571,130 @@ export default function CheckoutView({
     setTimeout(() => setCopiedNumber(false), 2500);
   };
 
+  // Reusable Order Summary renderer for both desktop right-side and mobile under-payment-method
+  const renderOrderSummary = (isMobile = false) => (
+    <div
+      className={`co-summary ${isMobile ? 'mobile-order-summary' : ''}`}
+      style={{
+        background: '#ffffff',
+        border: '1px solid var(--rule)',
+        borderRadius: '16px',
+        padding: isMobile ? '16px' : '22px',
+        boxShadow: 'var(--shadow-sm)'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        <h3 style={{ margin: 0, fontSize: isMobile ? '15.5px' : '17px', fontWeight: 800 }}>অর্ডার সামারি</h3>
+        {isPackageOrder && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '2px 8px',
+              borderRadius: '12px'
+            }}
+          >
+            <Package size={12} /> প্যাকেজ অফার
+          </span>
+        )}
+      </div>
+
+      {isPackageOrder ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          {packageOrderData.items.map((it, idx) => (
+            <div className="co-row" key={idx} style={{ alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text)' }}>
+                  {it.product_name || it.brand} ×{toBengaliNumber(it.qty)}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                  একক: {it.unit}
+                  {it.regular_price > it.final_price && (
+                    <span style={{ textDecoration: 'line-through', marginLeft: '6px' }}>
+                      ৳{toBengaliNumber(it.regular_price * it.qty)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                  ৳{toBengaliNumber((it.final_price || it.price) * it.qty)}
+                </span>
+                {it.discount_amount > 0 && (
+                  <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 600 }}>
+                    -৳{toBengaliNumber(it.discount_amount * it.qty)} ছাড়
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {packageRegularTotal > subtotal && (
+            <div className="co-row" style={{ color: 'var(--muted)', fontSize: '13px' }}>
+              <span>নিয়মিত মূল্য</span>
+              <span className="mono">৳{toBengaliNumber(packageRegularTotal)}</span>
+            </div>
+          )}
+
+          {discountTotal > 0 && (
+            <div className="co-row" style={{ color: '#15803d', fontWeight: 600 }}>
+              <span>প্যাকেজ বিশেষ ছাড়</span>
+              <span className="mono">-৳{toBengaliNumber(discountTotal)}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        cartEntries.map(([key, it]) => (
+          <div className="co-row" key={key}>
+            <span>
+              {it.brand} ×{toBengaliNumber(it.qty)}
+            </span>
+            <span className="mono">৳{toBengaliNumber(it.price * it.qty)}</span>
+          </div>
+        ))
+      )}
+
+      <div className="co-row">
+        <span>ডেলিভারি চার্জ</span>
+        <span className="mono">৳{toBengaliNumber(deliveryFee)}</span>
+      </div>
+      <div className="co-row total">
+        <span>সর্বমোট</span>
+        <span style={{ color: 'var(--primary)', fontWeight: 800 }}>৳{toBengaliNumber(totalAmount)}</span>
+      </div>
+
+      {isPackageOrder && (
+        <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed var(--rule)', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('package_order_data');
+              }
+              setPackageOrderData(null);
+              onBackToShop();
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--muted)',
+              fontSize: '12px',
+              textDecoration: 'underline',
+              cursor: 'pointer'
+            }}
+          >
+            প্যাকেজ পরিবর্তন করতে মূল দোকানে ফিরে যান
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   // Empty cart screen
   if (cartEntries.length === 0 && !isPackageOrder) {
     return (
@@ -663,10 +784,10 @@ export default function CheckoutView({
           <ArrowLeft size={16} /> <span>দোকানে ফিরে যান</span>
         </motion.button>
 
-        <div className="co-grid">
-          {/* Left: Customer Info & Payment Method Choice */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* Left / Main Column: Customer Info, Payment Options & (on mobile) Order Summary */}
           <form
-            className="co-form"
+            className="co-form lg:col-span-7"
             onSubmit={(e) => {
               e.preventDefault();
               if (paymentChoice === 'cod') {
@@ -778,21 +899,26 @@ export default function CheckoutView({
                     position: 'relative'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                     <div
                       style={{
-                        width: '36px',
+                        width: '64px',
                         height: '36px',
                         borderRadius: '8px',
-                        background: paymentChoice === 'cod' ? 'var(--primary)' : '#f1f5f9',
-                        color: paymentChoice === 'cod' ? '#ffffff' : 'var(--primary)',
+                        overflow: 'hidden',
+                        background: '#006C4C',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                       }}
                     >
-                      <Banknote size={20} />
+                      <img
+                        src={COD_SVG}
+                        alt="ক্যাশ অন ডেলিভারি"
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
                     </div>
                     <div>
                       <div style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--ink)' }}>
@@ -803,7 +929,7 @@ export default function CheckoutView({
                       </div>
                     </div>
                   </div>
-                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
                     পণ্য হাতে পেয়ে ডেলিভারি ম্যানকে মূল্য পরিশোধ করুন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই।
                   </p>
                   {paymentChoice === 'cod' && (
@@ -934,6 +1060,11 @@ export default function CheckoutView({
               )}
             </div>
 
+            {/* MOBILE VIEW ONLY: Order summary section directly below payment method section */}
+            <div className="block lg:hidden" style={{ marginTop: '20px' }}>
+              {renderOrderSummary(true)}
+            </div>
+
             {/* Bottom Dynamic Submit Button */}
             <motion.button
               type="submit"
@@ -971,125 +1102,17 @@ export default function CheckoutView({
             </motion.button>
           </form>
 
-          {/* Right: Order Summary */}
-          <div className="co-summary">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ margin: 0 }}>অর্ডার সামারি</h3>
-              {isPackageOrder && (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    background: '#dcfce7',
-                    color: '#15803d',
-                    padding: '2px 8px',
-                    borderRadius: '12px'
-                  }}
-                >
-                  <Package size={12} /> প্যাকেজ অফার
-                </span>
-              )}
-            </div>
-
-            {isPackageOrder ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                {packageOrderData.items.map((it, idx) => (
-                  <div className="co-row" key={idx} style={{ alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text)' }}>
-                        {it.product_name || it.brand} ×{toBengaliNumber(it.qty)}
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                        একক: {it.unit}
-                        {it.regular_price > it.final_price && (
-                          <span style={{ textDecoration: 'line-through', marginLeft: '6px' }}>
-                            ৳{toBengaliNumber(it.regular_price * it.qty)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                        ৳{toBengaliNumber((it.final_price || it.price) * it.qty)}
-                      </span>
-                      {it.discount_amount > 0 && (
-                        <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 600 }}>
-                          -৳{toBengaliNumber(it.discount_amount * it.qty)} ছাড়
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {packageRegularTotal > subtotal && (
-                  <div className="co-row" style={{ color: 'var(--muted)', fontSize: '13px' }}>
-                    <span>নিয়মিত মূল্য</span>
-                    <span className="mono">৳{toBengaliNumber(packageRegularTotal)}</span>
-                  </div>
-                )}
-
-                {discountTotal > 0 && (
-                  <div className="co-row" style={{ color: '#15803d', fontWeight: 600 }}>
-                    <span>প্যাকেজ বিশেষ ছাড়</span>
-                    <span className="mono">-৳{toBengaliNumber(discountTotal)}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              cartEntries.map(([key, it]) => (
-                <div className="co-row" key={key}>
-                  <span>
-                    {it.brand} ×{toBengaliNumber(it.qty)}
-                  </span>
-                  <span className="mono">৳{toBengaliNumber(it.price * it.qty)}</span>
-                </div>
-              ))
-            )}
-
-            <div className="co-row">
-              <span>ডেলিভারি চার্জ</span>
-              <span className="mono">৳{toBengaliNumber(deliveryFee)}</span>
-            </div>
-            <div className="co-row total">
-              <span>সর্বমোট</span>
-              <span>৳{toBengaliNumber(totalAmount)}</span>
-            </div>
-
-            {isPackageOrder && (
-              <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed var(--rule)', textAlign: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      sessionStorage.removeItem('package_order_data');
-                    }
-                    setPackageOrderData(null);
-                    onBackToShop();
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--muted)',
-                    fontSize: '12px',
-                    textDecoration: 'underline',
-                    cursor: 'pointer'
-                  }}
-                >
-                  প্যাকেজ পরিবর্তন করতে মূল দোকানে ফিরে যান
-                </button>
-              </div>
-            )}
+          {/* DESKTOP VIEW ONLY: Order Summary on the right side */}
+          <div className="hidden lg:block lg:col-span-5 sticky top-24">
+            {renderOrderSummary(false)}
           </div>
         </div>
       </section>
 
       {/* ======================================================== */}
-      {/* MODAL 1: ONLINE PAYMENT METHOD SELECTION MODAL           */}
+      {/* MODAL 1: ONLINE PAYMENT METHOD SELECTION MODAL (COMPACT) */}
       {/* Responsive minimum 3-column grid showing ONLY logos      */}
-      {/* Logo size max-width: 128px, height: 68px               */}
+      {/* Sized cleanly & compactly with reduced margin/padding    */}
       {/* ======================================================== */}
       <AnimatePresence>
         {isPaymentModalOpen && (
@@ -1101,27 +1124,27 @@ export default function CheckoutView({
               right: 0,
               bottom: 0,
               backgroundColor: 'rgba(15, 23, 42, 0.7)',
-              backdropFilter: 'blur(5px)',
+              backdropFilter: 'blur(4px)',
               zIndex: 9999,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '16px'
+              padding: '12px'
             }}
             onClick={() => setIsPaymentModalOpen(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.22 }}
+              transition={{ duration: 0.18 }}
               style={{
                 background: '#ffffff',
-                borderRadius: '20px',
-                maxWidth: '540px',
+                borderRadius: '16px',
+                maxWidth: '430px',
                 width: '100%',
                 overflow: 'hidden',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.22)',
                 border: '1px solid var(--rule)'
               }}
               onClick={(e) => e.stopPropagation()}
@@ -1129,7 +1152,7 @@ export default function CheckoutView({
               {/* Modal Header */}
               <div
                 style={{
-                  padding: '20px 24px',
+                  padding: '12px 16px',
                   borderBottom: '1px solid var(--rule)',
                   display: 'flex',
                   alignItems: 'center',
@@ -1138,11 +1161,11 @@ export default function CheckoutView({
                 }}
               >
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: 800, color: 'var(--ink)' }}>
                     পেমেন্ট মেথড নির্বাচন করুন
                   </h3>
-                  <p style={{ margin: '3px 0 0', fontSize: '13px', color: 'var(--muted)' }}>
-                    পরিশোধযোগ্য মোট টাকা: <strong style={{ color: 'var(--primary)' }}>৳{toBengaliNumber(totalAmount)}</strong>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
+                    পরিশোধযোগ্য টাকা: <strong style={{ color: 'var(--primary)' }}>৳{toBengaliNumber(totalAmount)}</strong>
                   </p>
                 </div>
                 <button
@@ -1153,21 +1176,21 @@ export default function CheckoutView({
                     border: 'none',
                     color: 'var(--muted)',
                     cursor: 'pointer',
-                    padding: '6px',
+                    padding: '4px',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div style={{ padding: '24px' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '10px' }}>
+              <div style={{ padding: '14px 16px' }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>
                     যেকোনো একটি পেমেন্ট গেটওয়ে বেছে নিন:
                   </label>
 
@@ -1176,7 +1199,7 @@ export default function CheckoutView({
                     style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                      gap: '12px',
+                      gap: '8px',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}
@@ -1193,26 +1216,26 @@ export default function CheckoutView({
                             setSenderNumberError('');
                           }}
                           style={{
-                            border: isSelected ? '2.5px solid var(--primary)' : '1.5px solid #e2e8f0',
-                            borderRadius: '14px',
+                            border: isSelected ? '2px solid var(--primary)' : '1.5px solid #e2e8f0',
+                            borderRadius: '10px',
                             background: isSelected ? '#f0fdf4' : '#ffffff',
-                            padding: '8px',
+                            padding: '6px 4px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             position: 'relative',
-                            transition: 'all 0.18s ease',
-                            boxShadow: isSelected ? '0 4px 12px rgba(0, 108, 76, 0.15)' : 'none',
-                            transform: isSelected ? 'translateY(-2px)' : 'none'
+                            transition: 'all 0.15s ease',
+                            boxShadow: isSelected ? '0 3px 8px rgba(0, 108, 76, 0.14)' : 'none',
+                            transform: isSelected ? 'translateY(-1px)' : 'none'
                           }}
                         >
-                          {/* Image container strictly respecting max width 128px and height 68px */}
+                          {/* Image container compact within max width 100px and height 52px */}
                           <div
                             style={{
                               width: '100%',
-                              maxWidth: '128px',
-                              height: '68px',
+                              maxWidth: '100px',
+                              height: '52px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1223,8 +1246,8 @@ export default function CheckoutView({
                               src={logoSrc}
                               alt={method.name_bn || method.name_en || 'Payment Logo'}
                               style={{
-                                maxWidth: '128px',
-                                maxHeight: '68px',
+                                maxWidth: '100px',
+                                maxHeight: '52px',
                                 width: '100%',
                                 height: '100%',
                                 objectFit: 'contain'
@@ -1240,12 +1263,12 @@ export default function CheckoutView({
                             <div
                               style={{
                                 position: 'absolute',
-                                top: '-6px',
-                                right: '-6px',
+                                top: '-5px',
+                                right: '-5px',
                                 background: 'var(--primary)',
                                 color: '#ffffff',
-                                width: '20px',
-                                height: '20px',
+                                width: '18px',
+                                height: '18px',
                                 borderRadius: '50%',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1253,7 +1276,7 @@ export default function CheckoutView({
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
                               }}
                             >
-                              <Check size={12} strokeWidth={3} />
+                              <Check size={11} strokeWidth={3} />
                             </div>
                           )}
                         </div>
@@ -1265,26 +1288,26 @@ export default function CheckoutView({
                 {/* Sender Number Input Section (Reveals for selected method) */}
                 {selectedOnlineMethod && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.18 }}
                     style={{
                       background: '#f8fafc',
-                      borderRadius: '14px',
-                      padding: '16px',
+                      borderRadius: '12px',
+                      padding: '12px',
                       border: '1px solid #e2e8f0',
-                      marginTop: '16px'
+                      marginTop: '12px'
                     }}
                   >
-                    <div style={{ marginBottom: '12px' }}>
+                    <div style={{ marginBottom: '10px' }}>
                       <label
                         htmlFor="sender-num-input"
                         style={{
-                          fontSize: '13.5px',
+                          fontSize: '12.5px',
                           fontWeight: 700,
                           color: 'var(--ink)',
                           display: 'block',
-                          marginBottom: '6px'
+                          marginBottom: '4px'
                         }}
                       >
                         আপনার {selectedOnlineMethod.name_bn} নম্বর দিন:
@@ -1300,18 +1323,18 @@ export default function CheckoutView({
                         }}
                         style={{
                           width: '100%',
-                          padding: '12px 14px',
-                          borderRadius: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '8px',
                           border: senderNumberError ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
                           background: '#ffffff',
-                          fontSize: '15px',
+                          fontSize: '14px',
                           fontWeight: 600,
                           fontFamily: 'monospace',
                           letterSpacing: '0.5px'
                         }}
                       />
                       {senderNumberError && (
-                        <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
+                        <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '3px' }}>
                           {senderNumberError}
                         </div>
                       )}
@@ -1322,19 +1345,19 @@ export default function CheckoutView({
                       <div
                         style={{
                           background: '#ffffff',
-                          borderRadius: '10px',
-                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          padding: '7px 10px',
                           border: '1px solid #e2e8f0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          gap: '8px',
-                          marginBottom: '10px'
+                          gap: '6px',
+                          marginBottom: '8px'
                         }}
                       >
-                        <div style={{ fontSize: '12.5px', color: '#475569' }}>
-                          এই নম্বরে সেন্ড মানি করুন:{' '}
-                          <span className="mono" style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '14px' }}>
+                        <div style={{ fontSize: '11.5px', color: '#475569' }}>
+                          সেন্ড মানি নম্বর:{' '}
+                          <span className="mono" style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '13px' }}>
                             {selectedOnlineMethod.number}
                           </span>
                         </div>
@@ -1345,43 +1368,43 @@ export default function CheckoutView({
                             background: copiedNumber ? '#dcfce7' : '#f1f5f9',
                             color: copiedNumber ? '#15803d' : '#334155',
                             border: 'none',
-                            padding: '4px 10px',
-                            borderRadius: '6px',
-                            fontSize: '11.5px',
+                            padding: '3px 8px',
+                            borderRadius: '5px',
+                            fontSize: '11px',
                             fontWeight: 700,
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '3px'
                           }}
                         >
-                          {copiedNumber ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedNumber ? <Check size={11} /> : <Copy size={11} />}
                           <span>{copiedNumber ? 'কপি হয়েছে' : 'কপি'}</span>
                         </button>
                       </div>
                     )}
 
                     {/* Payment Instruction */}
-                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: 1.35 }}>
                       {selectedOnlineMethod.instructions || selectedOnlineMethod.instructions_bn || 'টাকা পাঠিয়ে পেমেন্ট সেশন শুরু করুন।'}
                     </p>
                   </motion.div>
                 )}
 
                 {/* Modal Actions */}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
                   <button
                     type="button"
                     onClick={() => setIsPaymentModalOpen(false)}
                     style={{
                       flex: 1,
-                      padding: '12px',
-                      borderRadius: '12px',
+                      padding: '9px',
+                      borderRadius: '10px',
                       border: '1px solid #cbd5e1',
                       background: '#ffffff',
                       color: '#475569',
                       fontWeight: 700,
-                      fontSize: '14px',
+                      fontSize: '13px',
                       cursor: 'pointer'
                     }}
                   >
@@ -1394,22 +1417,22 @@ export default function CheckoutView({
                     disabled={!selectedOnlineMethod || !customerSenderNumber}
                     style={{
                       flex: 2,
-                      padding: '12px',
-                      borderRadius: '12px',
+                      padding: '9px',
+                      borderRadius: '10px',
                       border: 'none',
                       background: 'var(--primary)',
                       color: '#ffffff',
                       fontWeight: 800,
-                      fontSize: '14.5px',
+                      fontSize: '13.5px',
                       cursor: (!selectedOnlineMethod || !customerSenderNumber) ? 'not-allowed' : 'pointer',
                       opacity: (!selectedOnlineMethod || !customerSenderNumber) ? 0.6 : 1,
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '8px'
+                      gap: '6px'
                     }}
                   >
-                    <Clock size={16} />
+                    <Clock size={15} />
                     <span>পেমেন্ট সেশন শুরু করুন</span>
                   </button>
                 </div>
@@ -1425,6 +1448,11 @@ export default function CheckoutView({
       {/* Displays order id, site name, logo, payment logo, etc.   */}
       {/* Includes cancel button to halt polling without placing   */}
       {/* ======================================================== */}
+      {/* ======================================================== */}
+      {/* MODAL 2: 5-MINUTE COUNTDOWN & REAL-TIME POLLING (COMPACT)*/}
+      {/* Real timestamp countdown with 3-sec backend verify poll  */}
+      {/* Compact layout with reduced margins and padding          */}
+      {/* ======================================================== */}
       <AnimatePresence>
         {isCountdownSessionOpen && (
           <div
@@ -1434,35 +1462,35 @@ export default function CheckoutView({
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(15, 23, 42, 0.8)',
-              backdropFilter: 'blur(6px)',
+              backgroundColor: 'rgba(15, 23, 42, 0.75)',
+              backdropFilter: 'blur(5px)',
               zIndex: 10000,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '16px'
+              padding: '12px'
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 15 }}
-              transition={{ duration: 0.25 }}
+              exit={{ opacity: 0, scale: 0.94, y: 10 }}
+              transition={{ duration: 0.2 }}
               style={{
                 background: '#ffffff',
-                borderRadius: '24px',
-                maxWidth: '520px',
+                borderRadius: '16px',
+                maxWidth: '410px',
                 width: '100%',
                 overflow: 'hidden',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-                border: '1.5px solid #cbd5e1'
+                boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.3)',
+                border: '1px solid #cbd5e1'
               }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header: Website Name & Logo */}
               <div
                 style={{
-                  padding: '16px 20px',
+                  padding: '10px 14px',
                   background: 'var(--primary)',
                   color: '#ffffff',
                   display: 'flex',
@@ -1470,43 +1498,43 @@ export default function CheckoutView({
                   justifyContent: 'space-between'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {propSettings?.logo_image_url ? (
                     <img
                       src={propSettings.logo_image_url}
                       alt={propSettings?.site_name || 'Logo'}
-                      style={{ height: '28px', maxWidth: '100px', objectFit: 'contain' }}
+                      style={{ height: '22px', maxWidth: '80px', objectFit: 'contain' }}
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   ) : (
                     <div
                       style={{
-                        width: '30px',
-                        height: '30px',
-                        borderRadius: '8px',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '6px',
                         background: 'rgba(255,255,255,0.2)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                       }}
                     >
-                      <Sparkles size={16} />
+                      <Sparkles size={13} />
                     </div>
                   )}
                   <div>
-                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#ffffff' }}>
+                    <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#ffffff', lineHeight: 1.2 }}>
                       {propSettings?.site_name || propSettings?.logo_text_bn || 'আড়ৎ এক্সপ্রেস'}
                     </h4>
-                    <span style={{ fontSize: '11px', opacity: 0.85 }}>নিরাপদ অনলাইন পেমেন্ট সেশন</span>
+                    <span style={{ fontSize: '10px', opacity: 0.9 }}>নিরাপদ পেমেন্ট সেশন</span>
                   </div>
                 </div>
 
                 <div
                   style={{
-                    background: 'rgba(255,255,255,0.15)',
-                    padding: '4px 10px',
-                    borderRadius: '8px',
-                    fontSize: '11px',
+                    background: 'rgba(255,255,255,0.18)',
+                    padding: '2px 7px',
+                    borderRadius: '6px',
+                    fontSize: '10px',
                     fontFamily: 'monospace',
                     fontWeight: 700
                   }}
@@ -1516,25 +1544,25 @@ export default function CheckoutView({
               </div>
 
               {/* Main Session Content */}
-              <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                {/* Payment Method Logo & Name */}
+              <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                {/* Payment Method Logo */}
                 <div
                   style={{
                     width: '100%',
-                    maxWidth: '128px',
-                    height: '68px',
+                    maxWidth: '96px',
+                    height: '46px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: '12px'
+                    marginBottom: '6px'
                   }}
                 >
                   <img
                     src={getPaymentMethodLogo(selectedOnlineMethod)}
                     alt={selectedOnlineMethod?.name_bn || 'Payment Method'}
                     style={{
-                      maxWidth: '128px',
-                      maxHeight: '68px',
+                      maxWidth: '96px',
+                      maxHeight: '46px',
                       width: '100%',
                       height: '100%',
                       objectFit: 'contain'
@@ -1543,11 +1571,11 @@ export default function CheckoutView({
                 </div>
 
                 {/* Amount to Pay */}
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 600 }}>
-                    পরিশোধযোগ্য মোট টাকা
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>
+                    পরিশোধযোগ্য টাকা
                   </div>
-                  <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--primary)', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--primary)', fontFamily: 'monospace', lineHeight: 1.1 }}>
                     ৳{toBengaliNumber(totalAmount)}
                   </div>
                 </div>
@@ -1558,26 +1586,26 @@ export default function CheckoutView({
                     width: '100%',
                     background: isSessionExpired ? '#fef2f2' : '#f0fdf4',
                     border: isSessionExpired ? '1px solid #fecaca' : '1px solid #bbf7d0',
-                    borderRadius: '16px',
-                    padding: '16px',
-                    marginBottom: '18px'
+                    borderRadius: '12px',
+                    padding: '10px 12px',
+                    marginBottom: '10px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <Clock size={20} style={{ color: isSessionExpired ? '#dc2626' : 'var(--primary)' }} />
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: isSessionExpired ? '#dc2626' : '#166534' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
+                    <Clock size={15} style={{ color: isSessionExpired ? '#dc2626' : 'var(--primary)' }} />
+                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: isSessionExpired ? '#dc2626' : '#166534' }}>
                       {isSessionExpired ? 'সময় শেষ হয়েছে' : 'পেমেন্ট যাচাইয়ের অবশিষ্ট সময়'}
                     </span>
                   </div>
 
                   <div
                     style={{
-                      fontSize: '34px',
+                      fontSize: '24px',
                       fontWeight: 900,
                       color: isSessionExpired ? '#dc2626' : 'var(--primary)',
                       fontFamily: 'monospace',
-                      letterSpacing: '2px',
-                      lineHeight: 1
+                      letterSpacing: '1px',
+                      lineHeight: 1.1
                     }}
                   >
                     {formatCountdown(timeLeftSeconds)}
@@ -1587,10 +1615,10 @@ export default function CheckoutView({
                   <div
                     style={{
                       width: '100%',
-                      height: '6px',
+                      height: '4px',
                       background: isSessionExpired ? '#fee2e2' : '#dcfce7',
                       borderRadius: '999px',
-                      marginTop: '12px',
+                      marginTop: '8px',
                       overflow: 'hidden'
                     }}
                   >
@@ -1611,9 +1639,9 @@ export default function CheckoutView({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '8px',
-                      marginTop: '12px',
-                      fontSize: '12px',
+                      gap: '6px',
+                      marginTop: '6px',
+                      fontSize: '11px',
                       color: isSessionExpired ? '#991b1b' : '#15803d',
                       fontWeight: 600
                     }}
@@ -1621,8 +1649,8 @@ export default function CheckoutView({
                     {!isSessionExpired && (
                       <span
                         style={{
-                          width: '8px',
-                          height: '8px',
+                          width: '7px',
+                          height: '7px',
                           borderRadius: '50%',
                           background: '#22c55e',
                           display: 'inline-block',
@@ -1639,12 +1667,12 @@ export default function CheckoutView({
                   style={{
                     width: '100%',
                     background: '#f8fafc',
-                    borderRadius: '14px',
-                    padding: '14px',
+                    borderRadius: '10px',
+                    padding: '9px 12px',
                     border: '1px solid #e2e8f0',
                     textAlign: 'left',
-                    fontSize: '13px',
-                    marginBottom: '16px'
+                    fontSize: '12px',
+                    marginBottom: '10px'
                   }}
                 >
                   {/* Receiver Number with 1-Click Copy */}
@@ -1654,16 +1682,16 @@ export default function CheckoutView({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        paddingBottom: '10px',
+                        paddingBottom: '8px',
                         borderBottom: '1px dashed #cbd5e1',
-                        marginBottom: '10px'
+                        marginBottom: '8px'
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
-                          {selectedOnlineMethod.name_bn} প্রাপক নম্বর (মার্চেন্ট/পার্সোনাল):
+                        <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                          {selectedOnlineMethod.name_bn} প্রাপক নম্বর:
                         </div>
-                        <div className="mono" style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink)' }}>
+                        <div className="mono" style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink)' }}>
                           {selectedOnlineMethod.number}
                         </div>
                       </div>
@@ -1674,38 +1702,38 @@ export default function CheckoutView({
                           background: copiedNumber ? '#dcfce7' : 'var(--primary)',
                           color: copiedNumber ? '#15803d' : '#ffffff',
                           border: 'none',
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          fontSize: '12px',
+                          padding: '3px 8px',
+                          borderRadius: '5px',
+                          fontSize: '11px',
                           fontWeight: 700,
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px'
+                          gap: '3px'
                         }}
                       >
-                        {copiedNumber ? <Check size={14} /> : <Copy size={14} />}
+                        {copiedNumber ? <Check size={11} /> : <Copy size={11} />}
                         <span>{copiedNumber ? 'কপি হয়েছে' : 'নম্বর কপি'}</span>
                       </button>
                     </div>
                   )}
 
                   {/* Customer Sender Number */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{ color: 'var(--muted)' }}>আপনার প্রেরক নম্বর:</span>
                     <strong className="mono" style={{ color: 'var(--ink)' }}>{customerSenderNumber}</strong>
                   </div>
 
                   {/* Instructions */}
-                  <div style={{ marginTop: '8px', color: '#475569', fontSize: '12px', lineHeight: 1.45 }}>
+                  <div style={{ marginTop: '6px', color: '#475569', fontSize: '11px', lineHeight: 1.35 }}>
                     <strong>নির্দেশনা:</strong> {selectedOnlineMethod?.instructions || selectedOnlineMethod?.instructions_bn || 'আপনার মোবাইল ব্যাংকিং অ্যাপ বা USSD ডায়াল করে টাকা পাঠান।'}
                   </div>
                 </div>
 
                 {/* Optional TrxID Input for faster matching */}
-                <div style={{ width: '100%', marginBottom: '16px', textAlign: 'left' }}>
-                  <label htmlFor="session-trx-input" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
-                    এসএমএস বা অ্যাপ থেকে পাওয়া TrxID (ঐচ্ছিক):
+                <div style={{ width: '100%', marginBottom: '10px', textAlign: 'left' }}>
+                  <label htmlFor="session-trx-input" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: '3px' }}>
+                    TrxID (ঐচ্ছিক):
                   </label>
                   <input
                     id="session-trx-input"
@@ -1715,10 +1743,10 @@ export default function CheckoutView({
                     onChange={(e) => setSessionOptionalTrx(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      borderRadius: '6px',
                       border: '1px solid #cbd5e1',
-                      fontSize: '13px',
+                      fontSize: '12px',
                       fontFamily: 'monospace'
                     }}
                   />
@@ -1731,45 +1759,45 @@ export default function CheckoutView({
                       width: '100%',
                       background: '#fef2f2',
                       border: '1px solid #fee2e2',
-                      borderRadius: '10px',
-                      padding: '10px 14px',
-                      fontSize: '12.5px',
+                      borderRadius: '8px',
+                      padding: '8px 10px',
+                      fontSize: '11.5px',
                       color: '#b91c1c',
-                      marginBottom: '16px',
+                      marginBottom: '10px',
                       textAlign: 'left',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px'
+                      gap: '6px'
                     }}
                   >
-                    <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                    <AlertTriangle size={15} style={{ flexShrink: 0 }} />
                     <span>{sessionErrorMsg}</span>
                   </div>
                 )}
 
-                {/* Cancel Button (Explicitly requested by user) */}
-                <div style={{ width: '100%', display: 'flex', gap: '10px' }}>
+                {/* Cancel Button */}
+                <div style={{ width: '100%', display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={handleCancelCountdownSession}
                     style={{
                       width: '100%',
-                      padding: '12px',
-                      borderRadius: '12px',
+                      padding: '9px 12px',
+                      borderRadius: '10px',
                       border: '1.5px solid #ef4444',
                       background: '#fff5f5',
                       color: '#dc2626',
                       fontWeight: 800,
-                      fontSize: '14px',
+                      fontSize: '13px',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px',
-                      transition: 'all 0.18s ease'
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <X size={16} />
+                    <X size={15} />
                     <span>পেমেন্ট বাতিল করুন</span>
                   </button>
 
@@ -1779,28 +1807,28 @@ export default function CheckoutView({
                       onClick={handleStartCountdownSession}
                       style={{
                         width: '100%',
-                        padding: '12px',
-                        borderRadius: '12px',
+                        padding: '9px 12px',
+                        borderRadius: '10px',
                         border: 'none',
                         background: 'var(--primary)',
                         color: '#ffffff',
                         fontWeight: 800,
-                        fontSize: '14px',
+                        fontSize: '13px',
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '6px'
+                        gap: '5px'
                       }}
                     >
-                      <RefreshCw size={16} />
+                      <RefreshCw size={15} />
                       <span>আবার চেষ্টা করুন</span>
                     </button>
                   )}
                 </div>
 
                 {/* Note */}
-                <div style={{ marginTop: '12px', fontSize: '11px', color: '#64748b' }}>
+                <div style={{ marginTop: '8px', fontSize: '10.5px', color: '#64748b' }}>
                   পেমেন্ট বাতিল করলে কোনো অর্ডার প্লেস হবে না। সফল ভেরিফিকেশন পাওয়ার পরই কেবল অর্ডার নিশ্চিত হবে।
                 </div>
               </div>
