@@ -320,8 +320,8 @@ export default function CheckoutView({
   // -------------------------------------------------------------
   const handleStartCountdownSession = () => {
     const cleanNum = (customerSenderNumber || '').trim().replace(/[^0-9]/g, '');
-    if (!cleanNum || cleanNum.length < 10) {
-      setSenderNumberError('সঠিক মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)');
+    if (!cleanNum || !/^01[0-9]{9}$/.test(cleanNum)) {
+      setSenderNumberError('সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)');
       return;
     }
 
@@ -887,71 +887,77 @@ export default function CheckoutView({
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
                 {/* 1. Cash On Delivery Card */}
-                <div
-                  onClick={() => setPaymentChoice('cod')}
-                  style={{
-                    border: paymentChoice === 'cod' ? '2px solid var(--primary)' : '1px solid var(--rule)',
-                    background: paymentChoice === 'cod' ? 'var(--primary-dim)' : '#ffffff',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    position: 'relative'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                {(() => {
+                  const codMethod = paymentMethods.find(p => p.code === 'cod');
+                  const codLogo = (codMethod && codMethod.logo_url) ? codMethod.logo_url : COD_SVG;
+                  return (
                     <div
+                      onClick={() => setPaymentChoice('cod')}
                       style={{
-                        width: '64px',
-                        height: '36px',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        background: '#006C4C',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        border: paymentChoice === 'cod' ? '2px solid var(--primary)' : '1px solid var(--rule)',
+                        background: paymentChoice === 'cod' ? 'var(--primary-dim)' : '#ffffff',
+                        borderRadius: '12px',
+                        padding: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        position: 'relative'
                       }}
                     >
-                      <img
-                        src={COD_SVG}
-                        alt="ক্যাশ অন ডেলিভারি"
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--ink)' }}>
-                        ক্যাশ অন ডেলিভারি
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <div
+                          style={{
+                            width: '64px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            background: '#006C4C',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                          }}
+                        >
+                          <img
+                            src={codLogo}
+                            alt="ক্যাশ অন ডেলিভারি"
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--ink)' }}>
+                            {codMethod?.name_bn || 'ক্যাশ অন ডেলিভারি'}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
+                            Cash On Delivery
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>
-                        Cash On Delivery
-                      </div>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
+                        {codMethod?.instructions || 'পণ্য হাতে পেয়ে ডেলিভারি ম্যানকে মূল্য পরিশোধ করুন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই।'}
+                      </p>
+                      {paymentChoice === 'cod' && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            background: 'var(--primary)',
+                            color: '#ffffff',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
-                    পণ্য হাতে পেয়ে ডেলিভারি ম্যানকে মূল্য পরিশোধ করুন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই।
-                  </p>
-                  {paymentChoice === 'cod' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        background: 'var(--primary)',
-                        color: '#ffffff',
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Check size={12} strokeWidth={3} />
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* 2. Online Payments Card */}
                 <div
@@ -1409,7 +1415,7 @@ export default function CheckoutView({
                   <button
                     type="button"
                     onClick={handleStartCountdownSession}
-                    disabled={!selectedOnlineMethod || !customerSenderNumber}
+                    disabled={!selectedOnlineMethod || !customerSenderNumber || !/^01[0-9]{9}$/.test((customerSenderNumber || '').trim().replace(/[^0-9]/g, ''))}
                     style={{
                       flex: 2,
                       padding: '9px',
@@ -1419,8 +1425,8 @@ export default function CheckoutView({
                       color: '#ffffff',
                       fontWeight: 800,
                       fontSize: '13.5px',
-                      cursor: (!selectedOnlineMethod || !customerSenderNumber) ? 'not-allowed' : 'pointer',
-                      opacity: (!selectedOnlineMethod || !customerSenderNumber) ? 0.6 : 1,
+                      cursor: (!selectedOnlineMethod || !customerSenderNumber || !/^01[0-9]{9}$/.test((customerSenderNumber || '').trim().replace(/[^0-9]/g, ''))) ? 'not-allowed' : 'pointer',
+                      opacity: (!selectedOnlineMethod || !customerSenderNumber || !/^01[0-9]{9}$/.test((customerSenderNumber || '').trim().replace(/[^0-9]/g, ''))) ? 0.6 : 1,
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
