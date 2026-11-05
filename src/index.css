@@ -1891,6 +1891,29 @@ img.cat-logo-image {
   gap: 28px;
 }
 
+.co-grid {
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.co-form {
+  background: #FFFFFF;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-xl);
+  padding: clamp(16px, 3vw, 28px);
+  box-shadow: var(--shadow-sm);
+}
+
+.co-form h2 {
+  font-size: clamp(18px, 2.2vw, 22px);
+  font-weight: 800;
+  margin: 0 0 20px;
+  color: var(--ink);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
 .co-summary {
   background: #FFFFFF;
   border: 1px solid var(--rule);

@@ -571,20 +571,20 @@ export default function CheckoutView({
     setTimeout(() => setCopiedNumber(false), 2500);
   };
 
-  // Reusable Order Summary renderer for both desktop right-side and mobile under-payment-method
-  const renderOrderSummary = (isMobile = false) => (
+  // Order Summary renderer placed below Payment Method and above Payment/Order Button
+  const renderOrderSummary = () => (
     <div
-      className={`co-summary ${isMobile ? 'mobile-order-summary' : ''}`}
+      className="co-summary"
       style={{
         background: '#ffffff',
         border: '1px solid var(--rule)',
         borderRadius: '16px',
-        padding: isMobile ? '16px' : '22px',
+        padding: '22px',
         boxShadow: 'var(--shadow-sm)'
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-        <h3 style={{ margin: 0, fontSize: isMobile ? '15.5px' : '17px', fontWeight: 800 }}>অর্ডার সামারি</h3>
+        <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800 }}>অর্ডার সামারি</h3>
         {isPackageOrder && (
           <span
             style={{
@@ -784,10 +784,10 @@ export default function CheckoutView({
           <ArrowLeft size={16} /> <span>দোকানে ফিরে যান</span>
         </motion.button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* Left / Main Column: Customer Info, Payment Options & (on mobile) Order Summary */}
+        <div className="co-grid">
+          {/* Customer Info, Payment Options, Order Summary & Submit Button */}
           <form
-            className="co-form lg:col-span-7"
+            className="co-form"
             onSubmit={(e) => {
               e.preventDefault();
               if (paymentChoice === 'cod') {
@@ -1060,9 +1060,9 @@ export default function CheckoutView({
               )}
             </div>
 
-            {/* MOBILE VIEW ONLY: Order summary section directly below payment method section */}
-            <div className="block lg:hidden" style={{ marginTop: '20px' }}>
-              {renderOrderSummary(true)}
+            {/* Order Summary Section: Directly below Payment Method Section and above Submit Button */}
+            <div style={{ marginTop: '22px' }}>
+              {renderOrderSummary()}
             </div>
 
             {/* Bottom Dynamic Submit Button */}
@@ -1078,7 +1078,7 @@ export default function CheckoutView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                background: paymentChoice === 'online' ? 'var(--primary)' : 'var(--primary)',
+                background: 'var(--primary)',
                 opacity: submitting ? 0.75 : 1,
                 cursor: submitting ? 'not-allowed' : 'pointer'
               }}
@@ -1101,11 +1101,6 @@ export default function CheckoutView({
               )}
             </motion.button>
           </form>
-
-          {/* DESKTOP VIEW ONLY: Order Summary on the right side */}
-          <div className="hidden lg:block lg:col-span-5 sticky top-24">
-            {renderOrderSummary(false)}
-          </div>
         </div>
       </section>
 
