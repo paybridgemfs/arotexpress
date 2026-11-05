@@ -75,9 +75,19 @@ export default function CheckoutView({
   const [address, setAddress] = useState('');
   const [area, setArea] = useState('');
 
-  // 1. COD vs Online Payment choice
-  // 'cod' = Cash on Delivery | 'online' = Online Payments (bKash, Nagad, Rocket, etc.)
-  const [paymentChoice, setPaymentChoice] = useState('cod');
+  // 1. COD vs Online Payment choice (default to cod if active, otherwise online)
+  const [paymentChoice, setPaymentChoice] = useState(() => {
+    const cod = paymentMethods.find((p) => p.code === 'cod');
+    return (!cod || cod.is_active === false) ? 'online' : 'cod';
+  });
+
+  useEffect(() => {
+    const codMethod = paymentMethods.find((p) => p.code === 'cod');
+    const showCod = codMethod && codMethod.is_active !== false;
+    if (!showCod && paymentChoice === 'cod') {
+      setPaymentChoice('online');
+    }
+  }, [paymentMethods]);
 
   // Online Payment selection modal & countdown session states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -888,7 +898,9 @@ export default function CheckoutView({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
                 {/* 1. Cash On Delivery Card */}
                 {(() => {
-                  const codMethod = paymentMethods.find(p => p.code === 'cod');
+                  const codMethod = paymentMethods.find((p) => p.code === 'cod');
+                  const showCod = codMethod && codMethod.is_active !== false;
+                  if (!showCod) return null;
                   const codLogo = (codMethod && codMethod.logo_url) ? codMethod.logo_url : COD_SVG;
                   return (
                     <div

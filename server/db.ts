@@ -1947,6 +1947,23 @@ export class DBManager {
     return null;
   }
 
+  static deletePaymentMethod(id: number | string) {
+    const numId = typeof id === 'number' ? id : parseInt(String(id), 10);
+    const idx = this.data.paymentMethods.findIndex(p => (Number.isInteger(numId) && p.id === numId) || (p.code && p.code === String(id)));
+    if (idx !== -1) {
+      const removed = this.data.paymentMethods[idx];
+      this.data.paymentMethods.splice(idx, 1);
+      if (isPgConnected) {
+        pool.query(
+          `DELETE FROM payment_methods WHERE id = $1 OR code = $2`,
+          [Number.isInteger(numId) ? numId : -1, String(id)]
+        ).catch((e) => console.warn('PG sync error (payment delete):', e.message));
+      }
+      return removed;
+    }
+    return null;
+  }
+
   static async addPaymentMethod(method: any) {
     const code = (method.code || '').trim().toLowerCase();
     const instr = method.instructions !== undefined ? method.instructions : (method.instructions_bn || '');

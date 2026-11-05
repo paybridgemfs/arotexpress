@@ -1103,6 +1103,28 @@ export default function AdminPanel({ onNavigateHome }) {
     }
   };
 
+  const handleDeletePaymentMethod = async (payment) => {
+    if (!window.confirm(`আপনি কি নিশ্চিত যে আপনি '${payment.name_bn}' পেমেন্ট মেথডটি ডিলিট করতে চান?`)) return;
+    try {
+      const targetId = payment.id !== undefined ? payment.id : payment.code;
+      const res = await fetch(`/api/payment-methods/${targetId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${adminToken}`
+        }
+      });
+      if (res.ok) {
+        setPaymentMethods(paymentMethods.filter((p) => p.id !== payment.id && p.code !== payment.code));
+        showToast(`'${payment.name_bn}' পেমেন্ট মেথডটি সফলভাবে মুছে ফেলা হয়েছে`);
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'ডিলিট করতে সমস্যা হয়েছে');
+      }
+    } catch (err) {
+      showToast('ডিলিট করতে সমস্যা হয়েছে');
+    }
+  };
+
   // Save Payment Verification Gateway Config
   const handleSavePaymentVerifyConfig = async (e) => {
     if (e) e.preventDefault();
@@ -3390,23 +3412,32 @@ export default function AdminPanel({ onNavigateHome }) {
                         </button>
                       </td>
                       <td>
-                        <button
-                          className="admin-btn"
-                          onClick={() => {
-                            setEditingPayment(p);
-                            const inst = p.instructions || p.instructions_bn || '';
-                            setNewPayment({
-                              ...p,
-                              instructions: inst,
-                              instructions_bn: inst
-                            });
-                            setPaymentLogoFile(null);
-                            setPaymentLogoPreview(p.logo_url || '');
-                            setIsPaymentModalOpen(true);
-                          }}
-                        >
-                          এডিট
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            className="admin-btn"
+                            onClick={() => {
+                              setEditingPayment(p);
+                              const inst = p.instructions || p.instructions_bn || '';
+                              setNewPayment({
+                                ...p,
+                                instructions: inst,
+                                instructions_bn: inst
+                              });
+                              setPaymentLogoFile(null);
+                              setPaymentLogoPreview(p.logo_url || '');
+                              setIsPaymentModalOpen(true);
+                            }}
+                          >
+                            এডিট
+                          </button>
+                          <button
+                            className="admin-btn"
+                            style={{ background: '#fee2e2', color: '#dc2626', borderColor: '#fca5a5' }}
+                            onClick={() => handleDeletePaymentMethod(p)}
+                          >
+                            ডিলিট
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
